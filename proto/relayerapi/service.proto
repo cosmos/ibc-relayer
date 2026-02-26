@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package skip.relayer;
+
+option go_package = "github.com/cosmos/platform-relayer/proto/gen/relayerapi";
+import "google/protobuf/timestamp.proto";
+
+service RelayerApiService {
+    // Relay will track the status of a transfer, and submit the transactions required to complete the transfer via
+    // the bridging protocol. The transfer will be updated to PROCESSING until the transfer is completed, or fails.
+    rpc Relay(RelayRequest) returns (RelayResponse) {}
+
+    // Status will return the current status of a transfer. PENDING, PROCESSING, COMPLETED, or FAILED. We assume that
+    // the status is PENDING for any transaction that has not been verified by the VerifyRelayPayment operation.
+    // The status message will be set if the status is FAILED.
+    rpc Status(StatusRequest) returns (StatusResponse) {}
+}
+
+
+message StatusRequest {
+    string tx_hash = 1;
+    string chain_id = 2;
+}
+
+
+enum TransferState {
+    TRANSFER_STATE_UNKNOWN = 0;
+    TRANSFER_STATE_PENDING = 1;
+    TRANSFER_STATE_COMPLETE = 2;
+    TRANSFER_STATE_FAILED = 3;
+}
+
+message TransactionInfo {
+    string tx_hash = 1;
+    string chain_id = 2;
+}
+
+message PacketStatus {
+    TransferState state = 1;
+    uint64 sequence_number = 2;
+    string source_client_id = 3;
+    TransactionInfo send_tx = 4;
+    TransactionInfo recv_tx = 5;
+    TransactionInfo ack_tx = 6;
+    TransactionInfo timeout_tx = 7;
+}
+
+message StatusResponse {
+    repeated PacketStatus packet_statuses = 1;
+}
+
+
+message RelayRequest {
+    string tx_hash = 1;
+    string chain_id = 2;
+}
+
+
+
+message RelayResponse {}

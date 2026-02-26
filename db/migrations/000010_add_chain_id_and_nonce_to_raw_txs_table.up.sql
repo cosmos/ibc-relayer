@@ -1,0 +1,2 @@
+ALTER TABLE raw_txs ADD COLUMN chain_id TEXT;
+ALTER TABLE raw_txs ADD COLUMN nonce TEXT;

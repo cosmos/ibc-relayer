@@ -1,0 +1,60 @@
+with-expecter: true
+filename: "mock_{{.InterfaceName | snakecase}}.go"
+dir: "mocks/{{.InterfaceDirRelative}}"
+disable-version-string: true
+packages:
+  # Internal Packages
+  github.com/cosmos/platform-relayer/relayerapi/services/relayerapi:
+    interfaces:
+      RelayerAPIQueries:
+  github.com/cosmos/platform-relayer/shared/evmrpc:
+    interfaces:
+      EVMRPCClientManager:
+      EVMChainRPC:
+  github.com/cosmos/platform-relayer/shared/http:
+    interfaces:
+      Client:
+  github.com/cosmos/platform-relayer/shared/messagequeue/transactionqueue:
+    interfaces:
+      ProducerTransactionQueue:
+  github.com/cosmos/platform-relayer/shared/tmrpc:
+    interfaces:
+      TendermintRPCClientManager:
+      TendermintRPCQuerier:
+  github.com/cosmos/platform-relayer/shared/signing:
+    interfaces:
+      Signer:
+  github.com/cosmos/platform-relayer/shared/clients/coingecko:
+    interfaces:
+      PriceClient:
+  github.com/cosmos/platform-relayer/shared/clients/utils:
+    interfaces:
+      HTTPClient:
+      RateLimiter:
+  github.com/cosmos/platform-relayer/shared/bridges/ibcv2:
+    interfaces:
+      BridgeClient:
+  github.com/cosmos/platform-relayer/shared/config:
+    interfaces:
+      ConfigReader:
+  github.com/cosmos/platform-relayer/relayer/ibcv2:
+    interfaces:
+      IBCV2Processor:
+      IBCV2BatchProcessor:
+      TransferStateStorage:
+      UnfinishedIBCV2TransferStorage:
+      Storage:
+      BridgeClientManager:
+      PipelineManager:
+      PriceClient:
+  github.com/cosmos/platform-relayer/proto/gen/ibcv2relayer:
+    interfaces:
+      RelayerServiceClient:
+
+  # External Packages
+  github.com/ethereum/go-ethereum/accounts/abi/bind:
+    interfaces:
+      ContractBackend:
+  github.com/cometbft/cometbft/rpc/client:
+    interfaces:
+      Client:

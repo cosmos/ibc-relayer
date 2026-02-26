@@ -1,0 +1,35 @@
+# syntax=docker/dockerfile:1
+
+FROM golang:1.24-trixie AS builder
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+COPY . .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -o /out/relayer ./cmd/relayer
+
+FROM debian:trixie-slim AS certs
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+FROM gcr.io/distroless/static-debian13:nonroot
+
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+LABEL org.opencontainers.image.title="platform-relayer" \
+      org.opencontainers.image.description="Cosmos Platform Relayer" \
+      org.opencontainers.image.source="https://github.com/cosmos/platform-relayer" \
+      org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.created=$BUILD_DATE \
+      org.opencontainers.image.version=$VERSION
+
+COPY --from=certs --chown=nonroot:nonroot /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+
+COPY --from=builder --chown=nonroot:nonroot /out/relayer /bin/relayer
+
+USER nonroot:nonroot
+ENTRYPOINT ["/bin/relayer"]

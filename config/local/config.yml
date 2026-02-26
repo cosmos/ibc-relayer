@@ -1,0 +1,160 @@
+postgres:
+  hostname: 'localhost'
+  port: 42500
+  database: 'relayer'
+metrics:
+  prometheus_address: '0.0.0.0:48001'
+relayer_api:
+  address: '0.0.0.0:9000'
+coingecko:
+  base_url: 'https://pro-api.coingecko.com/api/v3/'
+  api_key: 'COINGECKO_API_KEY'
+  requests_per_minute: 500
+  cache_refresh_interval: '5m'
+ibcv2_proof_api:
+  grpc_address: localhost:8888
+  grpc_tls_enabled: false
+chains:
+  provider-testnet:
+    chain_name: 'provider-testnet'
+    chain_id: 'provider'
+    type: 'cosmos'
+    environment: 'testnet'
+    gas_token_symbol: 'uatom'
+    gas_token_coingecko_id: 'cosmos'
+    gas_token_decimals: 6
+    signer_gas_alert_thresholds:
+      ibcv2:
+        warning_threshold: 10000000 # 10 atom
+        critical_threshold: 0
+    supported_bridges:
+      - ibcv2
+    ibcv2:
+      ack_batch_size: 100
+      ack_batch_concurrency: 1
+      recv_batch_size: 100
+      recv_batch_timeout: 1m
+      recv_batch_concurrency: 1
+      timeout_batch_size: 100
+      timeout_batch_concurrency: 1
+      timeout_batch_timeout: 1m
+      counterparty_chains:
+        08-wasm-262: '11155111'
+        08-wasm-301: '1'
+      ibcv2_payment_address: 'cosmos12aek9vdksx4hfrs4hg70y4pp7vgr9mj66e4mz0'
+      should_relay_success_acks: false
+      should_relay_error_acks: false
+      packet_timeout_window_minimum: 10h
+      auto_update_clients: true
+    cosmos:
+      gas_price: 0.005
+      ibcv2_tx_fee_denom: 'uatom'
+      address_prefix: 'cosmos'
+      rpc: 'TENDERMINT_RPC'
+      grpc: 'COSMOS_SDK_GRPC'
+      grpc_tls_enabled: false
+      fee:
+        ibcv2_recv_packet_gas_cost_usd: .10
+  ethereum-testnet:
+    chain_name: 'sepolia'
+    chain_id: '11155111'
+    type: 'evm'
+    environment: 'testnet'
+    gas_token_symbol: 'ETH'
+    gas_token_coingecko_id: 'ethereum'
+    gas_token_decimals: 18
+    unprofitable_relay_threshold: 0
+    supported_bridges:
+      - ibcv2
+    signer_gas_alert_thresholds:
+      ibcv2:
+        warning_threshold: 1000000000000000000 # 1 eth
+        critical_threshold: 500000000000000000 # 0.5 eth
+    ibcv2:
+      timeout_batch_timeout: 1m
+      counterparty_chains:
+        hub-testnet-0: 'provider'
+        ledger-testnet-2: 'ledger-testnet-1'
+      ibcv2_payment_address: '0x2d574c3f25EFB98df6340E66a778318FE6592E30'
+      should_only_relay_error_acks: true
+      should_relay_success_acks: false
+      should_relay_error_acks: true
+      recv_batch_concurrency: 20
+      recv_batch_size: 60
+      packet_timeout_window_minimum: 10h
+      auto_update_clients: true
+    evm:
+      relayer_address: '0x257cac9aa58c17E09074d7089CA878167611fc00'
+      rpc: 'EVM_JSON_RPC'
+      contracts:
+        ics_26_router_address: 0x3fcBB8b5d85FB5F77603e11536b5E90FeE37e6c0
+        ics_20_transfer_address: 0x3a4e076D1c5EBfC813993c497Bb284598121b515
+        usdc_erc20_address: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
+  ethereum:
+    chain_name: 'ethereum'
+    chain_id: '1'
+    type: 'evm'
+    environment: 'mainnet'
+    gas_token_symbol: 'ETH'
+    gas_token_coingecko_id: 'ethereum'
+    gas_token_decimals: 18
+    supported_bridges:
+      - ibcv2
+    signer_gas_balance:
+      warning_threshold_wei: 4290000000000000000
+      critical_threshold_wei: 1430000000000000000
+    evm:
+      relayer_address: '0x257cac9aa58c17E09074d7089CA878167611fc00'
+      rpc: 'EVM_JSON_RPC'
+      contracts:
+        usdc_erc20_address: 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
+        token_messenger_address: 0xbd3fa81b58ba92a82136038b25adec7066af3155
+        message_transmitter_address: 0x0a992d191deec32afe36203ad87d7d289a738f81
+  base-mainnet:
+    chain_name: 'base'
+    chain_id: '8453'
+    type: evm
+    environment: 'mainnet'
+    gas_token_symbol: 'ETH'
+    gas_token_coingecko_id: 'ethereum'
+    gas_token_decimals: 18
+    supported_bridges:
+      - cctp
+    signer_gas_balance:
+      warning_threshold_wei: 180000000000000000
+      critical_threshold_wei: 60000000000000000
+    evm:
+      relayer_payment_contract_address: '0xB6615B2662b35fc3533F8479002e62D0523341De'
+      relayer_address: '0x257cac9aa58c17E09074d7089CA878167611fc00'
+      rpc: 'EVM_JSON_RPC'
+      contracts:
+        usdc_erc20_address: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+        token_messenger_address: 0x1682Ae6375C4E4A97e4B583BC394c861A46D8962
+        message_transmitter_address: 0xAD09780d193884d503182aD4588450C416D6F9D4
+  base-testnet:
+    chain_name: 'base'
+    chain_id: '84532'
+    type: evm
+    environment: 'testnet'
+    gas_token_symbol: 'ETH'
+    gas_token_coingecko_id: 'ethereum'
+    gas_token_decimals: 18
+    supported_bridges:
+      - cctp
+    signer_gas_balance:
+      warning_threshold_wei: 250000000000000000
+      critical_threshold_wei: 0
+    evm:
+      relayer_payment_contract_address: '0x19d3eAC42Bd26Ecb4b42687da2Ab8Bc42554Ae2E'
+      relayer_address: '0x257cac9aa58c17E09074d7089CA878167611fc00'
+      rpc: 'EVM_JSON_RPC'
+      rpc_basic_auth_var: 'ENV_VAR'
+      contracts:
+        usdc_erc20_address: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
+        token_messenger_address: 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5
+        message_transmitter_address: 0x7865fAfC2db2093669d92c0F33AeEF291086BEFD
+signing:
+  grpc_address: localhost:9006
+  cosmos_wallet_key: a2794a01-eba7-4481-8b48-8a3a141e7cd3
+  evm_wallet_key: 9be20bf7-c3b7-4967-9851-a150f07f66ba
+  svm_wallet_key: fecc5729-afb7-47dd-b656-c6f62574705f

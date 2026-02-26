@@ -1,0 +1,1 @@
+DROP INDEX idx_ibcv2_transfers_recv_time_chain_ids;

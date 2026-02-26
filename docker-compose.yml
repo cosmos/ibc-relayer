@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:18
+    restart: always
+    environment:
+      POSTGRES_USER: relayer
+      POSTGRES_PASSWORD: relayer
+      POSTGRES_DB: relayer
+    ports:
+      - 42500:5432
+    volumes:
+      - pgdata:/var/lib/postgresql
+    networks:
+      - relayer
+    healthcheck:
+      test: pg_isready -U relayer -d relayer
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  go-migrate:
+    image: migrate/migrate
+    volumes:
+      - ./db/migrations:/migrations
+    command: "-path /migrations -database postgres://relayer:relayer@postgres:5432/relayer?sslmode=disable up"
+    networks:
+      - relayer
+    depends_on:
+      postgres:
+        condition: service_healthy
+networks:
+  relayer:
+
+volumes:
+  pgdata:
