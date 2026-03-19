@@ -435,7 +435,7 @@ const file_relayerapi_service_proto_rawDesc = "" +
 	"\x15TRANSFER_STATE_FAILED\x10\x032\x9e\x01\n" +
 	"\x11RelayerApiService\x12B\n" +
 	"\x05Relay\x12\x1a.skip.relayer.RelayRequest\x1a\x1b.skip.relayer.RelayResponse\"\x00\x12E\n" +
-	"\x06Status\x12\x1b.skip.relayer.StatusRequest\x1a\x1c.skip.relayer.StatusResponse\"\x00B9Z7github.com/cosmos/platform-relayer/proto/gen/relayerapib\x06proto3"
+	"\x06Status\x12\x1b.skip.relayer.StatusRequest\x1a\x1c.skip.relayer.StatusResponse\"\x00B4Z2github.com/cosmos/ibc-relayer/proto/gen/relayerapib\x06proto3"
 
 var (
 	file_relayerapi_service_proto_rawDescOnce sync.Once

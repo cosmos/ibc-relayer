@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/cosmos/platform-relayer/shared/bridges/ibcv2"
+	"github.com/cosmos/ibc-relayer/shared/bridges/ibcv2"
 )
 
 func TestOnceWithKey_Do(t *testing.T) {

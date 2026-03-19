@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/cosmos/platform-relayer/shared/signing"
+	"github.com/cosmos/ibc-relayer/shared/signing"
 )
 
 func EthereumSignerToBindSignerFn(ctx context.Context, signer signing.Signer, chainID string) bind.SignerFn {

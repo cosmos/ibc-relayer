@@ -8,10 +8,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/cosmos/platform-relayer/relayer/ibcv2"
-	"github.com/cosmos/platform-relayer/shared/config"
-	"github.com/cosmos/platform-relayer/shared/lmt"
-	"github.com/cosmos/platform-relayer/shared/metrics"
+	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
+	"github.com/cosmos/ibc-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/metrics"
 )
 
 type GasMonitor struct {

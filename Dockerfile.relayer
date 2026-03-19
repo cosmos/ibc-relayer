@@ -19,9 +19,9 @@ FROM gcr.io/distroless/static-debian13:nonroot
 ARG BUILD_DATE
 ARG VCS_REF
 ARG VERSION
-LABEL org.opencontainers.image.title="platform-relayer" \
-      org.opencontainers.image.description="Cosmos Platform Relayer" \
-      org.opencontainers.image.source="https://github.com/cosmos/platform-relayer" \
+LABEL org.opencontainers.image.title="ibc-relayer" \
+      org.opencontainers.image.description="Cosmos IBC Relayer" \
+      org.opencontainers.image.source="https://github.com/cosmos/ibc-relayer" \
       org.opencontainers.image.revision=$VCS_REF \
       org.opencontainers.image.created=$BUILD_DATE \
       org.opencontainers.image.version=$VERSION

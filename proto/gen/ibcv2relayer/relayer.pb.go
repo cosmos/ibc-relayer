@@ -666,7 +666,7 @@ const file_ibcv2relayer_relayer_proto_rawDesc = "" +
 	"\tRelayByTx\x12\x19.relayer.RelayByTxRequest\x1a\x1a.relayer.RelayByTxResponse\x12K\n" +
 	"\fCreateClient\x12\x1c.relayer.CreateClientRequest\x1a\x1d.relayer.CreateClientResponse\x12K\n" +
 	"\fUpdateClient\x12\x1c.relayer.UpdateClientRequest\x1a\x1d.relayer.UpdateClientResponse\x123\n" +
-	"\x04Info\x12\x14.relayer.InfoRequest\x1a\x15.relayer.InfoResponseB;Z9github.com/cosmos/platform-relayer/proto/gen/ibcv2relayerb\x06proto3"
+	"\x04Info\x12\x14.relayer.InfoRequest\x1a\x15.relayer.InfoResponseB6Z4github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayerb\x06proto3"
 
 var (
 	file_ibcv2relayer_relayer_proto_rawDescOnce sync.Once

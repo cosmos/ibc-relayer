@@ -6,9 +6,9 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	signerservice "github.com/cosmos/platform-relayer/proto/gen/signer"
-	"github.com/cosmos/platform-relayer/shared/signing"
-	"github.com/cosmos/platform-relayer/shared/signing/signer_service"
+	signerservice "github.com/cosmos/ibc-relayer/proto/gen/signer"
+	"github.com/cosmos/ibc-relayer/shared/signing"
+	"github.com/cosmos/ibc-relayer/shared/signing/signer_service"
 )
 
 var _ signing.Signer = (*RemoteCosmosSigner)(nil)

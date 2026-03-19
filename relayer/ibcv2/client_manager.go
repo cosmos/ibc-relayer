@@ -12,7 +12,7 @@ import (
 	tmRPC "github.com/cometbft/cometbft/rpc/client"
 	rpcclienthttp "github.com/cometbft/cometbft/rpc/client/http"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	signerservice "github.com/cosmos/platform-relayer/proto/gen/signer"
+	signerservice "github.com/cosmos/ibc-relayer/proto/gen/signer"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	ethereumrpc "github.com/ethereum/go-ethereum/rpc"
@@ -21,13 +21,13 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/cosmos/platform-relayer/shared/bridges/ibcv2"
-	"github.com/cosmos/platform-relayer/shared/config"
-	"github.com/cosmos/platform-relayer/shared/lmt"
-	"github.com/cosmos/platform-relayer/shared/metrics"
-	"github.com/cosmos/platform-relayer/shared/signing"
-	"github.com/cosmos/platform-relayer/shared/signing/signer_service"
-	"github.com/cosmos/platform-relayer/shared/utils"
+	"github.com/cosmos/ibc-relayer/shared/bridges/ibcv2"
+	"github.com/cosmos/ibc-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/metrics"
+	"github.com/cosmos/ibc-relayer/shared/signing"
+	"github.com/cosmos/ibc-relayer/shared/signing/signer_service"
+	"github.com/cosmos/ibc-relayer/shared/utils"
 )
 
 type BridgeClientManager interface {

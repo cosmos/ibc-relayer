@@ -2,16 +2,21 @@ export PATH:=$(shell pwd)/tools/bin:$(PATH)
 SHELL := env PATH='$(PATH)' /bin/sh
 GO_DEPS=go.mod go.sum
 
+# sonic/loader references runtime.lastmoduledatap via //go:linkname, which
+# Go 1.25+ rejects for modules declaring go <1.25. Disable the check so
+# the relayer can stay on go 1.24.x while being built with a newer toolchain.
+RELAYER_LDFLAGS := -ldflags="-checklinkname=0"
+
 .PHONY: relayer-local
 relayer-local:
-	POSTGRES_USER=relayer POSTGRES_PASSWORD=relayer go run ./cmd/relayer/main.go --config ./config/local/config.yml
+	POSTGRES_USER=relayer POSTGRES_PASSWORD=relayer go run $(RELAYER_LDFLAGS) ./cmd/relayer/main.go --config ./config/local/config.yml
 .PHONY: transfer
 transfer:
-	go build -o ./bin/transfer ./cmd/transfer
+	go build $(RELAYER_LDFLAGS) -o ./bin/transfer ./cmd/transfer
 
 .PHONY: relay
 relay:
-	go build -o ./bin/relay ./cmd/relay
+	go build $(RELAYER_LDFLAGS) -o ./bin/relay ./cmd/relay
 
 #
 # Developer Tools
@@ -57,7 +62,7 @@ deps:
 test:
 	go clean -testcache
 	docker compose up -d
-	go test -p 1 --tags=test -v -race $(shell go list ./... | grep -v /scripts/)
+	go test $(RELAYER_LDFLAGS) -p 1 --tags=test -v -race $(shell go list ./... | grep -v /scripts/)
 	docker compose down -v
 
 #

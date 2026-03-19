@@ -7,7 +7,7 @@ import (
 
 	grpc "google.golang.org/grpc"
 
-	ibcv2relayer "github.com/cosmos/platform-relayer/proto/gen/ibcv2relayer"
+	ibcv2relayer "github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer"
 
 	mock "github.com/stretchr/testify/mock"
 )

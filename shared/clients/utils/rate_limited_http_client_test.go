@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	utilsmock "github.com/cosmos/platform-relayer/mocks/shared/clients/utils"
-	"github.com/cosmos/platform-relayer/shared/clients/utils"
+	utilsmock "github.com/cosmos/ibc-relayer/mocks/shared/clients/utils"
+	"github.com/cosmos/ibc-relayer/shared/clients/utils"
 )
 
 type RateLimitedHTTPClientTestSuite struct {

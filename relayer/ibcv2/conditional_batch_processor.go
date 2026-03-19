@@ -8,8 +8,8 @@ import (
 	"github.com/deliveryhero/pipeline/v2"
 	"go.uber.org/zap"
 
-	"github.com/cosmos/platform-relayer/shared/lmt"
-	"github.com/cosmos/platform-relayer/shared/metrics"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/metrics"
 )
 
 func ConditionallyBatchProcess(

@@ -17,17 +17,17 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
-	"github.com/cosmos/platform-relayer/db/tx"
-	"github.com/cosmos/platform-relayer/gasmonitor"
-	"github.com/cosmos/platform-relayer/proto/gen/ibcv2relayer"
-	"github.com/cosmos/platform-relayer/relayer/ibcv2"
-	"github.com/cosmos/platform-relayer/relayerapi/server"
-	"github.com/cosmos/platform-relayer/shared/clients/coingecko"
-	"github.com/cosmos/platform-relayer/shared/config"
-	"github.com/cosmos/platform-relayer/shared/database"
-	"github.com/cosmos/platform-relayer/shared/lmt"
-	"github.com/cosmos/platform-relayer/shared/metrics"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
+	"github.com/cosmos/ibc-relayer/db/tx"
+	"github.com/cosmos/ibc-relayer/gasmonitor"
+	"github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer"
+	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
+	"github.com/cosmos/ibc-relayer/relayerapi/server"
+	"github.com/cosmos/ibc-relayer/shared/clients/coingecko"
+	"github.com/cosmos/ibc-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/shared/database"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/metrics"
 )
 
 var (

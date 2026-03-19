@@ -14,14 +14,14 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
-	genrelayservice "github.com/cosmos/platform-relayer/proto/gen/relayerapi"
-	"github.com/cosmos/platform-relayer/relayer/ibcv2"
-	"github.com/cosmos/platform-relayer/relayerapi/services/health"
-	"github.com/cosmos/platform-relayer/relayerapi/services/relayerapi"
-	"github.com/cosmos/platform-relayer/shared/config"
-	"github.com/cosmos/platform-relayer/shared/lmt"
-	"github.com/cosmos/platform-relayer/shared/metrics"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
+	genrelayservice "github.com/cosmos/ibc-relayer/proto/gen/relayerapi"
+	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
+	"github.com/cosmos/ibc-relayer/relayerapi/services/health"
+	"github.com/cosmos/ibc-relayer/relayerapi/services/relayerapi"
+	"github.com/cosmos/ibc-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/metrics"
 )
 
 type RelayerGRPCServer struct {

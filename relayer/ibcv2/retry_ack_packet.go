@@ -8,9 +8,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
-	"github.com/cosmos/platform-relayer/shared/bridges/ibcv2"
-	"github.com/cosmos/platform-relayer/shared/metrics"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
+	"github.com/cosmos/ibc-relayer/shared/bridges/ibcv2"
+	"github.com/cosmos/ibc-relayer/shared/metrics"
 )
 
 const (

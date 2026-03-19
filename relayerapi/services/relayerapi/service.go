@@ -13,13 +13,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
-	protorelayerapi "github.com/cosmos/platform-relayer/proto/gen/relayerapi"
-	"github.com/cosmos/platform-relayer/relayer/ibcv2"
-	"github.com/cosmos/platform-relayer/shared/config"
-	"github.com/cosmos/platform-relayer/shared/lmt"
-	"github.com/cosmos/platform-relayer/shared/metrics"
-	"github.com/cosmos/platform-relayer/shared/utils"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
+	protorelayerapi "github.com/cosmos/ibc-relayer/proto/gen/relayerapi"
+	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
+	"github.com/cosmos/ibc-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/metrics"
+	"github.com/cosmos/ibc-relayer/shared/utils"
 )
 
 const (

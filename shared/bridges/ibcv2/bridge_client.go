@@ -7,8 +7,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
-	"github.com/cosmos/platform-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
+	"github.com/cosmos/ibc-relayer/shared/config"
 )
 
 type BridgeTx struct {

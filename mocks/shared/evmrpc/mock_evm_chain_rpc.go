@@ -9,7 +9,7 @@ import (
 
 	ethclient "github.com/ethereum/go-ethereum/ethclient"
 
-	evmrpc "github.com/cosmos/platform-relayer/shared/evmrpc"
+	evmrpc "github.com/cosmos/ibc-relayer/shared/evmrpc"
 
 	mock "github.com/stretchr/testify/mock"
 

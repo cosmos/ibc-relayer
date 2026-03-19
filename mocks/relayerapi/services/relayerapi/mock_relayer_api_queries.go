@@ -5,7 +5,7 @@ package relayerapi
 import (
 	context "context"
 
-	db "github.com/cosmos/platform-relayer/db/gen/db"
+	db "github.com/cosmos/ibc-relayer/db/gen/db"
 	mock "github.com/stretchr/testify/mock"
 )
 

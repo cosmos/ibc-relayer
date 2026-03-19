@@ -10,10 +10,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
-	"github.com/cosmos/platform-relayer/proto/gen/ibcv2relayer"
-	"github.com/cosmos/platform-relayer/shared/config"
-	"github.com/cosmos/platform-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
+	"github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer"
+	"github.com/cosmos/ibc-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
 )
 
 type TransferRecvTxWithTxStorage interface {

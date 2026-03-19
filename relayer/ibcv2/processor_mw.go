@@ -8,8 +8,8 @@ import (
 	"github.com/deliveryhero/pipeline/v2"
 	"go.uber.org/zap"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
-	"github.com/cosmos/platform-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
 )
 
 type TransferStateStorage interface {

@@ -18,9 +18,9 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
 
-	signerservice "github.com/cosmos/platform-relayer/proto/gen/signer"
-	"github.com/cosmos/platform-relayer/shared/config"
-	"github.com/cosmos/platform-relayer/shared/lmt"
+	signerservice "github.com/cosmos/ibc-relayer/proto/gen/signer"
+	"github.com/cosmos/ibc-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
 )
 
 var serviceAccountToken = config.GetServiceAccountToken()

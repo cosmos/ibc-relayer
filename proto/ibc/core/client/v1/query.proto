@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package ibc.core.client.v1;
 
-option go_package = "github.com/cosmos/platform-relayer/proto/gen/ibc/core/client/v1";
+option go_package = "github.com/cosmos/ibc-relayer/proto/gen/ibc/core/client/v1";
 
 import "cosmos/base/query/v1beta1/pagination.proto";
 import "cosmos/query/v1/query.proto";

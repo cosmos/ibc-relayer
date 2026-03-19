@@ -10,15 +10,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
-	mock_relay_service "github.com/cosmos/platform-relayer/mocks/proto/gen/ibcv2relayer"
-	mock_ibcv2 "github.com/cosmos/platform-relayer/mocks/relayer/ibcv2"
-	mock_ibcv2_bridge "github.com/cosmos/platform-relayer/mocks/shared/bridges/ibcv2"
-	mock_config "github.com/cosmos/platform-relayer/mocks/shared/config"
-	"github.com/cosmos/platform-relayer/proto/gen/ibcv2relayer"
-	"github.com/cosmos/platform-relayer/relayer/ibcv2"
-	ibcv2_bridge "github.com/cosmos/platform-relayer/shared/bridges/ibcv2"
-	"github.com/cosmos/platform-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
+	mock_relay_service "github.com/cosmos/ibc-relayer/mocks/proto/gen/ibcv2relayer"
+	mock_ibcv2 "github.com/cosmos/ibc-relayer/mocks/relayer/ibcv2"
+	mock_ibcv2_bridge "github.com/cosmos/ibc-relayer/mocks/shared/bridges/ibcv2"
+	mock_config "github.com/cosmos/ibc-relayer/mocks/shared/config"
+	"github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer"
+	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
+	ibcv2_bridge "github.com/cosmos/ibc-relayer/shared/bridges/ibcv2"
+	"github.com/cosmos/ibc-relayer/shared/config"
 )
 
 const (

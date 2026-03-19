@@ -6,11 +6,11 @@ import (
 	context "context"
 	big "math/big"
 
-	config "github.com/cosmos/platform-relayer/shared/config"
+	config "github.com/cosmos/ibc-relayer/shared/config"
 
-	db "github.com/cosmos/platform-relayer/db/gen/db"
+	db "github.com/cosmos/ibc-relayer/db/gen/db"
 
-	ibcv2 "github.com/cosmos/platform-relayer/shared/bridges/ibcv2"
+	ibcv2 "github.com/cosmos/ibc-relayer/shared/bridges/ibcv2"
 
 	mock "github.com/stretchr/testify/mock"
 

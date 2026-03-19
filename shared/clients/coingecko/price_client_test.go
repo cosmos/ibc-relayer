@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	coingeckomocks "github.com/cosmos/platform-relayer/mocks/shared/clients/coingecko"
-	"github.com/cosmos/platform-relayer/shared/clients/coingecko"
+	coingeckomocks "github.com/cosmos/ibc-relayer/mocks/shared/clients/coingecko"
+	"github.com/cosmos/ibc-relayer/shared/clients/coingecko"
 )
 
 type CachedPriceClientTestSuite struct {
