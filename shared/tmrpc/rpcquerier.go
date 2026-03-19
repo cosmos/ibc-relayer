@@ -13,8 +13,8 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
-	"github.com/cosmos/platform-relayer/shared/config"
-	"github.com/cosmos/platform-relayer/shared/utils"
+	"github.com/cosmos/ibc-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/shared/utils"
 )
 
 var reg codectypes.InterfaceRegistry

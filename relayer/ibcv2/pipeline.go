@@ -10,10 +10,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 
-	"github.com/cosmos/platform-relayer/proto/gen/ibcv2relayer"
-	"github.com/cosmos/platform-relayer/shared/clients/coingecko"
-	"github.com/cosmos/platform-relayer/shared/lmt"
-	"github.com/cosmos/platform-relayer/shared/metrics"
+	"github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer"
+	"github.com/cosmos/ibc-relayer/shared/clients/coingecko"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/metrics"
 )
 
 type IBCV2Pipeline interface {

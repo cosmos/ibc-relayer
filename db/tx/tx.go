@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
 )
 
 type Txer interface {

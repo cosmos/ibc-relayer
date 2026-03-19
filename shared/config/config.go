@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
 )
 
 // Config Enum Types

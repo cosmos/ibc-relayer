@@ -20,15 +20,15 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"go.uber.org/zap"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
-	"github.com/cosmos/platform-relayer/shared/config"
-	"github.com/cosmos/platform-relayer/shared/contracts/erc20"
-	"github.com/cosmos/platform-relayer/shared/contracts/ics20_transfer"
-	"github.com/cosmos/platform-relayer/shared/contracts/ics26_router"
-	"github.com/cosmos/platform-relayer/shared/contracts/sp1_ics07_tendermint"
-	"github.com/cosmos/platform-relayer/shared/lmt"
-	"github.com/cosmos/platform-relayer/shared/signing"
-	signingevm "github.com/cosmos/platform-relayer/shared/signing/evm"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
+	"github.com/cosmos/ibc-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/shared/contracts/erc20"
+	"github.com/cosmos/ibc-relayer/shared/contracts/ics20_transfer"
+	"github.com/cosmos/ibc-relayer/shared/contracts/ics26_router"
+	"github.com/cosmos/ibc-relayer/shared/contracts/sp1_ics07_tendermint"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/signing"
+	signingevm "github.com/cosmos/ibc-relayer/shared/signing/evm"
 )
 
 type EVMClient interface {

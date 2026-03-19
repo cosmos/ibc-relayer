@@ -4,7 +4,7 @@ package ibc.lightclients.wasm.v1;
 
 import "gogoproto/gogo.proto";
 
-option go_package = "github.com/cosmos/platform-relayer/proto/gen/ibc/lightclients/wasm/v1";
+option go_package = "github.com/cosmos/ibc-relayer/proto/gen/ibc/lightclients/wasm/v1";
 
 // GenesisState defines 08-wasm's keeper genesis state
 message GenesisState {

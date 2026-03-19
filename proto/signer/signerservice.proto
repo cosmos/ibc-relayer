@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package signerservice;
 
-option go_package = "github.com/cosmos/platform-relayer/proto/gen/signer";
+option go_package = "github.com/cosmos/ibc-relayer/proto/gen/signer";
 
 // SignerService provides transaction signing capabilities for multiple blockchain ecosystems.
 service SignerService {

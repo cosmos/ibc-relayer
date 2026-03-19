@@ -5,7 +5,7 @@ package signing
 import (
 	context "context"
 
-	signing "github.com/cosmos/platform-relayer/shared/signing"
+	signing "github.com/cosmos/ibc-relayer/shared/signing"
 	mock "github.com/stretchr/testify/mock"
 )
 

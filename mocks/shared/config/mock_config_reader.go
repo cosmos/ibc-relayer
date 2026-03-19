@@ -5,7 +5,7 @@ package config
 import (
 	big "math/big"
 
-	config "github.com/cosmos/platform-relayer/shared/config"
+	config "github.com/cosmos/ibc-relayer/shared/config"
 	mock "github.com/stretchr/testify/mock"
 )
 

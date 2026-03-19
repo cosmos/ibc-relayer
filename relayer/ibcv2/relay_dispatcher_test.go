@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
-	mock_ibcv2 "github.com/cosmos/platform-relayer/mocks/relayer/ibcv2"
-	mock_config "github.com/cosmos/platform-relayer/mocks/shared/config"
-	"github.com/cosmos/platform-relayer/relayer/ibcv2"
-	"github.com/cosmos/platform-relayer/shared/config"
-	"github.com/cosmos/platform-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
+	mock_ibcv2 "github.com/cosmos/ibc-relayer/mocks/relayer/ibcv2"
+	mock_config "github.com/cosmos/ibc-relayer/mocks/shared/config"
+	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
+	"github.com/cosmos/ibc-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
 )
 
 const (

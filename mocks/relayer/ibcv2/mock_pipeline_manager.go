@@ -5,7 +5,7 @@ package ibcv2
 import (
 	context "context"
 
-	ibcv2 "github.com/cosmos/platform-relayer/relayer/ibcv2"
+	ibcv2 "github.com/cosmos/ibc-relayer/relayer/ibcv2"
 	mock "github.com/stretchr/testify/mock"
 )
 

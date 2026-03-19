@@ -4,40 +4,40 @@ dir: "mocks/{{.InterfaceDirRelative}}"
 disable-version-string: true
 packages:
   # Internal Packages
-  github.com/cosmos/platform-relayer/relayerapi/services/relayerapi:
+  github.com/cosmos/ibc-relayer/relayerapi/services/relayerapi:
     interfaces:
       RelayerAPIQueries:
-  github.com/cosmos/platform-relayer/shared/evmrpc:
+  github.com/cosmos/ibc-relayer/shared/evmrpc:
     interfaces:
       EVMRPCClientManager:
       EVMChainRPC:
-  github.com/cosmos/platform-relayer/shared/http:
+  github.com/cosmos/ibc-relayer/shared/http:
     interfaces:
       Client:
-  github.com/cosmos/platform-relayer/shared/messagequeue/transactionqueue:
+  github.com/cosmos/ibc-relayer/shared/messagequeue/transactionqueue:
     interfaces:
       ProducerTransactionQueue:
-  github.com/cosmos/platform-relayer/shared/tmrpc:
+  github.com/cosmos/ibc-relayer/shared/tmrpc:
     interfaces:
       TendermintRPCClientManager:
       TendermintRPCQuerier:
-  github.com/cosmos/platform-relayer/shared/signing:
+  github.com/cosmos/ibc-relayer/shared/signing:
     interfaces:
       Signer:
-  github.com/cosmos/platform-relayer/shared/clients/coingecko:
+  github.com/cosmos/ibc-relayer/shared/clients/coingecko:
     interfaces:
       PriceClient:
-  github.com/cosmos/platform-relayer/shared/clients/utils:
+  github.com/cosmos/ibc-relayer/shared/clients/utils:
     interfaces:
       HTTPClient:
       RateLimiter:
-  github.com/cosmos/platform-relayer/shared/bridges/ibcv2:
+  github.com/cosmos/ibc-relayer/shared/bridges/ibcv2:
     interfaces:
       BridgeClient:
-  github.com/cosmos/platform-relayer/shared/config:
+  github.com/cosmos/ibc-relayer/shared/config:
     interfaces:
       ConfigReader:
-  github.com/cosmos/platform-relayer/relayer/ibcv2:
+  github.com/cosmos/ibc-relayer/relayer/ibcv2:
     interfaces:
       IBCV2Processor:
       IBCV2BatchProcessor:
@@ -47,7 +47,7 @@ packages:
       BridgeClientManager:
       PipelineManager:
       PriceClient:
-  github.com/cosmos/platform-relayer/proto/gen/ibcv2relayer:
+  github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer:
     interfaces:
       RelayerServiceClient:
 

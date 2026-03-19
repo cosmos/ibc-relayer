@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
 )
 
 type TransferSendTxFinalityStorage interface {

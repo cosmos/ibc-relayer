@@ -5,7 +5,7 @@ package evmrpc
 import (
 	context "context"
 
-	evmrpc "github.com/cosmos/platform-relayer/shared/evmrpc"
+	evmrpc "github.com/cosmos/ibc-relayer/shared/evmrpc"
 	mock "github.com/stretchr/testify/mock"
 )
 

@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	ethereumrpc "github.com/ethereum/go-ethereum/rpc"
 
-	"github.com/cosmos/platform-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/shared/config"
 )
 
 type EVMRPCClientManager interface {

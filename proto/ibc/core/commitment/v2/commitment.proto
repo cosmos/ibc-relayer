@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package ibc.core.commitment.v2;
 
-option go_package = "github.com/cosmos/platform-relayer/proto/gen/ibc/core/commitment/v2";
+option go_package = "github.com/cosmos/ibc-relayer/proto/gen/ibc/core/commitment/v2";
 
 // MerklePath is the path used to verify commitment proofs, which can be an
 // arbitrary structured object (defined by a commitment type).

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package relayer;
 
-option go_package = "github.com/cosmos/platform-relayer/proto/gen/ibcv2relayer";
+option go_package = "github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer";
 
 // The relayer service definition
 // Each relayer service is defined between two chains.

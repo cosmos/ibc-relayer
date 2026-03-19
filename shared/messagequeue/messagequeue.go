@@ -8,7 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
-	"github.com/cosmos/platform-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
 )
 
 type MessageQueue struct {

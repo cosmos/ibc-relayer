@@ -35,14 +35,14 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
-	ibc_channel_v2_types "github.com/cosmos/platform-relayer/proto/gen/ibc/core/channel/v2"
-	ibc_client_v1_types "github.com/cosmos/platform-relayer/proto/gen/ibc/core/client/v1"
-	tendermint_v1_types "github.com/cosmos/platform-relayer/proto/gen/ibc/lightclients/tendermint/v1"
-	wasm_v1_types "github.com/cosmos/platform-relayer/proto/gen/ibc/lightclients/wasm/v1"
-	"github.com/cosmos/platform-relayer/shared/config"
-	"github.com/cosmos/platform-relayer/shared/lmt"
-	"github.com/cosmos/platform-relayer/shared/signing"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
+	ibc_channel_v2_types "github.com/cosmos/ibc-relayer/proto/gen/ibc/core/channel/v2"
+	ibc_client_v1_types "github.com/cosmos/ibc-relayer/proto/gen/ibc/core/client/v1"
+	tendermint_v1_types "github.com/cosmos/ibc-relayer/proto/gen/ibc/lightclients/tendermint/v1"
+	wasm_v1_types "github.com/cosmos/ibc-relayer/proto/gen/ibc/lightclients/wasm/v1"
+	"github.com/cosmos/ibc-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/signing"
 )
 
 const (

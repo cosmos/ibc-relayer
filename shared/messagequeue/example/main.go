@@ -14,8 +14,8 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/cosmos/platform-relayer/shared/lmt"
-	"github.com/cosmos/platform-relayer/shared/messagequeue"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/messagequeue"
 )
 
 var redisConnString = flag.String("redis", "redis://redis:6379/0", "redis connection string")

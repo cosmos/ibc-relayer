@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package skip.relayer;
 
-option go_package = "github.com/cosmos/platform-relayer/proto/gen/relayerapi";
+option go_package = "github.com/cosmos/ibc-relayer/proto/gen/relayerapi";
 import "google/protobuf/timestamp.proto";
 
 service RelayerApiService {

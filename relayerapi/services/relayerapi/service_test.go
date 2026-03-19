@@ -14,14 +14,14 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/cosmos/platform-relayer/db/gen/db"
-	ibcv2mocks "github.com/cosmos/platform-relayer/mocks/relayer/ibcv2"
-	relayerapimocks "github.com/cosmos/platform-relayer/mocks/relayerapi/services/relayerapi"
-	bridgemocks "github.com/cosmos/platform-relayer/mocks/shared/bridges/ibcv2"
-	protorelayerapi "github.com/cosmos/platform-relayer/proto/gen/relayerapi"
-	"github.com/cosmos/platform-relayer/relayerapi/services/relayerapi"
-	"github.com/cosmos/platform-relayer/shared/bridges/ibcv2"
-	"github.com/cosmos/platform-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/db/gen/db"
+	ibcv2mocks "github.com/cosmos/ibc-relayer/mocks/relayer/ibcv2"
+	relayerapimocks "github.com/cosmos/ibc-relayer/mocks/relayerapi/services/relayerapi"
+	bridgemocks "github.com/cosmos/ibc-relayer/mocks/shared/bridges/ibcv2"
+	protorelayerapi "github.com/cosmos/ibc-relayer/proto/gen/relayerapi"
+	"github.com/cosmos/ibc-relayer/relayerapi/services/relayerapi"
+	"github.com/cosmos/ibc-relayer/shared/bridges/ibcv2"
+	"github.com/cosmos/ibc-relayer/shared/config"
 )
 
 type RelayerAPIServiceSuite struct {
