@@ -167,6 +167,8 @@ message RelayResponse {}
 
 ## Observability
 
+Alert setup guidance for customers lives in [`./docs/alerts.md`](./docs/alerts.md).
+
 | Type      | Name                                   | Description |
 |-----------|----------------------------------------|-------------|
 | Metric    | Relayer api request count               | Paginated by method and response code |
@@ -522,5 +524,4 @@ To implement your own signer service, refer to the proto file for message format
 
 
 **Authentication:** The relayer sends the `SERVICE_ACCOUNT_TOKEN` environment variable as a bearer token in the `authorization` gRPC metadata header. Validation is optional.
-
 
