@@ -72,7 +72,7 @@ REGION=us-east-2
 REGISTRY=494494944992.dkr.ecr.us-east-2.amazonaws.com
 REPO=skip-mev/solve-relayer
 PLATFORM=linux/amd64
-COMMIT:=$(shell git rev-parse --short HEAD)
+COMMIT:=$(shell git rev-parse --short HEAD 2>/dev/null || jj log -r @ --no-graph -T 'commit_id.short()' 2>/dev/null || echo "local")
 
 ENVIRONMENT=dev
 LEVANT_VAR_FILE:=$(shell mktemp -d)/levant.yaml
