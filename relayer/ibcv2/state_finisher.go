@@ -55,6 +55,7 @@ func (processor StateFinisher) Process(ctx context.Context, transfer *IBCV2Trans
 
 	if _, timedOut := transfer.GetTimeoutTxHash(); timedOut {
 		transfer.State = db.Ibcv2RelayStatusCOMPLETEWITHTIMEOUT
+		transfer.RecordTransferState(ctx, string(transfer.State))
 		transfer.RecordSendTimeoutLatency(ctx)
 		transfer.RecordTimeoutRelayed(ctx)
 	} else {
@@ -66,6 +67,7 @@ func (processor StateFinisher) Process(ctx context.Context, transfer *IBCV2Trans
 
 		if _, ackd := transfer.GetAckTxHash(); ackd {
 			transfer.State = db.Ibcv2RelayStatusCOMPLETEWITHACK
+			transfer.RecordTransferState(ctx, string(transfer.State))
 			transfer.RecordAckRecvLatency(ctx)
 			transfer.RecordAckRelayed(ctx)
 		} else {
@@ -74,9 +76,11 @@ func (processor StateFinisher) Process(ctx context.Context, transfer *IBCV2Trans
 			isSuccessAck := writeAckStatus == db.Ibcv2WriteAckStatusSUCCESS
 			if isErrorAck {
 				transfer.State = db.Ibcv2RelayStatusCOMPLETEWITHWRITEACKERROR
+				transfer.RecordTransferState(ctx, string(transfer.State))
 			}
 			if isSuccessAck {
 				transfer.State = db.Ibcv2RelayStatusCOMPLETEWITHWRITEACKSUCCESS
+				transfer.RecordTransferState(ctx, string(transfer.State))
 			}
 		}
 	}

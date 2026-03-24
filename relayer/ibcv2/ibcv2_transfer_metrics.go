@@ -70,14 +70,7 @@ func (e *IBCV2Transfer) RecordAckRelayed(ctx context.Context) {
 }
 
 func (e *IBCV2Transfer) RecordLatency(ctx context.Context, sourceChainID, destChainID string, from, to time.Time, relayType metrics.RelayType) {
-	sourceConfig, err := config.GetConfigReader(ctx).GetChainConfig(sourceChainID)
-	if err != nil {
-		return
-	}
-	destConfig, err := config.GetConfigReader(ctx).GetChainConfig(destChainID)
-	if err != nil {
-		return
-	}
+	sourceConfig, destConfig := chainConfigs(ctx, sourceChainID, destChainID)
 
 	metrics.FromContext(ctx).RelayLatency(
 		sourceChainID,
@@ -91,15 +84,7 @@ func (e *IBCV2Transfer) RecordLatency(ctx context.Context, sourceChainID, destCh
 }
 
 func (e *IBCV2Transfer) RecordTransactionRetried(ctx context.Context, relayType metrics.RelayType) {
-	sourceConfig, err := config.GetConfigReader(ctx).GetChainConfig(e.GetSourceChainID())
-	if err != nil {
-		return
-	}
-
-	destConfig, err := config.GetConfigReader(ctx).GetChainConfig(e.GetDestinationChainID())
-	if err != nil {
-		return
-	}
+	sourceConfig, destConfig := chainConfigs(ctx, e.GetSourceChainID(), e.GetDestinationChainID())
 
 	metrics.FromContext(ctx).AddTransactionRetryAttempt(
 		e.GetSourceChainID(),
@@ -109,6 +94,50 @@ func (e *IBCV2Transfer) RecordTransactionRetried(ctx context.Context, relayType 
 		string(sourceConfig.Environment),
 		relayType,
 	)
+}
+
+func (e *IBCV2Transfer) RecordTransactionSubmitted(ctx context.Context, success bool) {
+	sourceConfig, destConfig := chainConfigs(ctx, e.GetSourceChainID(), e.GetDestinationChainID())
+
+	metrics.FromContext(ctx).AddTransactionSubmitted(
+		success,
+		e.GetSourceChainID(),
+		e.GetDestinationChainID(),
+		sourceConfig.ChainName,
+		destConfig.ChainName,
+		string(sourceConfig.Environment),
+	)
+}
+
+func (e *IBCV2Transfer) RecordTransferState(ctx context.Context, state string) {
+	sourceConfig, destConfig := chainConfigs(ctx, e.GetSourceChainID(), e.GetDestinationChainID())
+
+	metrics.FromContext(ctx).AddTransfer(
+		e.GetSourceChainID(),
+		e.GetDestinationChainID(),
+		sourceConfig.ChainName,
+		destConfig.ChainName,
+		string(sourceConfig.Environment),
+		state,
+	)
+}
+
+func chainConfigs(ctx context.Context, sourceChainID, destChainID string) (config.ChainConfig, config.ChainConfig) {
+	sourceConfig, _ := chainConfigOrFallback(ctx, sourceChainID)
+	destConfig, _ := chainConfigOrFallback(ctx, destChainID)
+	return sourceConfig, destConfig
+}
+
+func chainConfigOrFallback(ctx context.Context, chainID string) (cfg config.ChainConfig, found bool) {
+	chainConfig, err := config.GetConfigReader(ctx).GetChainConfig(chainID)
+	if err != nil {
+		return config.ChainConfig{
+			ChainID:   chainID,
+			ChainName: chainID,
+		}, false
+	}
+
+	return chainConfig, true
 }
 
 func (e *IBCV2Transfer) AlertOnExcessiveRelayLatency(ctx context.Context) {

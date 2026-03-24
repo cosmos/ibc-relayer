@@ -8,10 +8,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/cosmos/ibc-relayer/db/gen/db"
 	mock_ibcv2 "github.com/cosmos/ibc-relayer/mocks/relayer/ibcv2"
+	mock_config "github.com/cosmos/ibc-relayer/mocks/shared/config"
 	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
+	"github.com/cosmos/ibc-relayer/shared/config"
 )
 
 func TestIBCV2ProcessorMW_Process(t *testing.T) {
@@ -21,6 +24,9 @@ func TestIBCV2ProcessorMW_Process(t *testing.T) {
 
 	t.Run("happy path, state updated, processor output returned", func(t *testing.T) {
 		ctx := context.Background()
+		configReader := mock_config.NewMockConfigReader(t)
+		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
+		ctx = config.ConfigReaderContext(ctx, configReader)
 		input := &ibcv2.IBCV2Transfer{
 			State:                db.Ibcv2RelayStatusPENDING,
 			SourceChainID:        sourceChainID,
@@ -74,6 +80,9 @@ func TestIBCV2ProcessorMW_Process(t *testing.T) {
 
 	t.Run("transfer in error state is not processed", func(t *testing.T) {
 		ctx := context.Background()
+		configReader := mock_config.NewMockConfigReader(t)
+		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
+		ctx = config.ConfigReaderContext(ctx, configReader)
 
 		input := &ibcv2.IBCV2Transfer{ProcessingError: fmt.Errorf("error")}
 
@@ -91,6 +100,9 @@ func TestIBCV2ProcessorMW_Process(t *testing.T) {
 
 	t.Run("transfer is not processed and state not updated if processor.ShouldProcess returns false", func(t *testing.T) {
 		ctx := context.Background()
+		configReader := mock_config.NewMockConfigReader(t)
+		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
+		ctx = config.ConfigReaderContext(ctx, configReader)
 		input := &ibcv2.IBCV2Transfer{
 			State:                db.Ibcv2RelayStatusPENDING,
 			SourceChainID:        sourceChainID,
@@ -115,6 +127,9 @@ func TestIBCV2ProcessorMW_Process(t *testing.T) {
 
 	t.Run("updating transfer state fails, processor is not called, cancel function is called", func(t *testing.T) {
 		ctx := context.Background()
+		configReader := mock_config.NewMockConfigReader(t)
+		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
+		ctx = config.ConfigReaderContext(ctx, configReader)
 		input := &ibcv2.IBCV2Transfer{
 			State:                db.Ibcv2RelayStatusPENDING,
 			SourceChainID:        sourceChainID,
@@ -169,6 +184,9 @@ func TestIBCV2ProcessorMW_Process(t *testing.T) {
 
 	t.Run("processing input fails, cancel function is called", func(t *testing.T) {
 		ctx := context.Background()
+		configReader := mock_config.NewMockConfigReader(t)
+		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
+		ctx = config.ConfigReaderContext(ctx, configReader)
 		input := &ibcv2.IBCV2Transfer{
 			State:                db.Ibcv2RelayStatusPENDING,
 			SourceChainID:        sourceChainID,
@@ -228,5 +246,70 @@ func TestIBCV2ProcessorMW_Process(t *testing.T) {
 		// expect that the input is returned as output *WITH* its state updated
 		expected.State = db.Ibcv2RelayStatusGETACKPACKET
 		assert.Equal(t, expected, *output)
+	})
+}
+
+func TestIBCV2BatchProcessorMW_Process(t *testing.T) {
+	sourceChainID := "sourceChainID"
+	packetSourceClientID := "client-10"
+
+	t.Run("empty toProcess batch is a no-op", func(t *testing.T) {
+		ctx := context.Background()
+		configReader := mock_config.NewMockConfigReader(t)
+		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
+		ctx = config.ConfigReaderContext(ctx, configReader)
+		input := &ibcv2.IBCV2Transfer{
+			State:                db.Ibcv2RelayStatusPENDING,
+			SourceChainID:        sourceChainID,
+			PacketSequenceNumber: 10,
+			PacketSourceClientID: packetSourceClientID,
+			ProcessingError:      fmt.Errorf("error"),
+		}
+
+		mockStorage := mock_ibcv2.NewMockTransferStateStorage(t)
+		mockProcessor := mock_ibcv2.NewMockIBCV2BatchProcessor(t)
+		mockProcessor.EXPECT().State().Return(db.Ibcv2RelayStatusGETACKPACKET)
+
+		output, err := ibcv2.NewIBCV2BatchProcessorMW(mockStorage, mockProcessor).Process(ctx, []*ibcv2.IBCV2Transfer{input})
+		assert.NoError(t, err)
+		assert.Equal(t, []*ibcv2.IBCV2Transfer{input}, output)
+	})
+
+	t.Run("state update failure skips processing for that transfer", func(t *testing.T) {
+		ctx := context.Background()
+		configReader := mock_config.NewMockConfigReader(t)
+		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
+		ctx = config.ConfigReaderContext(ctx, configReader)
+		input := &ibcv2.IBCV2Transfer{
+			State:                db.Ibcv2RelayStatusPENDING,
+			SourceChainID:        sourceChainID,
+			PacketSequenceNumber: 11,
+			PacketSourceClientID: packetSourceClientID,
+		}
+		expected := *input
+
+		mockStorage := mock_ibcv2.NewMockTransferStateStorage(t)
+		stateUpdateErr := fmt.Errorf("update state error")
+		mockStorage.EXPECT().UpdateTransferState(ctx, db.UpdateTransferStateParams{
+			Status:               db.Ibcv2RelayStatusGETACKPACKET,
+			SourceChainID:        input.GetSourceChainID(),
+			PacketSequenceNumber: int32(input.GetPacketSequenceNumber()),
+			PacketSourceClientID: input.GetPacketSourceClientID(),
+		}).Return(stateUpdateErr)
+
+		mockProcessor := mock_ibcv2.NewMockIBCV2BatchProcessor(t)
+		mockProcessor.EXPECT().State().Return(db.Ibcv2RelayStatusGETACKPACKET)
+		mockProcessor.EXPECT().ShouldProcess(input).Return(true)
+		mockProcessor.EXPECT().Cancel([]*ibcv2.IBCV2Transfer{input}, mock.MatchedBy(func(arg error) bool {
+			return errors.Is(arg, stateUpdateErr)
+		}))
+
+		output, err := ibcv2.NewIBCV2BatchProcessorMW(mockStorage, mockProcessor).Process(ctx, []*ibcv2.IBCV2Transfer{input})
+		assert.NoError(t, err)
+		require.Len(t, output, 1)
+		assert.ErrorIs(t, output[0].ProcessingError, stateUpdateErr)
+
+		output[0].ProcessingError = nil
+		assert.Equal(t, expected, *output[0])
 	})
 }

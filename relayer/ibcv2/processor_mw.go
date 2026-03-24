@@ -98,6 +98,7 @@ func (processor IBCV2ProcessorMW[Input, Output]) Process(
 	// this transfer
 	prevState := input.State
 	input.State = processor.internal.State()
+	input.RecordTransferState(ctx, string(input.State))
 
 	input.GetLogger().Debug(
 		fmt.Sprintf("processing transfer at state %s", string(input.State)),
@@ -234,12 +235,18 @@ func (processor IBCV2BatchProcessorMW[Input, Output]) Process(
 			processor.Cancel([]*IBCV2Transfer{input}, wrapped)
 			input.ProcessingError = wrapped
 			notProcessing = append(notProcessing, input)
+			continue
 		}
 
 		// update the transfers state to the processor that is about to process
 		// this transfer
 		input.State = processor.internal.State()
+		input.RecordTransferState(ctx, string(input.State))
 		toProcess = append(toProcess, input)
+	}
+
+	if len(toProcess) == 0 {
+		return notProcessing, nil
 	}
 
 	output, err := processor.internal.Process(ctx, toProcess)
