@@ -133,8 +133,10 @@ func (processor BatchAckPacketProcessor) Process(ctx context.Context, transfers 
 	// submit the ack on the source chain
 	ackTx, err := sourceChainClient.DeliverTx(ctx, ackTxBytes, to)
 	if err != nil {
+		transfers[0].RecordTransactionSubmitted(ctx, false)
 		return nil, fmt.Errorf("signing and submitting ack tx bytes for batch of %d transfers: %w", len(sequences), err)
 	}
+	transfers[0].RecordTransactionSubmitted(ctx, true)
 
 	logger.Info("delivered batch ack tx", zap.String("tx_hash", ackTx.Hash))
 

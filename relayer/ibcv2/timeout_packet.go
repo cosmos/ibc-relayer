@@ -122,8 +122,10 @@ func (processor BatchTimeoutPacketProcessor) Process(ctx context.Context, transf
 	// submit the timeout on the source chain
 	timeoutTx, err := sourceChainClient.DeliverTx(ctx, timeoutTxBytes, to)
 	if err != nil {
+		transfers[0].RecordTransactionSubmitted(ctx, false)
 		return nil, fmt.Errorf("submitting batch timeout tx: %w", err)
 	}
+	transfers[0].RecordTransactionSubmitted(ctx, true)
 
 	logger.Info("delivered batch timeout tx", zap.String("tx_hash", timeoutTx.Hash))
 

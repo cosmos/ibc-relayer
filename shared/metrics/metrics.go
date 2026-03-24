@@ -3,7 +3,7 @@ package metrics
 import (
 	"context"
 	"fmt"
-	math2 "math"
+	"math"
 	"math/big"
 	"time"
 
@@ -34,10 +34,10 @@ const (
 	chainIDLabel              = "chain_id"
 	clientIDLabel             = "client_id"
 	counterpartyChainIDLabel  = "counterparty_chain_id"
-	gasBalanceLevelLabel      = "gas_balance_level"
 	sourceChainIDLabel        = "source_chain_id"
 	destinationChainIDLabel   = "destination_chain_id"
 	statusLabel               = "status"
+	transferStateLabel        = "state"
 	codeLabel                 = "code"
 	successLabel              = "success"
 	providerLabel             = "provider"
@@ -69,6 +69,7 @@ type Metrics interface {
 	AddTransactionSubmitted(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string)
 	AddTransactionRetryAttempt(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType)
 	AddTransactionConfirmed(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string)
+	AddTransfer(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string)
 	SetReceiveTransactionGasCost(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, gasCost uint64)
 	AddExcessiveRelayLatencyObservation(sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType)
 	AddUnprofitableRelay(sourceChainName, destinationChainName, chainEnvironment string)
@@ -251,6 +252,8 @@ type PromMetrics struct {
 	totalTransactionSubmitted                 metrics.Counter
 	totalTransactionRetryAttempts             metrics.Counter
 	totalTransactionsConfirmed                metrics.Counter
+	totalTransfers                            metrics.Counter
+	totalTransactionGasCost                   metrics.Counter
 	totalUnprofitableRelays                   metrics.Counter
 	receiveTransactionGasCost                 metrics.Gauge
 	totalUntrackedTransactions                metrics.Counter
@@ -348,6 +351,16 @@ func NewPromMetrics() Metrics {
 			Name:      "total_transactions_confirmed_counter",
 			Help:      "number of transactions confirmed, paginated by success status and source and destination chain id",
 		}, []string{successLabel, sourceChainIDLabel, destinationChainIDLabel, sourceChainNameLabel, destinationChainNameLabel, chainEnvironmentLabel}),
+		totalTransfers: prom.NewCounterFrom(stdprom.CounterOpts{
+			Namespace: "relayerapi",
+			Name:      "total_transfers_counter",
+			Help:      "number of transfer state transitions, paginated by source chain, destination chain, and transfer state",
+		}, []string{sourceChainIDLabel, destinationChainIDLabel, sourceChainNameLabel, destinationChainNameLabel, chainEnvironmentLabel, transferStateLabel}),
+		totalTransactionGasCost: prom.NewCounterFrom(stdprom.CounterOpts{
+			Namespace: "relayerapi",
+			Name:      "total_transaction_gas_cost_counter",
+			Help:      "total transaction gas cost in native gas token units, paginated by chain",
+		}, []string{chainIDLabel, chainNameLabel, chainEnvironmentLabel}),
 		totalUnprofitableRelays: prom.NewCounterFrom(stdprom.CounterOpts{
 			Namespace: "relayerapi",
 			Name:      "total_unprofitable_relays_counter",
@@ -444,7 +457,7 @@ func (m *PromMetrics) SetGasBalance(chainID, chainName, gasTokenSymbol, chainEnv
 	// We compare the gas balance against thresholds locally rather than in the grafana alert definition since
 	// the prometheus metric is exported as a float64 and the thresholds reach Wei amounts where precision is lost.
 	gasBalanceFloat, _ := gasBalance.Float64()
-	gasTokenAmount := gasBalanceFloat / (math2.Pow10(int(gasTokenDecimals)))
+	gasTokenAmount := gasBalanceFloat / (math.Pow10(int(gasTokenDecimals)))
 	gasBalanceState := 0
 	if gasBalance.Cmp(&criticalThreshold) < 0 {
 		gasBalanceState = 2
@@ -555,6 +568,27 @@ func (m *PromMetrics) AddTransactionConfirmed(success bool, sourceChainID, desti
 	m.totalTransactionsConfirmed.With(successLabel, fmt.Sprint(success), sourceChainIDLabel, sourceChainID, destinationChainIDLabel, destinationChainID, sourceChainNameLabel, sourceChainName, destinationChainNameLabel, destinationChainName, chainEnvironmentLabel, chainEnvironment).Add(1)
 }
 
+func (m *PromMetrics) AddTransfer(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string) {
+	m.totalTransfers.With(
+		sourceChainIDLabel, sourceChainID,
+		destinationChainIDLabel, destinationChainID,
+		sourceChainNameLabel, sourceChainName,
+		destinationChainNameLabel, destinationChainName,
+		chainEnvironmentLabel, chainEnvironment,
+		transferStateLabel, state,
+	).Add(1)
+}
+
+func (m *PromMetrics) AddTransactionGasCost(chainID, chainName, chainEnvironment string, gasCost big.Int, gasTokenDecimals uint8) {
+	gasCostFloat, _ := gasCost.Float64()
+	gasTokenAmount := gasCostFloat / math.Pow10(int(gasTokenDecimals))
+	m.totalTransactionGasCost.With(
+		chainIDLabel, chainID,
+		chainNameLabel, chainName,
+		chainEnvironmentLabel, chainEnvironment,
+	).Add(gasTokenAmount)
+}
+
 func (m *PromMetrics) AddUnprofitableRelay(sourceChainName, destinationChainName, chainEnvironment string) {
 	m.totalUnprofitableRelays.With(sourceChainNameLabel, sourceChainName, destinationChainNameLabel, destinationChainName, chainEnvironmentLabel, chainEnvironment).Add(1)
 }
@@ -646,6 +680,12 @@ func (m *NoOpMetrics) AddTransactionRetryAttempt(sourceChainID, destinationChain
 }
 
 func (m *NoOpMetrics) AddTransactionConfirmed(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string) {
+}
+
+func (m *NoOpMetrics) AddTransfer(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string) {
+}
+
+func (m *NoOpMetrics) AddTransactionGasCost(chainID, chainName, chainEnvironment string, gasCost big.Int, gasTokenDecimals uint8) {
 }
 
 func (m *NoOpMetrics) SetReceiveTransactionGasCost(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, gasCost uint64) {

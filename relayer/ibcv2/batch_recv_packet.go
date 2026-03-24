@@ -123,8 +123,10 @@ func (processor BatchRecvPacketProcessor) Process(ctx context.Context, transfers
 	// submit the recv on the destination chain
 	recvTx, err := destinationChainClient.DeliverTx(ctx, recvTxBytes, to)
 	if err != nil {
+		transfers[0].RecordTransactionSubmitted(ctx, false)
 		return nil, fmt.Errorf("signing and submitting recv tx bytes for batch of %d transfers: %w", len(sequences), err)
 	}
+	transfers[0].RecordTransactionSubmitted(ctx, true)
 
 	logger.Info("delivered batch recv tx", zap.String("tx_hash", recvTx.Hash))
 
