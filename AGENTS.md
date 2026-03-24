@@ -12,6 +12,8 @@ See [root AGENTS.md](../../AGENTS.md) for shared conventions.
 
 ## Local Development
 
+Run these commands from `apps/relayer`.
+
 ```bash
 docker compose up -d && make relayer-local   # Start Postgres + relayer
 ```
