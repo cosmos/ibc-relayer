@@ -23,6 +23,8 @@ IBC v2 Relayer is a relaying service for the IBC v2 Protocol. The relayer suppor
 
 ## Getting Started
 
+Run the commands in this document from the relayer repo root (`apps/relayer` in this monorepo) unless noted otherwise.
+
 ### Prerequisites
 
 - Go 1.24+
@@ -82,14 +84,14 @@ This starts PostgreSQL and runs migrations automatically.
 
 ```bash
 # Install: https://github.com/golang-migrate/migrate
-migrate -path ./db/migrations -database "postgres://relayer:relayer@localhost:5432/relayer?sslmode=disable" up
+migrate -path ./db/migrations -database "postgres://relayer:relayer@localhost:42500/relayer?sslmode=disable" up
 ```
 
 **Using the relayer migrations container:**
 
 ```bash
 docker run --rm --network host <registry>/relayer-migrate:<version> \
-  -database "postgres://relayer:relayer@localhost:5432/relayer?sslmode=disable" \
+  -database "postgres://relayer:relayer@localhost:42500/relayer?sslmode=disable" \
   up
 ```
 
@@ -98,7 +100,7 @@ docker run --rm --network host <registry>/relayer-migrate:<version> \
 ```bash
 docker run --rm -v $(pwd)/db/migrations:/migrations --network host migrate/migrate \
   -path /migrations \
-  -database "postgres://relayer:relayer@localhost:5432/relayer?sslmode=disable" \
+  -database "postgres://relayer:relayer@localhost:42500/relayer?sslmode=disable" \
   up
 ```
 
@@ -192,14 +194,14 @@ Alert setup guidance for customers lives in [`./docs/alerts.md`](./docs/alerts.m
 
 ## Configuration Reference
 
-The relayer is configured via a YAML file. Below is the complete configuration schema with all available options.
+The relayer is configured via a YAML file. The example below is a representative starting point, not an exhaustive schema reference.
 
 ### Full Example
 
 ```yaml
 postgres:
   hostname: localhost
-  port: "5432"
+  port: "42500"
   database: relayer
 
 metrics:
@@ -524,4 +526,3 @@ To implement your own signer service, refer to the proto file for message format
 
 
 **Authentication:** The relayer sends the `SERVICE_ACCOUNT_TOKEN` environment variable as a bearer token in the `authorization` gRPC metadata header. Validation is optional.
-
