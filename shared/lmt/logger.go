@@ -22,7 +22,7 @@ func ConfigureLogger() {
 		config = zap.NewProductionConfig()
 	}
 	config.Level.SetLevel(*logLevel)
-	config.OutputPaths = []string{"stdout"}
+	config.OutputPaths = []string{"stderr"}
 	config.ErrorOutputPaths = []string{"stderr"}
 
 	logger, err := config.Build()
