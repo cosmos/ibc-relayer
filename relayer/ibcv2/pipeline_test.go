@@ -1100,6 +1100,10 @@ func (mock *MockAcceptingBridgeClient) TxFee(ctx context.Context, txHash string)
 	return nil, nil
 }
 
+func (mock *MockAcceptingBridgeClient) TxExecutionStatus(ctx context.Context, txHash string) (ibcv2_bridge.TxExecutionStatus, error) {
+	return ibcv2_bridge.TxExecutionStatus{Status: "SUCCESS"}, nil
+}
+
 func (mock *MockAcceptingBridgeClient) SendTransfer(ctx context.Context, clientID string, denom string, receiver string, amount *big.Int, memo string) (string, error) {
 	return "", nil
 }

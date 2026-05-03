@@ -772,6 +772,24 @@ func (client *EVMBridgeClient) TxFee(ctx context.Context, txHash string) (*big.I
 	return new(big.Int).Mul(receipt.EffectiveGasPrice, new(big.Int).SetUint64(receipt.GasUsed)), nil
 }
 
+func (client *EVMBridgeClient) TxExecutionStatus(ctx context.Context, txHash string) (TxExecutionStatus, error) {
+	receipt, err := client.txOnce.Do(txHash, func() (*types.Receipt, error) {
+		return client.client.TransactionReceipt(ctx, common.HexToHash(txHash))
+	})
+	if err != nil {
+		return TxExecutionStatus{}, fmt.Errorf("getting transaction receipt for tx hash %s: %w", txHash, err)
+	}
+
+	if receipt.Status == 1 {
+		return TxExecutionStatus{Status: TxExecutionStatusSuccess}, nil
+	}
+
+	return TxExecutionStatus{
+		Status:       TxExecutionStatusFailed,
+		ErrorMessage: "evm transaction execution failed",
+	}, nil
+}
+
 func (client *EVMBridgeClient) txSigner(ctx context.Context, hash common.Hash) (string, error) {
 	chainID, ok := new(big.Int).SetString(client.chainID, 10)
 	if !ok {

@@ -140,11 +140,13 @@ func (processor BatchAckPacketProcessor) Process(ctx context.Context, transfers 
 
 	logger.Info("delivered batch ack tx", zap.String("tx_hash", ackTx.Hash))
 
+	submittedTransferCount := 0
 	err = processor.transferAckTxWithTxStorage.ExecTx(ctx, func(q *db.Queries) error {
 		for _, transfer := range transfers {
 			if transfer.ProcessingError != nil {
 				continue
 			}
+			submittedTransferCount++
 
 			update := db.UpdateTransferAckTxParams{
 				AckTxHash:            pgtype.Text{Valid: true, String: ackTx.Hash},
@@ -166,6 +168,27 @@ func (processor BatchAckPacketProcessor) Process(ctx context.Context, transfers 
 			}
 
 		}
+
+		if submittedTransferCount == 0 {
+			return nil
+		}
+
+		insert := db.InsertIBCV2RelayerTxSubmissionParams{
+			TxHash:         ackTx.Hash,
+			ChainID:        processor.sourceChainID,
+			TxType:         db.Ibcv2RelayerTxSubmissionTypeACKPACKET,
+			RelayerAddress: ackTx.RelayerAddress,
+			SubmittedAt:    pgtype.Timestamptz{Valid: true, Time: ackTx.Timestamp},
+			Status:         db.Ibcv2RelayerTxSubmissionStatusPENDING,
+		}
+		submissionID, err := q.InsertIBCV2RelayerTxSubmission(ctx, insert)
+		if err != nil {
+			return fmt.Errorf("inserting ack tx submission %s: %w", ackTx.Hash, err)
+		}
+		if err = insertTransferTxSubmissionMappings(ctx, q, submissionID, transfers); err != nil {
+			return fmt.Errorf("inserting ack tx submission mappings for %s: %w", ackTx.Hash, err)
+		}
+
 		return nil
 	})
 	if err != nil {

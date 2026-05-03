@@ -70,7 +70,7 @@ func (processor BatchRecvPacketProcessor) Process(ctx context.Context, transfers
 		}
 
 		txIDs = append(txIDs, txID)
-		txSet[transfer.GetSourceChainID()] = struct{}{}
+		txSet[transfer.GetSourceTxHash()] = struct{}{}
 		sequences = append(sequences, uint64(transfer.GetPacketSequenceNumber()))
 	}
 
@@ -130,11 +130,13 @@ func (processor BatchRecvPacketProcessor) Process(ctx context.Context, transfers
 
 	logger.Info("delivered batch recv tx", zap.String("tx_hash", recvTx.Hash))
 
+	submittedTransferCount := 0
 	err = processor.transferRecvTxWithTxStorage.ExecTx(ctx, func(q *db.Queries) error {
 		for _, transfer := range transfers {
 			if transfer.ProcessingError != nil {
 				continue
 			}
+			submittedTransferCount++
 
 			update := db.UpdateTransferRecvTxParams{
 				RecvTxHash:           pgtype.Text{Valid: true, String: recvTx.Hash},
@@ -155,6 +157,27 @@ func (processor BatchRecvPacketProcessor) Process(ctx context.Context, transfers
 				)
 			}
 		}
+
+		if submittedTransferCount == 0 {
+			return nil
+		}
+
+		insert := db.InsertIBCV2RelayerTxSubmissionParams{
+			TxHash:         recvTx.Hash,
+			ChainID:        processor.sourceChainID,
+			TxType:         db.Ibcv2RelayerTxSubmissionTypeRECVPACKET,
+			RelayerAddress: recvTx.RelayerAddress,
+			SubmittedAt:    pgtype.Timestamptz{Valid: true, Time: recvTx.Timestamp},
+			Status:         db.Ibcv2RelayerTxSubmissionStatusPENDING,
+		}
+		submissionID, err := q.InsertIBCV2RelayerTxSubmission(ctx, insert)
+		if err != nil {
+			return fmt.Errorf("inserting recv tx submission %s: %w", recvTx.Hash, err)
+		}
+		if err = insertTransferTxSubmissionMappings(ctx, q, submissionID, transfers); err != nil {
+			return fmt.Errorf("inserting recv tx submission mappings for %s: %w", recvTx.Hash, err)
+		}
+
 		return nil
 	})
 	if err != nil {

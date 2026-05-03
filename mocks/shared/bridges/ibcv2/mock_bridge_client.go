@@ -1076,6 +1076,63 @@ func (_c *MockBridgeClient_TimestampAtHeight_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// TxExecutionStatus provides a mock function with given fields: ctx, txHash
+func (_m *MockBridgeClient) TxExecutionStatus(ctx context.Context, txHash string) (ibcv2.TxExecutionStatus, error) {
+	ret := _m.Called(ctx, txHash)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TxExecutionStatus")
+	}
+
+	var r0 ibcv2.TxExecutionStatus
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (ibcv2.TxExecutionStatus, error)); ok {
+		return rf(ctx, txHash)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) ibcv2.TxExecutionStatus); ok {
+		r0 = rf(ctx, txHash)
+	} else {
+		r0 = ret.Get(0).(ibcv2.TxExecutionStatus)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, txHash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockBridgeClient_TxExecutionStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TxExecutionStatus'
+type MockBridgeClient_TxExecutionStatus_Call struct {
+	*mock.Call
+}
+
+// TxExecutionStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - txHash string
+func (_e *MockBridgeClient_Expecter) TxExecutionStatus(ctx interface{}, txHash interface{}) *MockBridgeClient_TxExecutionStatus_Call {
+	return &MockBridgeClient_TxExecutionStatus_Call{Call: _e.mock.On("TxExecutionStatus", ctx, txHash)}
+}
+
+func (_c *MockBridgeClient_TxExecutionStatus_Call) Run(run func(ctx context.Context, txHash string)) *MockBridgeClient_TxExecutionStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockBridgeClient_TxExecutionStatus_Call) Return(_a0 ibcv2.TxExecutionStatus, _a1 error) *MockBridgeClient_TxExecutionStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockBridgeClient_TxExecutionStatus_Call) RunAndReturn(run func(context.Context, string) (ibcv2.TxExecutionStatus, error)) *MockBridgeClient_TxExecutionStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // TxFee provides a mock function with given fields: ctx, txHash
 func (_m *MockBridgeClient) TxFee(ctx context.Context, txHash string) (*big.Int, error) {
 	ret := _m.Called(ctx, txHash)

@@ -62,6 +62,44 @@ func (q *Queries) ClearTimeoutTx(ctx context.Context, arg ClearTimeoutTxParams) 
 	return err
 }
 
+const countTransfersByChainPairAndStatus = `-- name: CountTransfersByChainPairAndStatus :many
+SELECT source_chain_id, destination_chain_id, status, COUNT(*)::bigint AS count
+FROM ibcv2_transfers
+GROUP BY source_chain_id, destination_chain_id, status
+`
+
+type CountTransfersByChainPairAndStatusRow struct {
+	SourceChainID      string
+	DestinationChainID string
+	Status             Ibcv2RelayStatus
+	Count              int64
+}
+
+func (q *Queries) CountTransfersByChainPairAndStatus(ctx context.Context) ([]CountTransfersByChainPairAndStatusRow, error) {
+	rows, err := q.db.Query(ctx, countTransfersByChainPairAndStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountTransfersByChainPairAndStatusRow
+	for rows.Next() {
+		var i CountTransfersByChainPairAndStatusRow
+		if err := rows.Scan(
+			&i.SourceChainID,
+			&i.DestinationChainID,
+			&i.Status,
+			&i.Count,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRelaySubmission = `-- name: GetRelaySubmission :one
 SELECT id, source_chain_id, source_tx_hash, created_at FROM ibcv2_relay_submissions
 WHERE source_chain_id = $1 AND source_tx_hash = $2
@@ -253,6 +291,30 @@ type InsertRelaySubmissionParams struct {
 func (q *Queries) InsertRelaySubmission(ctx context.Context, arg InsertRelaySubmissionParams) error {
 	_, err := q.db.Exec(ctx, insertRelaySubmission, arg.SourceChainID, arg.SourceTxHash)
 	return err
+}
+
+const listRelayStatuses = `-- name: ListRelayStatuses :many
+SELECT unnest(enum_range(NULL::ibcv2_relay_status))::text AS status
+`
+
+func (q *Queries) ListRelayStatuses(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, listRelayStatuses)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var status string
+		if err := rows.Scan(&status); err != nil {
+			return nil, err
+		}
+		items = append(items, status)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateTransferAckTx = `-- name: UpdateTransferAckTx :exec

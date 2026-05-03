@@ -13,6 +13,8 @@ import (
 )
 
 type IBCV2Transfer struct {
+	ID int32
+
 	// State is the latest state reached when processing this IBCV2Transfer
 	State db.Ibcv2RelayStatus
 
@@ -118,6 +120,7 @@ func NewIBCV2Transfer(ctx context.Context, transfer db.Ibcv2Transfer) *IBCV2Tran
 	)
 
 	return &IBCV2Transfer{
+		ID:                        transfer.ID,
 		State:                     transfer.Status,
 		SourceChainID:             transfer.SourceChainID,
 		DestinationChainID:        transfer.DestinationChainID,
@@ -155,6 +158,10 @@ func NewIBCV2Transfer(ctx context.Context, transfer db.Ibcv2Transfer) *IBCV2Tran
 // clear about bad states, we explicitly return a bool so that users can check
 // if the pointer that they expect to have a value has not been set, and
 // quickly error before acting on some bad state.
+
+func (e *IBCV2Transfer) GetID() int32 {
+	return e.ID
+}
 
 func (e *IBCV2Transfer) GetSourceChainID() string {
 	return e.SourceChainID
