@@ -31,7 +31,7 @@ import (
 )
 
 var (
-	configPath           = flag.String("config", "./config/local/config.yml", "path to relayer config file")
+	configPath          = flag.String("config", "./config/local/config.yml", "path to relayer config file")
 	enableIBCV2Relaying = flag.Bool("ibcv2-relaying", true, "if ibcv2 relaying should be enabled")
 )
 
@@ -177,6 +177,14 @@ func main() {
 	eg.Go(func() error {
 		if err := dispatcher.Run(ctx); err != nil {
 			return fmt.Errorf("running ibcv2 relayer: %w", err)
+		}
+		return nil
+	})
+
+	eg.Go(func() error {
+		tracker := ibcv2.NewSubmittedTxCostTracker(storage, ibcv2ClientManager, coingeckoClient, 5*time.Second, 100, 6*time.Hour)
+		if err := tracker.Run(ctx); err != nil {
+			return fmt.Errorf("running submitted tx cost tracker: %w", err)
 		}
 		return nil
 	})

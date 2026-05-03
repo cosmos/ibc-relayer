@@ -72,7 +72,7 @@ func (processor BatchTimeoutPacketProcessor) Process(ctx context.Context, transf
 		}
 
 		txIDs = append(txIDs, txID)
-		txSet[transfer.GetSourceChainID()] = struct{}{}
+		txSet[transfer.GetSourceTxHash()] = struct{}{}
 		sequences = append(sequences, uint64(transfer.GetPacketSequenceNumber()))
 	}
 
@@ -129,11 +129,13 @@ func (processor BatchTimeoutPacketProcessor) Process(ctx context.Context, transf
 
 	logger.Info("delivered batch timeout tx", zap.String("tx_hash", timeoutTx.Hash))
 
+	submittedTransferCount := 0
 	err = processor.transferTimeoutTxWithTxStorage.ExecTx(ctx, func(q *db.Queries) error {
 		for _, transfer := range transfers {
 			if transfer.ProcessingError != nil {
 				continue
 			}
+			submittedTransferCount++
 
 			update := db.UpdateTransferTimeoutTxParams{
 				TimeoutTxHash:           pgtype.Text{Valid: true, String: timeoutTx.Hash},
@@ -147,6 +149,27 @@ func (processor BatchTimeoutPacketProcessor) Process(ctx context.Context, transf
 				return fmt.Errorf("updating transfer timeout tx with timeout tx %s: %w", timeoutTx, err)
 			}
 		}
+
+		if submittedTransferCount == 0 {
+			return nil
+		}
+
+		insert := db.InsertIBCV2RelayerTxSubmissionParams{
+			TxHash:         timeoutTx.Hash,
+			ChainID:        processor.sourceChainID,
+			TxType:         db.Ibcv2RelayerTxSubmissionTypeTIMEOUTPACKET,
+			RelayerAddress: timeoutTx.RelayerAddress,
+			SubmittedAt:    pgtype.Timestamptz{Valid: true, Time: timeoutTx.Timestamp},
+			Status:         db.Ibcv2RelayerTxSubmissionStatusPENDING,
+		}
+		submissionID, err := q.InsertIBCV2RelayerTxSubmission(ctx, insert)
+		if err != nil {
+			return fmt.Errorf("inserting timeout tx submission %s: %w", timeoutTx.Hash, err)
+		}
+		if err = insertTransferTxSubmissionMappings(ctx, q, submissionID, transfers); err != nil {
+			return fmt.Errorf("inserting timeout tx submission mappings for %s: %w", timeoutTx.Hash, err)
+		}
+
 		return nil
 	})
 	if err != nil {

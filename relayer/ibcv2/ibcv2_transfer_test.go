@@ -105,6 +105,7 @@ func TestNewIBCV2Transfer(t *testing.T) {
 		transfer.Logger = nil
 
 		expected := &ibcv2.IBCV2Transfer{
+			ID:                        100,
 			State:                     db.Ibcv2RelayStatusGETACKPACKET,
 			DestinationChainID:        destinationChainID,
 			SourceChainID:             sourceChainID,

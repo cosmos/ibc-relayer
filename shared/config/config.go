@@ -185,6 +185,10 @@ type CosmosConfig struct {
 	// IBCV2TxFeeAmount can be set.
 	IBCV2TxFeeAmount uint64 `yaml:"ibcv2_tx_fee_amount"`
 
+	// LightClientType is retained for config compatibility; all supported IBC
+	// light client types are now registered for tx decoding.
+	LightClientType string `yaml:"light_client_type"`
+
 	RPC             string `yaml:"rpc"`
 	RPCBasicAuthVar string `yaml:"rpc_basic_auth_var"`
 	GRPC            string `yaml:"grpc"`

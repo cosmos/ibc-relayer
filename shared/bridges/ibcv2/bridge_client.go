@@ -17,6 +17,16 @@ type BridgeTx struct {
 	RelayerAddress string
 }
 
+type TxExecutionStatus struct {
+	Status       string
+	ErrorMessage string
+}
+
+const (
+	TxExecutionStatusSuccess = "SUCCESS"
+	TxExecutionStatusFailed  = "FAILED"
+)
+
 type PacketInfo struct {
 	Sequence          uint64
 	SourceClient      string
@@ -93,6 +103,7 @@ type BridgeClient interface {
 	SignerGasTokenBalance(ctx context.Context) (*big.Int, error)
 
 	TxFee(ctx context.Context, txHash string) (*big.Int, error)
+	TxExecutionStatus(ctx context.Context, txHash string) (TxExecutionStatus, error)
 
 	SendTransfer(ctx context.Context, clientID string, denom string, receiver string, amount *big.Int, memo string) (string, error)
 
