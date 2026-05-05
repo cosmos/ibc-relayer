@@ -39,8 +39,10 @@ jobs:
 
       - name: Prepare Docker tag
         id: tags
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          DOCKER_TAG=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9\.-]/-/g')
+          DOCKER_TAG=$(echo "$REF_NAME" | sed 's/[^a-zA-Z0-9\.-]/-/g')
           echo "DOCKER_TAG=${DOCKER_TAG}" >> $GITHUB_OUTPUT
 
       - name: Build and push multi-arch image
