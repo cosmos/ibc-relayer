@@ -38,6 +38,7 @@ import (
 	"github.com/cosmos/ibc-relayer/db/gen/db"
 	ibc_channel_v2_types "github.com/cosmos/ibc-relayer/proto/gen/ibc/core/channel/v2"
 	ibc_client_v1_types "github.com/cosmos/ibc-relayer/proto/gen/ibc/core/client/v1"
+	attestations_v1_types "github.com/cosmos/ibc-relayer/proto/gen/ibc/lightclients/attestations/v1"
 	tendermint_v1_types "github.com/cosmos/ibc-relayer/proto/gen/ibc/lightclients/tendermint/v1"
 	wasm_v1_types "github.com/cosmos/ibc-relayer/proto/gen/ibc/lightclients/wasm/v1"
 	"github.com/cosmos/ibc-relayer/shared/config"
@@ -58,20 +59,20 @@ const (
 	eventTypeSendPacket    = "send_packet"
 )
 
-var reg codec_types.InterfaceRegistry
-
-func init() {
-	reg = codec_types.NewInterfaceRegistry()
+func newInterfaceRegistry() codec_types.InterfaceRegistry {
+	reg := codec_types.NewInterfaceRegistry()
 	std.RegisterInterfaces(reg)
 	auth_types.RegisterInterfaces(reg)
 
-	reg.RegisterImplementations(
-		(*sdk.Msg)(nil),
+	msgs := []proto.Message{
 		&ibc_channel_v2_types.MsgSendPacket{},
 		&ibc_channel_v2_types.MsgRecvPacket{},
 		&ibc_channel_v2_types.MsgTimeout{},
 		&ibc_channel_v2_types.MsgAcknowledgement{},
 		&ibc_client_v1_types.MsgUpdateClient{},
+		&attestations_v1_types.ClientState{},
+		&attestations_v1_types.ConsensusState{},
+		&attestations_v1_types.AttestationProof{},
 		&tendermint_v1_types.ClientState{},
 		&tendermint_v1_types.Misbehaviour{},
 		&tendermint_v1_types.ConsensusState{},
@@ -80,8 +81,12 @@ func init() {
 		&wasm_v1_types.ClientState{},
 		&wasm_v1_types.ConsensusState{},
 		&wasm_v1_types.ClientMessage{},
-	)
+	}
+
+	reg.RegisterImplementations((*sdk.Msg)(nil), msgs...)
 	msgservice.RegisterMsgServiceDesc(reg, &ibc_channel_v2_types.Msg_serviceDesc)
+
+	return reg
 }
 
 type CosmosBridgeClient struct {
@@ -98,6 +103,7 @@ type CosmosBridgeClient struct {
 
 	txConfig client.TxConfig
 	cdc      *codec.ProtoCodec
+	reg      codec_types.InterfaceRegistry
 
 	txOnce             *OnceWithKey[*coretypes.ResultTx]
 	txSubmissionLock   *sync.Mutex
@@ -117,6 +123,7 @@ func NewCosmosBridgeClient(
 	conn grpc.ClientConnInterface,
 	tmRPC tmRPC.Client,
 ) *CosmosBridgeClient {
+	reg := newInterfaceRegistry()
 	cdc := codec.NewProtoCodec(reg)
 
 	return &CosmosBridgeClient{
@@ -130,6 +137,7 @@ func NewCosmosBridgeClient(
 		tmRPC:               tmRPC,
 		txConfig:            tx.NewTxConfig(cdc, tx.DefaultSignModes),
 		cdc:                 cdc,
+		reg:                 reg,
 		txOnce:              NewOnceWithKey[*coretypes.ResultTx](time.Minute, 5*time.Second),
 		txSubmissionLock:    new(sync.Mutex),
 		txSubmissionDelay:   8 * time.Second,
@@ -661,7 +669,7 @@ func (client *CosmosBridgeClient) signAndSubmit(ctx context.Context, bz []byte) 
 	var msgs []sdk.Msg
 	for _, msg := range txBody.Messages {
 		var sdkMsg sdk.Msg
-		if err := reg.UnpackAny(msg, &sdkMsg); err != nil {
+		if err := client.reg.UnpackAny(msg, &sdkMsg); err != nil {
 			return nil, fmt.Errorf("unpacking msg into sdk.Msg: %w", err)
 		}
 		if codec_types.MsgTypeURL(sdkMsg) == updateClientTypeURL {
@@ -852,7 +860,7 @@ func (client *CosmosBridgeClient) TxFee(ctx context.Context, txHash string) (*bi
 		return client.tmRPC.Tx(ctx, hashBytes, false)
 	})
 	if err != nil {
-		return nil, fmt.Errorf("getting results for ts hash %s: %w", txHash, err)
+		return nil, fmt.Errorf("getting results for tx hash %s: %w", txHash, err)
 	}
 
 	tx, err := client.txConfig.TxDecoder()(result.Tx)
@@ -866,11 +874,34 @@ func (client *CosmosBridgeClient) TxFee(ctx context.Context, txHash string) (*bi
 	}
 
 	fee := feeTx.GetFee().AmountOf(client.feeDenom)
-	if fee == sdk_math.ZeroInt() {
-		return nil, fmt.Errorf("zero fee amount found for denom %s in tx result auth info", client.feeDenom)
+	if fee.IsNil() {
+		return big.NewInt(0), nil
 	}
 
 	return fee.BigInt(), nil
+}
+
+func (client *CosmosBridgeClient) TxExecutionStatus(ctx context.Context, txHash string) (TxExecutionStatus, error) {
+	hashBytes, err := hex.DecodeString(txHash)
+	if err != nil {
+		return TxExecutionStatus{}, fmt.Errorf("hex decoding tx hash string %s: %w", txHash, err)
+	}
+
+	result, err := client.txOnce.Do(txHash, func() (*coretypes.ResultTx, error) {
+		return client.tmRPC.Tx(ctx, hashBytes, false)
+	})
+	if err != nil {
+		return TxExecutionStatus{}, fmt.Errorf("getting results for tx hash %s: %w", txHash, err)
+	}
+
+	if result.TxResult.Code == 0 {
+		return TxExecutionStatus{Status: TxExecutionStatusSuccess}, nil
+	}
+
+	return TxExecutionStatus{
+		Status:       TxExecutionStatusFailed,
+		ErrorMessage: result.TxResult.Log,
+	}, nil
 }
 
 func (client *CosmosBridgeClient) txSigner(result *coretypes.ResultTx) (string, error) {

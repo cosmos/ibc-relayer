@@ -91,3 +91,11 @@ ON CONFLICT (source_chain_id, source_tx_hash) DO NOTHING;
 -- name: GetRelaySubmission :one
 SELECT * FROM ibcv2_relay_submissions
 WHERE source_chain_id = $1 AND source_tx_hash = $2;
+
+-- name: ListRelayStatuses :many
+SELECT unnest(enum_range(NULL::ibcv2_relay_status))::text AS status;
+
+-- name: CountTransfersByChainPairAndStatus :many
+SELECT source_chain_id, destination_chain_id, status, COUNT(*)::bigint AS count
+FROM ibcv2_transfers
+GROUP BY source_chain_id, destination_chain_id, status;

@@ -114,6 +114,93 @@ func (ns NullIbcv2RelayStatus) Value() (driver.Value, error) {
 	return string(ns.Ibcv2RelayStatus), nil
 }
 
+type Ibcv2RelayerTxSubmissionStatus string
+
+const (
+	Ibcv2RelayerTxSubmissionStatusPENDING Ibcv2RelayerTxSubmissionStatus = "PENDING"
+	Ibcv2RelayerTxSubmissionStatusSUCCESS Ibcv2RelayerTxSubmissionStatus = "SUCCESS"
+	Ibcv2RelayerTxSubmissionStatusFAILED  Ibcv2RelayerTxSubmissionStatus = "FAILED"
+	Ibcv2RelayerTxSubmissionStatusEXPIRED Ibcv2RelayerTxSubmissionStatus = "EXPIRED"
+)
+
+func (e *Ibcv2RelayerTxSubmissionStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = Ibcv2RelayerTxSubmissionStatus(s)
+	case string:
+		*e = Ibcv2RelayerTxSubmissionStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for Ibcv2RelayerTxSubmissionStatus: %T", src)
+	}
+	return nil
+}
+
+type NullIbcv2RelayerTxSubmissionStatus struct {
+	Ibcv2RelayerTxSubmissionStatus Ibcv2RelayerTxSubmissionStatus
+	Valid                          bool // Valid is true if Ibcv2RelayerTxSubmissionStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullIbcv2RelayerTxSubmissionStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.Ibcv2RelayerTxSubmissionStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.Ibcv2RelayerTxSubmissionStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullIbcv2RelayerTxSubmissionStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.Ibcv2RelayerTxSubmissionStatus), nil
+}
+
+type Ibcv2RelayerTxSubmissionType string
+
+const (
+	Ibcv2RelayerTxSubmissionTypeRECVPACKET    Ibcv2RelayerTxSubmissionType = "RECV_PACKET"
+	Ibcv2RelayerTxSubmissionTypeACKPACKET     Ibcv2RelayerTxSubmissionType = "ACK_PACKET"
+	Ibcv2RelayerTxSubmissionTypeTIMEOUTPACKET Ibcv2RelayerTxSubmissionType = "TIMEOUT_PACKET"
+)
+
+func (e *Ibcv2RelayerTxSubmissionType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = Ibcv2RelayerTxSubmissionType(s)
+	case string:
+		*e = Ibcv2RelayerTxSubmissionType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for Ibcv2RelayerTxSubmissionType: %T", src)
+	}
+	return nil
+}
+
+type NullIbcv2RelayerTxSubmissionType struct {
+	Ibcv2RelayerTxSubmissionType Ibcv2RelayerTxSubmissionType
+	Valid                        bool // Valid is true if Ibcv2RelayerTxSubmissionType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullIbcv2RelayerTxSubmissionType) Scan(value interface{}) error {
+	if value == nil {
+		ns.Ibcv2RelayerTxSubmissionType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.Ibcv2RelayerTxSubmissionType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullIbcv2RelayerTxSubmissionType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.Ibcv2RelayerTxSubmissionType), nil
+}
+
 type Ibcv2WriteAckStatus string
 
 const (
@@ -164,6 +251,20 @@ type Ibcv2RelaySubmission struct {
 	CreatedAt     pgtype.Timestamptz
 }
 
+type Ibcv2RelayerTxSubmission struct {
+	ID             int32
+	TxHash         string
+	ChainID        string
+	TxType         Ibcv2RelayerTxSubmissionType
+	RelayerAddress string
+	SubmittedAt    pgtype.Timestamptz
+	ResolvedAt     pgtype.Timestamptz
+	GasCostAmount  pgtype.Numeric
+	GasCostUsd     pgtype.Numeric
+	Status         Ibcv2RelayerTxSubmissionStatus
+	ExecutionError pgtype.Text
+}
+
 type Ibcv2Transfer struct {
 	ID                        int32
 	CreatedAt                 pgtype.Timestamp
@@ -195,6 +296,11 @@ type Ibcv2Transfer struct {
 	TimeoutTxRelayerAddress   pgtype.Text
 	SourceTxFinalizedTime     pgtype.Timestamp
 	WriteAckTxFinalizedTime   pgtype.Timestamp
+}
+
+type Ibcv2TransferTxSubmission struct {
+	TransferID   int32
+	SubmissionID int32
 }
 
 type RawTx struct {

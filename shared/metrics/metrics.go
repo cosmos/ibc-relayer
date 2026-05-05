@@ -70,6 +70,7 @@ type Metrics interface {
 	AddTransactionRetryAttempt(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType)
 	AddTransactionConfirmed(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string)
 	AddTransfer(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string)
+	SetTransferCount(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string, count float64)
 	SetReceiveTransactionGasCost(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, gasCost uint64)
 	AddExcessiveRelayLatencyObservation(sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType)
 	AddUnprofitableRelay(sourceChainName, destinationChainName, chainEnvironment string)
@@ -253,6 +254,7 @@ type PromMetrics struct {
 	totalTransactionRetryAttempts             metrics.Counter
 	totalTransactionsConfirmed                metrics.Counter
 	totalTransfers                            metrics.Counter
+	transferCount                             metrics.Gauge
 	totalTransactionGasCost                   metrics.Counter
 	totalUnprofitableRelays                   metrics.Counter
 	receiveTransactionGasCost                 metrics.Gauge
@@ -355,6 +357,11 @@ func NewPromMetrics() Metrics {
 			Namespace: "relayerapi",
 			Name:      "total_transfers_counter",
 			Help:      "number of transfer state transitions, paginated by source chain, destination chain, and transfer state",
+		}, []string{sourceChainIDLabel, destinationChainIDLabel, sourceChainNameLabel, destinationChainNameLabel, chainEnvironmentLabel, transferStateLabel}),
+		transferCount: prom.NewGaugeFrom(stdprom.GaugeOpts{
+			Namespace: "relayerapi",
+			Name:      "ibcv2_transfers_gauge",
+			Help:      "number of ibcv2 transfers, paginated by source/destination chain and transfer state (includes terminal states)",
 		}, []string{sourceChainIDLabel, destinationChainIDLabel, sourceChainNameLabel, destinationChainNameLabel, chainEnvironmentLabel, transferStateLabel}),
 		totalTransactionGasCost: prom.NewCounterFrom(stdprom.CounterOpts{
 			Namespace: "relayerapi",
@@ -579,6 +586,17 @@ func (m *PromMetrics) AddTransfer(sourceChainID, destinationChainID, sourceChain
 	).Add(1)
 }
 
+func (m *PromMetrics) SetTransferCount(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string, count float64) {
+	m.transferCount.With(
+		sourceChainIDLabel, sourceChainID,
+		destinationChainIDLabel, destinationChainID,
+		sourceChainNameLabel, sourceChainName,
+		destinationChainNameLabel, destinationChainName,
+		chainEnvironmentLabel, chainEnvironment,
+		transferStateLabel, state,
+	).Set(count)
+}
+
 func (m *PromMetrics) AddTransactionGasCost(chainID, chainName, chainEnvironment string, gasCost big.Int, gasTokenDecimals uint8) {
 	gasCostFloat, _ := gasCost.Float64()
 	gasTokenAmount := gasCostFloat / math.Pow10(int(gasTokenDecimals))
@@ -683,6 +701,9 @@ func (m *NoOpMetrics) AddTransactionConfirmed(success bool, sourceChainID, desti
 }
 
 func (m *NoOpMetrics) AddTransfer(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string) {
+}
+
+func (m *NoOpMetrics) SetTransferCount(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string, count float64) {
 }
 
 func (m *NoOpMetrics) AddTransactionGasCost(chainID, chainName, chainEnvironment string, gasCost big.Int, gasTokenDecimals uint8) {

@@ -122,6 +122,17 @@ func (e *IBCV2Transfer) RecordTransferState(ctx context.Context, state string) {
 	)
 }
 
+// chainConfigs returns the ChainConfig for both source and destination chains,
+// falling back to a zero-value config (with ChainID/ChainName set to the raw
+// ID) if a lookup fails.
+//
+// A missing config should never happen at runtime — the invariant is
+// established at startup:
+//   - Config.Chains defines the full set of known chains.
+//   - NewConfigReader (shared/config/config.go) indexes them by ChainID.
+//   - NewClientManagerFromConfig only creates bridge clients for configured chains.
+//   - Pipeline processors (batch_recv_packet, batch_ack_packet, timeout_packet)
+//     only create submissions for transfers between configured chains.
 func chainConfigs(ctx context.Context, sourceChainID, destChainID string) (config.ChainConfig, config.ChainConfig) {
 	sourceConfig, _ := chainConfigOrFallback(ctx, sourceChainID)
 	destConfig, _ := chainConfigOrFallback(ctx, destChainID)
