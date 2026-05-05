@@ -111,7 +111,7 @@ Migration files are located in [`./db/migrations/`](./db/migrations/).
 ## Design
 ![Design](./relayer-design.png)
 
-The relayer has three main components - the gRPC server which clients use to interact with the relayer, a postgres db, and the core relayer. The gRPC server populates the db with packets, which the core relayer monitors and updates as it progresses in relaying those packets.
+The relayer has three main components - the gRPC server which clients use to interact with the relayer, a Postgres db, and the core relayer. The gRPC server populates the db with packets, which the core relayer monitors and updates as it progresses in relaying those packets.
 
 ## API Interface
 The relayer serves a gRPC server which clients use to specify what packets to relay and track packet relaying progress.
