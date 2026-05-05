@@ -27,9 +27,12 @@ import (
 	"github.com/cosmos/ibc-relayer/shared/contracts/ics26_router"
 	"github.com/cosmos/ibc-relayer/shared/contracts/sp1_ics07_tendermint"
 	"github.com/cosmos/ibc-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/metrics"
 	"github.com/cosmos/ibc-relayer/shared/signing"
 	signingevm "github.com/cosmos/ibc-relayer/shared/signing/evm"
 )
+
+const maxPendingAndConfirmedNonceDifference = 5
 
 type EVMClient interface {
 	bind.DeployBackend
@@ -675,6 +678,24 @@ func (client *EVMBridgeClient) signAndSubmitData(ctx context.Context, bz []byte,
 	return signedTx.Hash(), nil
 }
 
+// selectNonceWithFallback returns confirmedNonce when pendingNonce is far enough
+// ahead to indicate a stuck-tx situation in the mempool; otherwise it returns
+// pendingNonce. When the fallback triggers, it logs a warning and increments
+// the nonce-replaced metric.
+func selectNonceWithFallback(ctx context.Context, chainID string, pendingNonce, confirmedNonce uint64) uint64 {
+	if pendingNonce > confirmedNonce && pendingNonce-confirmedNonce > maxPendingAndConfirmedNonceDifference {
+		lmt.Logger(ctx).Warn(
+			"pending nonce too far ahead of confirmed nonce, falling back to confirmed nonce",
+			zap.String("chain_id", chainID),
+			zap.Uint64("pending_nonce", pendingNonce),
+			zap.Uint64("confirmed_nonce", confirmedNonce),
+		)
+		metrics.FromContext(ctx).AddTransactionNonceReplaced(chainID)
+		return confirmedNonce
+	}
+	return pendingNonce
+}
+
 func (client *EVMBridgeClient) newTx(ctx context.Context, bz []byte, address string) (*types.Transaction, error) {
 	to := common.HexToAddress(address)
 
@@ -703,10 +724,15 @@ func (client *EVMBridgeClient) newTx(ctx context.Context, bz []byte, address str
 		return nil, fmt.Errorf("estimating gas to deliver msg to %s: %w", to.String(), err)
 	}
 
-	nonce, err := client.client.PendingNonceAt(ctx, client.signerAddress)
+	pendingNonce, err := client.client.PendingNonceAt(ctx, client.signerAddress)
 	if err != nil {
 		return nil, fmt.Errorf("getting pending nonce for address %s on chain %s: %w", client.signerAddress.String(), client.chainID, err)
 	}
+	confirmedNonce, err := client.client.NonceAt(ctx, client.signerAddress, nil)
+	if err != nil {
+		return nil, fmt.Errorf("getting confirmed nonce for address %s on chain %s: %w", client.signerAddress.String(), client.chainID, err)
+	}
+	nonce := selectNonceWithFallback(ctx, client.chainID, pendingNonce, confirmedNonce)
 
 	inner := &types.DynamicFeeTx{
 		To:        &to,

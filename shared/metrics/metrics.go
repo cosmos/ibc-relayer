@@ -68,6 +68,7 @@ type Metrics interface {
 	AttestationConfirmationLatency(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, latency time.Duration)
 	AddTransactionSubmitted(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string)
 	AddTransactionRetryAttempt(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType)
+	AddTransactionNonceReplaced(chainID string)
 	AddTransactionConfirmed(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string)
 	AddTransfer(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string)
 	SetTransferCount(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string, count float64)
@@ -252,6 +253,7 @@ type PromMetrics struct {
 	latencyPerAttestationConfirmation         metrics.Histogram
 	totalTransactionSubmitted                 metrics.Counter
 	totalTransactionRetryAttempts             metrics.Counter
+	totalTransactionNonceReplaced             metrics.Counter
 	totalTransactionsConfirmed                metrics.Counter
 	totalTransfers                            metrics.Counter
 	transferCount                             metrics.Gauge
@@ -348,6 +350,11 @@ func NewPromMetrics() Metrics {
 			Name:      "total_transaction_retry_attempts_counter",
 			Help:      "number of transactions retried, paginated by source and destination chain id",
 		}, []string{sourceChainIDLabel, destinationChainIDLabel, sourceChainNameLabel, destinationChainNameLabel, chainEnvironmentLabel, relayTypelLabel}),
+		totalTransactionNonceReplaced: prom.NewCounterFrom(stdprom.CounterOpts{
+			Namespace: "relayerapi",
+			Name:      "total_transaction_nonce_replaced_counter",
+			Help:      "number of transactions whose nonce was replaced via the pending-nonce-gap fallback, paginated by chain id",
+		}, []string{chainIDLabel}),
 		totalTransactionsConfirmed: prom.NewCounterFrom(stdprom.CounterOpts{
 			Namespace: "relayerapi",
 			Name:      "total_transactions_confirmed_counter",
@@ -571,6 +578,10 @@ func (m *PromMetrics) AddTransactionRetryAttempt(sourceChainID, destinationChain
 	).Add(1)
 }
 
+func (m *PromMetrics) AddTransactionNonceReplaced(chainID string) {
+	m.totalTransactionNonceReplaced.With(chainIDLabel, chainID).Add(1)
+}
+
 func (m *PromMetrics) AddTransactionConfirmed(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string) {
 	m.totalTransactionsConfirmed.With(successLabel, fmt.Sprint(success), sourceChainIDLabel, sourceChainID, destinationChainIDLabel, destinationChainID, sourceChainNameLabel, sourceChainName, destinationChainNameLabel, destinationChainName, chainEnvironmentLabel, chainEnvironment).Add(1)
 }
@@ -696,6 +707,8 @@ func (m *NoOpMetrics) AddTransactionSubmitted(success bool, sourceChainID, desti
 
 func (m *NoOpMetrics) AddTransactionRetryAttempt(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType) {
 }
+
+func (m *NoOpMetrics) AddTransactionNonceReplaced(chainID string) {}
 
 func (m *NoOpMetrics) AddTransactionConfirmed(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string) {
 }
