@@ -229,17 +229,21 @@ func (t *SubmittedTxCostTracker) recordResolvedSubmissionMetrics(ctx context.Con
 		string(sourceConfig.Environment),
 	)
 
-	if submission.TxType != db.Ibcv2RelayerTxSubmissionTypeRECVPACKET || gasCostAmount == nil || !gasCostAmount.IsUint64() {
+	if gasCostAmount == nil {
 		return
 	}
 
-	metrics.FromContext(ctx).SetReceiveTransactionGasCost(
-		submission.ChainID,
-		submission.DestinationChainID,
-		sourceConfig.ChainName,
-		destConfig.ChainName,
-		string(sourceConfig.Environment),
-		gasCostAmount.Uint64(),
+	execConfig := sourceConfig
+	if submission.TxType == db.Ibcv2RelayerTxSubmissionTypeRECVPACKET {
+		execConfig = destConfig
+	}
+
+	metrics.FromContext(ctx).AddTransactionGasCost(
+		submissionExecutionChainID(submission),
+		execConfig.ChainName,
+		string(execConfig.Environment),
+		*gasCostAmount,
+		execConfig.GasTokenDecimals,
 	)
 }
 
