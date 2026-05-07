@@ -28,7 +28,7 @@ type submittedTxCostStorageStub struct {
 type metricsStub struct {
 	metrics.NoOpMetrics
 	confirmed []confirmedCall
-	recvGas   []recvGasCall
+	gasCosts  []gasCostCall
 }
 
 type confirmedCall struct {
@@ -37,10 +37,10 @@ type confirmedCall struct {
 	destinationChainID string
 }
 
-type recvGasCall struct {
-	sourceChainID      string
-	destinationChainID string
-	gasCost            uint64
+type gasCostCall struct {
+	chainID  string
+	gasCost  string
+	decimals uint8
 }
 
 func (s *submittedTxCostStorageStub) GetUnresolvedIBCV2RelayerTxSubmissions(_ context.Context, _ int32) ([]db.GetUnresolvedIBCV2RelayerTxSubmissionsRow, error) {
@@ -65,11 +65,11 @@ func (m *metricsStub) AddTransactionConfirmed(success bool, sourceChainID, desti
 	})
 }
 
-func (m *metricsStub) SetReceiveTransactionGasCost(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, gasCost uint64) {
-	m.recvGas = append(m.recvGas, recvGasCall{
-		sourceChainID:      sourceChainID,
-		destinationChainID: destinationChainID,
-		gasCost:            gasCost,
+func (m *metricsStub) AddTransactionGasCost(chainID, chainName, chainEnvironment string, gasCost big.Int, gasTokenDecimals uint8) {
+	m.gasCosts = append(m.gasCosts, gasCostCall{
+		chainID:  chainID,
+		gasCost:  gasCost.String(),
+		decimals: gasTokenDecimals,
 	})
 }
 
@@ -131,7 +131,7 @@ func TestSubmittedTxCostTrackerTrackResolvesNativeAndUSDGasCosts(t *testing.T) {
 	require.Equal(t, db.Ibcv2RelayerTxSubmissionStatusSUCCESS, storage.updated[0].Status)
 	require.False(t, storage.updated[0].ExecutionError.Valid)
 	require.Equal(t, []confirmedCall{{success: true, sourceChainID: "source-chain", destinationChainID: "chain-a"}}, metricsRecorder.confirmed)
-	require.Equal(t, []recvGasCall{{sourceChainID: "source-chain", destinationChainID: "chain-a", gasCost: 42}}, metricsRecorder.recvGas)
+	require.Equal(t, []gasCostCall{{chainID: "chain-a", gasCost: "42", decimals: 18}}, metricsRecorder.gasCosts)
 }
 
 func TestSubmittedTxCostTrackerTrackResolvesNativeCostWithoutUSD(t *testing.T) {
@@ -173,7 +173,7 @@ func TestSubmittedTxCostTrackerTrackResolvesNativeCostWithoutUSD(t *testing.T) {
 	require.Equal(t, db.Ibcv2RelayerTxSubmissionStatusFAILED, storage.updated[0].Status)
 	require.Equal(t, "out of gas", storage.updated[0].ExecutionError.String)
 	require.Equal(t, []confirmedCall{{success: false, sourceChainID: "source-chain", destinationChainID: "chain-a"}}, metricsRecorder.confirmed)
-	require.Empty(t, metricsRecorder.recvGas)
+	require.Equal(t, []gasCostCall{{chainID: "source-chain", gasCost: "42", decimals: 0}}, metricsRecorder.gasCosts)
 }
 
 func TestSubmittedTxCostTrackerTrackResolvesStatusWhenUSDEnrichmentFails(t *testing.T) {
@@ -219,7 +219,7 @@ func TestSubmittedTxCostTrackerTrackResolvesStatusWhenUSDEnrichmentFails(t *test
 	require.Equal(t, db.Ibcv2RelayerTxSubmissionStatusSUCCESS, storage.updated[0].Status)
 	require.False(t, storage.updated[0].ExecutionError.Valid)
 	require.Equal(t, []confirmedCall{{success: true, sourceChainID: "source-chain", destinationChainID: "chain-a"}}, metricsRecorder.confirmed)
-	require.Equal(t, []recvGasCall{{sourceChainID: "source-chain", destinationChainID: "chain-a", gasCost: 42}}, metricsRecorder.recvGas)
+	require.Equal(t, []gasCostCall{{chainID: "chain-a", gasCost: "42", decimals: 6}}, metricsRecorder.gasCosts)
 }
 
 func TestSubmittedTxCostTrackerTrackContinuesWhenStatusNotReady(t *testing.T) {
@@ -285,7 +285,7 @@ func TestSubmittedTxCostTrackerTrackContinuesWhenFeeLookupFails(t *testing.T) {
 	require.NoError(t, tracker.Track(ctx))
 	require.Empty(t, storage.updated)
 	require.Empty(t, metricsRecorder.confirmed)
-	require.Empty(t, metricsRecorder.recvGas)
+	require.Empty(t, metricsRecorder.gasCosts)
 }
 
 func TestSubmittedTxCostTrackerTrackCoalescesNilFeeToZero(t *testing.T) {
