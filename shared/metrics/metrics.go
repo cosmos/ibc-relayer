@@ -86,7 +86,7 @@ type Metrics interface {
 	AddFailedExternalRequest(ctx context.Context, method, code, provider string)
 	ExternalRequestLatency(ctx context.Context, method string, provider string, latency time.Duration)
 
-	AddClientNeedsUpated(chainID string, clientID string, counterpartyChainID string)
+	AddClientNeedsUpdated(chainID string, clientID string, counterpartyChainID string)
 	AddClientUpdated(chainID string, clientID string, counterpartyChainID string)
 }
 
@@ -669,7 +669,7 @@ func (m *PromMetrics) AddRelayCompleted(sourceChainID, sourceClientID, destinati
 	).Add(1)
 }
 
-func (m *PromMetrics) AddClientNeedsUpated(chainID string, clientID string, counterpartyChainID string) {
+func (m *PromMetrics) AddClientNeedsUpdated(chainID string, clientID string, counterpartyChainID string) {
 	m.totalClientsNeedsUpdated.With(chainIDLabel, chainID, clientIDLabel, clientID, counterpartyChainIDLabel, counterpartyChainID).Add(1)
 }
 
@@ -749,7 +749,7 @@ func (m *NoOpMetrics) AddFailedExternalRequest(ctx context.Context, method, code
 func (m *NoOpMetrics) ExternalRequestLatency(ctx context.Context, method, provider string, latency time.Duration) {
 }
 
-func (m *NoOpMetrics) AddClientNeedsUpated(chainID string, clientID string, counterpartyChainID string) {
+func (m *NoOpMetrics) AddClientNeedsUpdated(chainID string, clientID string, counterpartyChainID string) {
 }
 func (m *NoOpMetrics) AddClientUpdated(chainID string, clientID string, counterpartyChainID string) {}
 

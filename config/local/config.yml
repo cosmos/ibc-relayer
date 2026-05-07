@@ -100,9 +100,10 @@ chains:
     gas_token_decimals: 18
     supported_bridges:
       - ibcv2
-    signer_gas_balance:
-      warning_threshold_wei: 4290000000000000000
-      critical_threshold_wei: 1430000000000000000
+    signer_gas_alert_thresholds:
+      ibcv2:
+        warning_threshold: 4290000000000000000
+        critical_threshold: 1430000000000000000
     evm:
       relayer_address: '0x257cac9aa58c17E09074d7089CA878167611fc00'
       rpc: 'EVM_JSON_RPC'
@@ -120,9 +121,10 @@ chains:
     gas_token_decimals: 18
     supported_bridges:
       - cctp
-    signer_gas_balance:
-      warning_threshold_wei: 180000000000000000
-      critical_threshold_wei: 60000000000000000
+    signer_gas_alert_thresholds:
+      ibcv2:
+        warning_threshold: 180000000000000000
+        critical_threshold: 60000000000000000
     evm:
       relayer_payment_contract_address: '0xB6615B2662b35fc3533F8479002e62D0523341De'
       relayer_address: '0x257cac9aa58c17E09074d7089CA878167611fc00'
@@ -141,9 +143,10 @@ chains:
     gas_token_decimals: 18
     supported_bridges:
       - cctp
-    signer_gas_balance:
-      warning_threshold_wei: 250000000000000000
-      critical_threshold_wei: 0
+    signer_gas_alert_thresholds:
+      ibcv2:
+        warning_threshold: 250000000000000000
+        critical_threshold: 0
     evm:
       relayer_payment_contract_address: '0x19d3eAC42Bd26Ecb4b42687da2Ab8Bc42554Ae2E'
       relayer_address: '0x257cac9aa58c17E09074d7089CA878167611fc00'
