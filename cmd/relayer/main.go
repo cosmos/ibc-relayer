@@ -70,11 +70,14 @@ func main() {
 			zap.String("cosmos_wallet_id", signing.CosmosWalletKey),
 			zap.String("evm_wallet_id", signing.EVMWalletKey))
 
-		// Internal service connection — TLS not yet configurable for remote signer.
-		conn, err := grpc.NewClient(
-			signing.GRPCAddress,
-			grpc.WithTransportCredentials(insecure.NewCredentials()), // nosemgrep: go.grpc.tls.grpc-client-new-insecure-connection.grpc-client-new-insecure-connection
-		)
+		var signerOpts []grpc.DialOption
+		if !signing.GRPCTLSEnabled {
+			signerOpts = append(signerOpts, grpc.WithTransportCredentials(insecure.NewCredentials())) // nosemgrep: go.grpc.tls.grpc-client-new-insecure-connection.grpc-client-new-insecure-connection
+		} else {
+			signerOpts = append(signerOpts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13})))
+		}
+
+		conn, err := grpc.NewClient(signing.GRPCAddress, signerOpts...)
 		if err != nil {
 			lmt.Logger(ctx).Fatal("failed to connect to remote signer",
 				zap.String("address", signing.GRPCAddress),
