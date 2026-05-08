@@ -63,6 +63,7 @@ type Config struct {
 type SigningConfig struct {
 	KeysPath        string `yaml:"keys_path"`
 	GRPCAddress     string `yaml:"grpc_address"`
+	GRPCTLSEnabled  bool   `yaml:"grpc_tls_enabled"`
 	CosmosWalletKey string `yaml:"cosmos_wallet_key"`
 	EVMWalletKey    string `yaml:"evm_wallet_key"`
 	SVMWalletKey    string `yaml:"svm_wallet_key"`
