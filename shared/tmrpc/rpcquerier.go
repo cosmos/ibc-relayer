@@ -58,14 +58,14 @@ func DefaultTendermintRPCQuerier(ctx context.Context, chainID string) (Tendermin
 		return nil, err
 	}
 
-	client, err := rpcclienthttp.NewWithClient(rpc, "/websocket", &http.Client{
+	rpcClient, err := rpcclienthttp.NewWithClient(rpc, "/websocket", &http.Client{
 		Transport: utils.NewBasicAuthTransport(basicAuth, http.DefaultTransport),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return NewTendermintRPCQuerier(client), nil
+	return NewTendermintRPCQuerier(rpcClient), nil
 }
 
 func NewTendermintRPCQuerier(cli TendermintRPCClient) TendermintRPCQuerier {

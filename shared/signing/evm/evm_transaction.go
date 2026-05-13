@@ -2,11 +2,12 @@ package evm
 
 import "github.com/ethereum/go-ethereum/core/types"
 
+//nolint:revive // EVMTransaction is the canonical name across the codebase
 type EVMTransaction struct {
 	raw *types.Transaction
 }
 
-func (tx *EVMTransaction) Raw() interface{} {
+func (tx *EVMTransaction) Raw() any {
 	return tx.raw
 }
 

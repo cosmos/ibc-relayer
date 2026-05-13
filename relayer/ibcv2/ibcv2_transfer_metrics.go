@@ -69,7 +69,7 @@ func (e *IBCV2Transfer) RecordAckRelayed(ctx context.Context) {
 	)
 }
 
-func (e *IBCV2Transfer) RecordLatency(ctx context.Context, sourceChainID, destChainID string, from, to time.Time, relayType metrics.RelayType) {
+func (*IBCV2Transfer) RecordLatency(ctx context.Context, sourceChainID, destChainID string, from, to time.Time, relayType metrics.RelayType) {
 	sourceConfig, destConfig := chainConfigs(ctx, sourceChainID, destChainID)
 
 	metrics.FromContext(ctx).RelayLatency(
@@ -139,7 +139,8 @@ func chainConfigs(ctx context.Context, sourceChainID, destChainID string) (confi
 	return sourceConfig, destConfig
 }
 
-func chainConfigOrFallback(ctx context.Context, chainID string) (cfg config.ChainConfig, found bool) {
+//nolint:unparam // bool kept for symmetry with similar helpers
+func chainConfigOrFallback(ctx context.Context, chainID string) (config.ChainConfig, bool) {
 	chainConfig, err := config.GetConfigReader(ctx).GetChainConfig(chainID)
 	if err != nil {
 		return config.ChainConfig{
@@ -175,7 +176,7 @@ func (e *IBCV2Transfer) AlertOnExcessiveRelayLatency(ctx context.Context) {
 
 	switch ongoingRelayType {
 	case metrics.IBCV2SendToRecvRelayType:
-		if sourceConfig.Type == config.ChainType_EVM && time.Since(e.GetSourceTxTime()) > evmSourceExcessiveLatency {
+		if sourceConfig.Type == config.ChainTypeEVM && time.Since(e.GetSourceTxTime()) > evmSourceExcessiveLatency {
 			// if the source is evm, alert if we have been waiting for more
 			// than evmSourceExcessiveLatency and there is still no recv tx
 			// hash
@@ -194,7 +195,7 @@ func (e *IBCV2Transfer) AlertOnExcessiveRelayLatency(ctx context.Context) {
 				ongoingRelayType,
 			)
 		}
-		if sourceConfig.Type == config.ChainType_COSMOS && time.Since(e.GetSourceTxTime()) > cosmosSourceExcessiveLatency {
+		if sourceConfig.Type == config.ChainTypeCOSMOS && time.Since(e.GetSourceTxTime()) > cosmosSourceExcessiveLatency {
 			// if the source is cosmos, alert if we have been waiting for more
 			// than cosmosSourceExcessiveRelay and there is still no recv tx
 			// hash
@@ -215,7 +216,7 @@ func (e *IBCV2Transfer) AlertOnExcessiveRelayLatency(ctx context.Context) {
 		}
 	case metrics.IBCV2RecvToAckRelayType:
 		writeAckTime, _ := e.GetWriteAckTxTime()
-		if destConfig.Type == config.ChainType_EVM && time.Since(writeAckTime) > evmSourceExcessiveLatency {
+		if destConfig.Type == config.ChainTypeEVM && time.Since(writeAckTime) > evmSourceExcessiveLatency {
 			// if the dest is evm, alert if we have been waiting for more
 			// than evmSourceExcessiveLatency since the write ack and there is
 			// still no ack tx hash
@@ -240,7 +241,7 @@ func (e *IBCV2Transfer) AlertOnExcessiveRelayLatency(ctx context.Context) {
 				ongoingRelayType,
 			)
 		}
-		if destConfig.Type == config.ChainType_COSMOS && time.Since(writeAckTime) > cosmosSourceExcessiveLatency {
+		if destConfig.Type == config.ChainTypeCOSMOS && time.Since(writeAckTime) > cosmosSourceExcessiveLatency {
 			// if the dest is cosmos, alert if we have been waiting for more
 			// than cosmosSourceExcessiveRelay since the write ack and there is
 			// still no ack tx hash
@@ -270,7 +271,7 @@ func (e *IBCV2Transfer) AlertOnExcessiveRelayLatency(ctx context.Context) {
 			return
 		}
 
-		if sourceConfig.Type == config.ChainType_EVM && (time.Since(e.GetSourceTxTime()) < evmSourceFinality) {
+		if sourceConfig.Type == config.ChainTypeEVM && (time.Since(e.GetSourceTxTime()) < evmSourceFinality) {
 			// if this timeout is for a send from an evm chain, wait until the
 			// send is finalized before alerting that the timeout has excessive
 			// latency
@@ -294,6 +295,8 @@ func (e *IBCV2Transfer) AlertOnExcessiveRelayLatency(ctx context.Context) {
 			string(sourceConfig.Environment),
 			ongoingRelayType,
 		)
+	default:
+		// no excessive relay latency check for other relay types
 	}
 }
 

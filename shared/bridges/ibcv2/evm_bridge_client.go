@@ -5,13 +5,13 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -113,7 +113,7 @@ func NewEVMBridgeClient(
 
 // IsPacketReceived checks to see if a packet receipt commitment exists for a
 // packet sequence and client ID.
-func (client *EVMBridgeClient) IsPacketReceived(ctx context.Context, packetDestinationClientID string, sequence uint64) (bool, error) {
+func (c *EVMBridgeClient) IsPacketReceived(ctx context.Context, packetDestinationClientID string, sequence uint64) (bool, error) {
 	packetReceiptCommitmentPathCalldata, err := encodePacked(
 		packetDestinationClientID,
 		uint8(2),
@@ -124,7 +124,7 @@ func (client *EVMBridgeClient) IsPacketReceived(ctx context.Context, packetDesti
 	}
 
 	hashedPath := crypto.Keccak256Hash(packetReceiptCommitmentPathCalldata)
-	commitment, err := client.ics26Router.GetCommitment(&bind.CallOpts{Context: ctx}, hashedPath)
+	commitment, err := c.ics26Router.GetCommitment(&bind.CallOpts{Context: ctx}, hashedPath)
 	if err != nil {
 		return false, fmt.Errorf("getting commitment for packet with destination client id %s and sequence %d and hashed path %s: %w", packetReceiptCommitmentPathCalldata, sequence, hashedPath, err)
 	}
@@ -142,7 +142,7 @@ func (client *EVMBridgeClient) IsPacketReceived(ctx context.Context, packetDesti
 // deleted. Thus, if this function returns true, it means that the packet has
 // been sent and not timed out or ack'd yet. If it returns false, this means
 // that the packet either has been ack'd or timed out, or it does not exist.
-func (client *EVMBridgeClient) IsPacketCommitted(ctx context.Context, packetSourceClientID string, sequence uint64) (bool, error) {
+func (c *EVMBridgeClient) IsPacketCommitted(ctx context.Context, packetSourceClientID string, sequence uint64) (bool, error) {
 	packetCommitmentPathCalldata, err := encodePacked(
 		packetSourceClientID,
 		uint8(1),
@@ -153,7 +153,7 @@ func (client *EVMBridgeClient) IsPacketCommitted(ctx context.Context, packetSour
 	}
 
 	hashedPath := crypto.Keccak256Hash(packetCommitmentPathCalldata)
-	commitment, err := client.ics26Router.GetCommitment(&bind.CallOpts{Context: ctx}, hashedPath)
+	commitment, err := c.ics26Router.GetCommitment(&bind.CallOpts{Context: ctx}, hashedPath)
 	if err != nil {
 		return false, fmt.Errorf("getting commitment for packet with source client id %s and sequence %d and hashed path %s: %w", packetSourceClientID, sequence, hashedPath, err)
 	}
@@ -164,7 +164,7 @@ func (client *EVMBridgeClient) IsPacketCommitted(ctx context.Context, packetSour
 	return commitment != common.BytesToHash(unwritten), nil
 }
 
-func (client *EVMBridgeClient) FindRecvTx(
+func (c *EVMBridgeClient) FindRecvTx(
 	ctx context.Context,
 	sourceClientID string,
 	destinationClientID string,
@@ -183,17 +183,17 @@ func (client *EVMBridgeClient) FindRecvTx(
 	// acks on the evm side, so the WriteAcknowledgement will always be emitted
 	// in the receive tx.
 	const writeAckEventName = "WriteAcknowledgement"
-	query := [][]interface{}{{routerABI.Events[writeAckEventName].ID}, {destinationClientID}, {sequence}}
+	query := [][]any{{routerABI.Events[writeAckEventName].ID}, {destinationClientID}, {sequence}}
 	topics, err := abi.MakeTopics(query...)
 	if err != nil {
 		return nil, fmt.Errorf("creating topics for filter logs query: %w", err)
 	}
 
 	filter := ethereum.FilterQuery{
-		Addresses: []common.Address{client.routerAddress},
+		Addresses: []common.Address{c.routerAddress},
 		Topics:    topics,
 	}
-	logs, err := client.client.FilterLogs(ctx, filter)
+	logs, err := c.client.FilterLogs(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("filtering for write ack logs: %w", err)
 	}
@@ -204,19 +204,19 @@ func (client *EVMBridgeClient) FindRecvTx(
 		return nil, fmt.Errorf("expected to receive 1 log for write ack with sequence %d and dest client ID %s, instead got %d", sequence, destinationClientID, len(logs))
 	}
 
-	writeAck, err := client.ics26Router.ParseWriteAcknowledgement(logs[0])
+	writeAck, err := c.ics26Router.ParseWriteAcknowledgement(logs[0])
 	if err != nil {
 		return nil, fmt.Errorf("parsing write ack: %w", err)
 	}
 
 	// get the block header to get the timestamp of the tx
 	blockNumber := writeAck.Raw.BlockNumber
-	header, err := client.client.HeaderByNumber(ctx, big.NewInt(int64(blockNumber)))
+	header, err := c.client.HeaderByNumber(ctx, big.NewInt(int64(blockNumber))) //nolint:gosec // G115 bounded conversion
 	if err != nil {
 		return nil, fmt.Errorf("getting block header at height %d: %w", blockNumber, err)
 	}
 
-	signer, err := client.txSigner(ctx, writeAck.Raw.TxHash)
+	signer, err := c.txSigner(ctx, writeAck.Raw.TxHash)
 	if err != nil {
 		// if fetching the signer fails, we would rather miss this info than
 		// potentially hold up a client finding a recv tx because of this, so
@@ -227,12 +227,12 @@ func (client *EVMBridgeClient) FindRecvTx(
 
 	return &BridgeTx{
 		Hash:           writeAck.Raw.TxHash.String(),
-		Timestamp:      time.Unix(int64(header.Time), 0),
+		Timestamp:      time.Unix(int64(header.Time), 0), //nolint:gosec // G115 bounded conversion
 		RelayerAddress: signer,
 	}, nil
 }
 
-func (client *EVMBridgeClient) FindAckTx(
+func (c *EVMBridgeClient) FindAckTx(
 	ctx context.Context,
 	sourceClientID string,
 	_ string,
@@ -244,17 +244,17 @@ func (client *EVMBridgeClient) FindAckTx(
 	}
 
 	const ackEventName = "AckPacket"
-	query := [][]interface{}{{routerABI.Events[ackEventName].ID}, {sourceClientID}, {sequence}}
+	query := [][]any{{routerABI.Events[ackEventName].ID}, {sourceClientID}, {sequence}}
 	topics, err := abi.MakeTopics(query...)
 	if err != nil {
 		return nil, fmt.Errorf("creating topics for filter logs query: %w", err)
 	}
 
 	filter := ethereum.FilterQuery{
-		Addresses: []common.Address{client.routerAddress},
+		Addresses: []common.Address{c.routerAddress},
 		Topics:    topics,
 	}
-	logs, err := client.client.FilterLogs(ctx, filter)
+	logs, err := c.client.FilterLogs(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("filtering ack logs: %w", err)
 	}
@@ -265,19 +265,19 @@ func (client *EVMBridgeClient) FindAckTx(
 		return nil, fmt.Errorf("expected to receive 1 log for ack packet with sequence %d and source client ID %s, instead got %d", sequence, sourceClientID, len(logs))
 	}
 
-	ackPacket, err := client.ics26Router.ParseAckPacket(logs[0])
+	ackPacket, err := c.ics26Router.ParseAckPacket(logs[0])
 	if err != nil {
 		return nil, fmt.Errorf("parsing ack packet log: %w", err)
 	}
 
 	// get the block header to get the timestamp of the tx
 	blockNumber := ackPacket.Raw.BlockNumber
-	header, err := client.client.HeaderByNumber(ctx, big.NewInt(int64(blockNumber)))
+	header, err := c.client.HeaderByNumber(ctx, big.NewInt(int64(blockNumber))) //nolint:gosec // G115 bounded conversion
 	if err != nil {
 		return nil, fmt.Errorf("getting block header at height %d: %w", blockNumber, err)
 	}
 
-	signer, err := client.txSigner(ctx, ackPacket.Raw.TxHash)
+	signer, err := c.txSigner(ctx, ackPacket.Raw.TxHash)
 	if err != nil {
 		// if fetching the signer fails, we would rather miss this info than
 		// potentially hold up a client finding a recv tx because of this, so
@@ -288,12 +288,12 @@ func (client *EVMBridgeClient) FindAckTx(
 
 	return &BridgeTx{
 		Hash:           ackPacket.Raw.TxHash.String(),
-		Timestamp:      time.Unix(int64(header.Time), 0),
+		Timestamp:      time.Unix(int64(header.Time), 0), //nolint:gosec // G115 bounded conversion
 		RelayerAddress: signer,
 	}, nil
 }
 
-func (client *EVMBridgeClient) FindTimeoutTx(
+func (c *EVMBridgeClient) FindTimeoutTx(
 	ctx context.Context,
 	sourceClientID string,
 	_ string,
@@ -305,17 +305,17 @@ func (client *EVMBridgeClient) FindTimeoutTx(
 	}
 
 	const timeoutEventName = "TimeoutPacket"
-	query := [][]interface{}{{routerABI.Events[timeoutEventName].ID}, {sourceClientID}, {sequence}}
+	query := [][]any{{routerABI.Events[timeoutEventName].ID}, {sourceClientID}, {sequence}}
 	topics, err := abi.MakeTopics(query...)
 	if err != nil {
 		return nil, fmt.Errorf("creating topics for filter logs query: %w", err)
 	}
 
 	filter := ethereum.FilterQuery{
-		Addresses: []common.Address{client.routerAddress},
+		Addresses: []common.Address{c.routerAddress},
 		Topics:    topics,
 	}
-	logs, err := client.client.FilterLogs(ctx, filter)
+	logs, err := c.client.FilterLogs(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("filtering for timeout logs: %w", err)
 	}
@@ -326,19 +326,19 @@ func (client *EVMBridgeClient) FindTimeoutTx(
 		return nil, fmt.Errorf("expected to receive 1 log for timeout with sequence %d and source client ID %s, instead got %d", sequence, sourceClientID, len(logs))
 	}
 
-	timeoutPacket, err := client.ics26Router.ParseTimeoutPacket(logs[0])
+	timeoutPacket, err := c.ics26Router.ParseTimeoutPacket(logs[0])
 	if err != nil {
 		return nil, fmt.Errorf("parsing timeout packet: %w", err)
 	}
 
 	// get the block header to get the timestamp of the tx
 	blockNumber := timeoutPacket.Raw.BlockNumber
-	header, err := client.client.HeaderByNumber(ctx, big.NewInt(int64(blockNumber)))
+	header, err := c.client.HeaderByNumber(ctx, big.NewInt(int64(blockNumber))) //nolint:gosec // G115 bounded conversion
 	if err != nil {
 		return nil, fmt.Errorf("getting block header at height %d: %w", blockNumber, err)
 	}
 
-	signer, err := client.txSigner(ctx, timeoutPacket.Raw.TxHash)
+	signer, err := c.txSigner(ctx, timeoutPacket.Raw.TxHash)
 	if err != nil {
 		// if fetching the signer fails, we would rather miss this info than
 		// potentially hold up a client finding a recv tx because of this, so
@@ -349,27 +349,27 @@ func (client *EVMBridgeClient) FindTimeoutTx(
 
 	return &BridgeTx{
 		Hash:           timeoutPacket.Raw.TxHash.String(),
-		Timestamp:      time.Unix(int64(header.Time), 0),
+		Timestamp:      time.Unix(int64(header.Time), 0), //nolint:gosec // G115 bounded conversion
 		RelayerAddress: signer,
 	}, nil
 }
 
-func (client *EVMBridgeClient) DeliverTx(ctx context.Context, bz []byte, address string) (*BridgeTx, error) {
+func (c *EVMBridgeClient) DeliverTx(ctx context.Context, bz []byte, address string) (*BridgeTx, error) {
 	var err error
-	client.txSubmissionLock.Lock()
+	c.txSubmissionLock.Lock()
 	defer func() {
 		if err == nil {
-			client.lastSubmissionTime = time.Now()
+			c.lastSubmissionTime = time.Now()
 		}
-		client.txSubmissionLock.Unlock()
+		c.txSubmissionLock.Unlock()
 	}()
 	select {
-	case <-time.After(time.Until(client.lastSubmissionTime.Add(client.txSubmissionDelay))):
+	case <-time.After(time.Until(c.lastSubmissionTime.Add(c.txSubmissionDelay))):
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
 
-	hash, err := client.signAndSubmitData(ctx, bz, address)
+	hash, err := c.signAndSubmitData(ctx, bz, address)
 	if err != nil {
 		return nil, fmt.Errorf("signing and submitting data to %s: %w", address, err)
 	}
@@ -377,18 +377,18 @@ func (client *EVMBridgeClient) DeliverTx(ctx context.Context, bz []byte, address
 	return &BridgeTx{
 		Hash:           hash.String(),
 		Timestamp:      time.Now().UTC(),
-		RelayerAddress: client.signerAddress.String(),
+		RelayerAddress: c.signerAddress.String(),
 	}, nil
 }
 
-func (client *EVMBridgeClient) PacketWriteAckStatus(
+func (c *EVMBridgeClient) PacketWriteAckStatus(
 	ctx context.Context,
 	hash string,
 	sequence uint64,
 	sourceClientID string,
 	destClientID string,
 ) (db.Ibcv2WriteAckStatus, error) {
-	abi, err := ics26_router.ContractMetaData.GetAbi()
+	routerABI, err := ics26_router.ContractMetaData.GetAbi()
 	if err != nil {
 		return db.Ibcv2WriteAckStatusUNKNOWN, fmt.Errorf("getting ics26 router abi: %w", err)
 	}
@@ -398,8 +398,8 @@ func (client *EVMBridgeClient) PacketWriteAckStatus(
 	// only fetch the tx receipt one per tx hash even if called many times
 	// concurrently. if the call returns an error, cache it for 5s and then
 	// let another caller try again.
-	receipt, err := client.txOnce.Do(hash, func() (*types.Receipt, error) {
-		return client.client.TransactionReceipt(ctx, hashBytes)
+	receipt, err := c.txOnce.Do(hash, func() (*types.Receipt, error) {
+		return c.client.TransactionReceipt(ctx, hashBytes)
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -416,11 +416,11 @@ func (client *EVMBridgeClient) PacketWriteAckStatus(
 		if len(log.Topics) == 0 {
 			continue
 		}
-		if abi.Events[writeAckEventName].ID != log.Topics[0] {
+		if routerABI.Events[writeAckEventName].ID != log.Topics[0] {
 			continue
 		}
 
-		writeAck, err := client.ics26Router.ParseWriteAcknowledgement(*log)
+		writeAck, err := c.ics26Router.ParseWriteAcknowledgement(*log)
 		if err != nil {
 			return db.Ibcv2WriteAckStatusUNKNOWN, fmt.Errorf("parsing write packet event from log %v: %w", *log, err)
 		}
@@ -438,19 +438,19 @@ func (client *EVMBridgeClient) PacketWriteAckStatus(
 	return db.Ibcv2WriteAckStatusUNKNOWN, ErrWriteAckNotFoundForPacket
 }
 
-func (client *EVMBridgeClient) SendPacketsFromTx(ctx context.Context, sourceChainID string, txHash string) ([]*PacketInfo, error) {
+func (c *EVMBridgeClient) SendPacketsFromTx(ctx context.Context, sourceChainID string, txHash string) ([]*PacketInfo, error) {
 	ics26RouterABI, err := ics26_router.ContractMetaData.GetAbi()
 	if err != nil {
 		return nil, fmt.Errorf("getting contract ics26RouterABI for ics_26 router: %w", err)
 	}
 
 	tx := common.HexToHash(txHash)
-	receipt, err := client.client.TransactionReceipt(ctx, tx)
+	receipt, err := c.client.TransactionReceipt(ctx, tx)
 	if err != nil {
-		return nil, fmt.Errorf("getting transaction receipt for tx %s on chain %s: %w", txHash, client.chainID, err)
+		return nil, fmt.Errorf("getting transaction receipt for tx %s on chain %s: %w", txHash, c.chainID, err)
 	}
 
-	var packets []*PacketInfo
+	packets := make([]*PacketInfo, 0, len(receipt.Logs))
 	const sendPacketEvent = "SendPacket"
 	for _, log := range receipt.Logs {
 		if log == nil {
@@ -462,15 +462,15 @@ func (client *EVMBridgeClient) SendPacketsFromTx(ctx context.Context, sourceChai
 		if ics26RouterABI.Events[sendPacketEvent].ID != log.Topics[0] {
 			continue
 		}
-		sendPacket, err := client.ics26Router.ParseSendPacket(*log)
+		sendPacket, err := c.ics26Router.ParseSendPacket(*log)
 		if err != nil {
-			return nil, fmt.Errorf("parsing send packet event from tx %s logs on chain %s: %w", txHash, client.chainID, err)
+			return nil, fmt.Errorf("parsing send packet event from tx %s logs on chain %s: %w", txHash, c.chainID, err)
 		}
 		packets = append(packets, &PacketInfo{
 			Sequence:          sendPacket.Packet.Sequence,
 			SourceClient:      sendPacket.Packet.SourceClient,
 			DestinationClient: sendPacket.Packet.DestClient,
-			TimeoutTimestamp:  time.Unix(int64(sendPacket.Packet.TimeoutTimestamp), 0),
+			TimeoutTimestamp:  time.Unix(int64(sendPacket.Packet.TimeoutTimestamp), 0), //nolint:gosec // G115 bounded conversion
 		})
 	}
 	if len(packets) == 0 {
@@ -480,31 +480,31 @@ func (client *EVMBridgeClient) SendPacketsFromTx(ctx context.Context, sourceChai
 	// query for the block header only after we have found send packets in this
 	// tx this just saves us a call if the tx does not have any send packets in
 	// it
-	header, err := client.client.HeaderByNumber(ctx, receipt.BlockNumber)
+	header, err := c.client.HeaderByNumber(ctx, receipt.BlockNumber)
 	if err != nil {
-		return nil, fmt.Errorf("getting block header for height %s of tx %s o chain %s: %w", receipt.BlockNumber.String(), txHash, client.chainID, err)
+		return nil, fmt.Errorf("getting block header for height %s of tx %s o chain %s: %w", receipt.BlockNumber.String(), txHash, c.chainID, err)
 	}
 
 	for _, packet := range packets {
-		packet.Timestamp = time.Unix(int64(header.Time), 0)
+		packet.Timestamp = time.Unix(int64(header.Time), 0) //nolint:gosec // G115 bounded conversion
 	}
 
 	return packets, nil
 }
 
-func (client *EVMBridgeClient) ShouldRetryTx(ctx context.Context, txHash string, expiry time.Duration, sentTs time.Time) (bool, error) {
-	receipt, err := client.txOnce.Do(txHash, func() (*types.Receipt, error) { return client.client.TransactionReceipt(ctx, common.HexToHash(txHash)) })
+func (c *EVMBridgeClient) ShouldRetryTx(ctx context.Context, txHash string, expiry time.Duration, sentTs time.Time) (bool, error) {
+	receipt, err := c.txOnce.Do(txHash, func() (*types.Receipt, error) { return c.client.TransactionReceipt(ctx, common.HexToHash(txHash)) })
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			// tx not found on chain, check if we have waited longer than the
 			// expiry of on chain time, and if we have, the tx should be
 			// retried
 
-			header, err := client.client.HeaderByNumber(ctx, nil)
+			header, err := c.client.HeaderByNumber(ctx, nil)
 			if err != nil {
 				return false, fmt.Errorf("getting latest block header: %w", err)
 			}
-			headerTs := time.Unix(int64(header.Time), 0).UTC()
+			headerTs := time.Unix(int64(header.Time), 0).UTC() //nolint:gosec // G115 bounded conversion
 
 			expiresAt := sentTs.UTC().Add(expiry)
 			isExpired := expiresAt.Before(headerTs)
@@ -532,7 +532,7 @@ func (client *EVMBridgeClient) ShouldRetryTx(ctx context.Context, txHash string,
 	return false, nil
 }
 
-func (client *EVMBridgeClient) WaitForChain(ctx context.Context) error {
+func (c *EVMBridgeClient) WaitForChain(ctx context.Context) error {
 	const initialTick = time.Millisecond
 	const tick = time.Second
 	ticker := time.NewTicker(initialTick)
@@ -543,12 +543,12 @@ func (client *EVMBridgeClient) WaitForChain(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			latest, err := client.client.HeaderByNumber(ctx, nil)
+			latest, err := c.client.HeaderByNumber(ctx, nil)
 			if err != nil {
 				return fmt.Errorf("getting latest block header: %w", err)
 			}
 
-			latestTime := time.Unix(int64(latest.Time), 0)
+			latestTime := time.Unix(int64(latest.Time), 0) //nolint:gosec // G115 bounded conversion
 			if latestTime.After(now) {
 				return nil
 			}
@@ -574,9 +574,9 @@ func (client *EVMBridgeClient) WaitForChain(ctx context.Context) error {
 	}
 }
 
-func (client *EVMBridgeClient) IsTxFinalized(ctx context.Context, txHash string, offset *uint64) (bool, error) {
+func (c *EVMBridgeClient) IsTxFinalized(ctx context.Context, txHash string, offset *uint64) (bool, error) {
 	hash := common.HexToHash(txHash)
-	receipt, err := client.client.TransactionReceipt(ctx, hash)
+	receipt, err := c.client.TransactionReceipt(ctx, hash)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return false, ErrTxNotFound
@@ -586,7 +586,7 @@ func (client *EVMBridgeClient) IsTxFinalized(ctx context.Context, txHash string,
 
 	// If offset is nil, use native finality mechanism
 	if offset == nil {
-		finalizedHeader, err := client.client.HeaderByNumber(ctx, big.NewInt(rpc.FinalizedBlockNumber.Int64()))
+		finalizedHeader, err := c.client.HeaderByNumber(ctx, big.NewInt(rpc.FinalizedBlockNumber.Int64()))
 		if err != nil {
 			return false, fmt.Errorf("getting finalized block height: %w", err)
 		}
@@ -594,7 +594,7 @@ func (client *EVMBridgeClient) IsTxFinalized(ctx context.Context, txHash string,
 	}
 
 	// If offset is specified, use block offset mechanism
-	latestHeader, err := client.client.HeaderByNumber(ctx, nil)
+	latestHeader, err := c.client.HeaderByNumber(ctx, nil)
 	if err != nil {
 		return false, fmt.Errorf("getting latest block height: %w", err)
 	}
@@ -605,19 +605,19 @@ func (client *EVMBridgeClient) IsTxFinalized(ctx context.Context, txHash string,
 	return latestBlockNumber >= txBlockNumber && (latestBlockNumber-txBlockNumber) >= *offset, nil
 }
 
-func (client *EVMBridgeClient) IsTimestampFinalized(ctx context.Context, timestamp time.Time, offset *uint64) (bool, error) {
+func (c *EVMBridgeClient) IsTimestampFinalized(ctx context.Context, timestamp time.Time, offset *uint64) (bool, error) {
 	var header *types.Header
 	var err error
 
 	if offset == nil {
 		// Use native finality mechanism
-		header, err = client.client.HeaderByNumber(ctx, big.NewInt(rpc.FinalizedBlockNumber.Int64()))
+		header, err = c.client.HeaderByNumber(ctx, big.NewInt(rpc.FinalizedBlockNumber.Int64()))
 		if err != nil {
 			return false, fmt.Errorf("getting finalized block header: %w", err)
 		}
 	} else {
 		// Use offset-based finality (same as attestors)
-		latestHeader, err := client.client.HeaderByNumber(ctx, nil)
+		latestHeader, err := c.client.HeaderByNumber(ctx, nil)
 		if err != nil {
 			return false, fmt.Errorf("getting latest block height: %w", err)
 		}
@@ -625,19 +625,19 @@ func (client *EVMBridgeClient) IsTimestampFinalized(ctx context.Context, timesta
 			return false, nil // Not enough blocks yet
 		}
 		finalizedHeight := latestHeader.Number.Uint64() - *offset
-		header, err = client.client.HeaderByNumber(ctx, big.NewInt(int64(finalizedHeight)))
+		header, err = c.client.HeaderByNumber(ctx, big.NewInt(int64(finalizedHeight))) //nolint:gosec // G115 bounded conversion
 		if err != nil {
 			return false, fmt.Errorf("getting block header at height %d: %w", finalizedHeight, err)
 		}
 	}
 
 	// Check if finalized block's timestamp >= target timestamp
-	blockTime := time.Unix(int64(header.Time), 0)
+	blockTime := time.Unix(int64(header.Time), 0) //nolint:gosec // G115 bounded conversion
 	return !blockTime.Before(timestamp), nil
 }
 
-func (client *EVMBridgeClient) ChainType() config.ChainType {
-	return config.ChainType_EVM
+func (*EVMBridgeClient) ChainType() config.ChainType {
+	return config.ChainTypeEVM
 }
 
 func encodePacked(values ...any) ([]byte, error) {
@@ -659,19 +659,19 @@ func encodePacked(values ...any) ([]byte, error) {
 	return bz.Bytes(), nil
 }
 
-func (client *EVMBridgeClient) signAndSubmitData(ctx context.Context, bz []byte, address string) (common.Hash, error) {
-	tx, err := client.newTx(ctx, bz, address)
+func (c *EVMBridgeClient) signAndSubmitData(ctx context.Context, bz []byte, address string) (common.Hash, error) {
+	tx, err := c.newTx(ctx, bz, address)
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("creating tx to sign and submit: %w", err)
 	}
 
-	signerFn := signingevm.EthereumSignerToBindSignerFn(ctx, client.signer, client.chainID)
-	signedTx, err := signerFn(client.signerAddress, tx)
+	signerFn := signingevm.EthereumSignerToBindSignerFn(ctx, c.signer, c.chainID)
+	signedTx, err := signerFn(c.signerAddress, tx)
 	if err != nil {
-		return common.Hash{}, fmt.Errorf("signing tx with address %s: %w", client.signerAddress.String(), err)
+		return common.Hash{}, fmt.Errorf("signing tx with address %s: %w", c.signerAddress.String(), err)
 	}
 
-	if err = client.client.SendTransaction(ctx, signedTx); err != nil {
+	if err = c.client.SendTransaction(ctx, signedTx); err != nil {
 		return common.Hash{}, fmt.Errorf("sending signed transaction: %w", err)
 	}
 
@@ -696,21 +696,21 @@ func selectNonceWithFallback(ctx context.Context, chainID string, pendingNonce, 
 	return pendingNonce
 }
 
-func (client *EVMBridgeClient) newTx(ctx context.Context, bz []byte, address string) (*types.Transaction, error) {
+func (c *EVMBridgeClient) newTx(ctx context.Context, bz []byte, address string) (*types.Transaction, error) {
 	to := common.HexToAddress(address)
 
-	head, err := client.client.HeaderByNumber(ctx, nil)
+	head, err := c.client.HeaderByNumber(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("getting latest block header: %w", err)
 	}
 
-	gasTipCap, err := client.client.SuggestGasTipCap(ctx)
+	gasTipCap, err := c.client.SuggestGasTipCap(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("getting suggested gas price for chain %s: %w", client.chainID, err)
+		return nil, fmt.Errorf("getting suggested gas price for chain %s: %w", c.chainID, err)
 	}
 	gasFeeCap := new(big.Int).Add(gasTipCap, new(big.Int).Mul(head.BaseFee, big.NewInt(2)))
 
-	code, err := client.client.PendingCodeAt(ctx, to)
+	code, err := c.client.PendingCodeAt(ctx, to)
 	if err != nil {
 		return nil, fmt.Errorf("getting pending code at for address %s: %w", to.String(), err)
 	}
@@ -718,79 +718,77 @@ func (client *EVMBridgeClient) newTx(ctx context.Context, bz []byte, address str
 		return nil, fmt.Errorf("code no length response when getting pending code for address %s: %w", to.String(), err)
 	}
 
-	msg := ethereum.CallMsg{From: client.signerAddress, To: &to, Data: bz}
-	gasLimit, err := client.client.EstimateGas(ctx, msg)
+	msg := ethereum.CallMsg{From: c.signerAddress, To: &to, Data: bz}
+	gasLimit, err := c.client.EstimateGas(ctx, msg)
 	if err != nil {
 		return nil, fmt.Errorf("estimating gas to deliver msg to %s: %w", to.String(), err)
 	}
 
-	pendingNonce, err := client.client.PendingNonceAt(ctx, client.signerAddress)
+	pendingNonce, err := c.client.PendingNonceAt(ctx, c.signerAddress)
 	if err != nil {
-		return nil, fmt.Errorf("getting pending nonce for address %s on chain %s: %w", client.signerAddress.String(), client.chainID, err)
+		return nil, fmt.Errorf("getting pending nonce for address %s on chain %s: %w", c.signerAddress.String(), c.chainID, err)
 	}
-	confirmedNonce, err := client.client.NonceAt(ctx, client.signerAddress, nil)
+	confirmedNonce, err := c.client.NonceAt(ctx, c.signerAddress, nil)
 	if err != nil {
-		return nil, fmt.Errorf("getting confirmed nonce for address %s on chain %s: %w", client.signerAddress.String(), client.chainID, err)
+		return nil, fmt.Errorf("getting confirmed nonce for address %s on chain %s: %w", c.signerAddress.String(), c.chainID, err)
 	}
-	nonce := selectNonceWithFallback(ctx, client.chainID, pendingNonce, confirmedNonce)
+	nonce := selectNonceWithFallback(ctx, c.chainID, pendingNonce, confirmedNonce)
 
 	inner := &types.DynamicFeeTx{
 		To:        &to,
 		Nonce:     nonce,
-		GasFeeCap: client.adjustGasFeeCap(gasFeeCap),
-		GasTipCap: client.adjustGasTipCap(gasTipCap),
+		GasFeeCap: c.adjustGasFeeCap(gasFeeCap),
+		GasTipCap: c.adjustGasTipCap(gasTipCap),
 		Gas:       gasLimit,
 		Data:      bz,
 	}
 	return types.NewTx(inner), nil
 }
 
-func (client *EVMBridgeClient) adjustGasFeeCap(gasFeeCap *big.Int) *big.Int {
+func (c *EVMBridgeClient) adjustGasFeeCap(gasFeeCap *big.Int) *big.Int {
 	if gasFeeCap == nil {
 		return nil
 	}
-	if client.gasFeeCapMultiplier == nil {
+	if c.gasFeeCapMultiplier == nil {
 		return gasFeeCap
 	}
 
-	adjustedFeeCap := gasFeeCap
 	feeCapFloat := new(big.Float).SetInt(gasFeeCap)
-	adjustedFeeCap, _ = new(big.Float).Mul(feeCapFloat, big.NewFloat(*client.gasFeeCapMultiplier)).Int(nil)
+	adjustedFeeCap, _ := new(big.Float).Mul(feeCapFloat, big.NewFloat(*c.gasFeeCapMultiplier)).Int(nil)
 
 	return adjustedFeeCap
 }
 
-func (client *EVMBridgeClient) adjustGasTipCap(gasTipCap *big.Int) *big.Int {
+func (c *EVMBridgeClient) adjustGasTipCap(gasTipCap *big.Int) *big.Int {
 	if gasTipCap == nil {
 		return nil
 	}
-	if client.gasTipCapMultiplier == nil {
+	if c.gasTipCapMultiplier == nil {
 		return gasTipCap
 	}
-	adjustedTipCap := gasTipCap
 	tipCapFloat := new(big.Float).SetInt(gasTipCap)
-	adjustedTipCap, _ = new(big.Float).Mul(tipCapFloat, big.NewFloat(*client.gasTipCapMultiplier)).Int(nil)
+	adjustedTipCap, _ := new(big.Float).Mul(tipCapFloat, big.NewFloat(*c.gasTipCapMultiplier)).Int(nil)
 
 	return adjustedTipCap
 }
 
-func (client *EVMBridgeClient) LatestOnChainTimestamp(ctx context.Context) (time.Time, error) {
-	return client.latestTimestampOnce.Do("key", func() (time.Time, error) {
-		header, err := client.client.HeaderByNumber(ctx, nil)
+func (c *EVMBridgeClient) LatestOnChainTimestamp(ctx context.Context) (time.Time, error) {
+	return c.latestTimestampOnce.Do("key", func() (time.Time, error) {
+		header, err := c.client.HeaderByNumber(ctx, nil)
 		if err != nil {
 			return time.Time{}, fmt.Errorf("getting latest header on chain: %w", err)
 		}
-		return time.Unix(int64(header.Time), 0), nil
+		return time.Unix(int64(header.Time), 0), nil //nolint:gosec // G115 bounded conversion
 	})
 }
 
-func (client *EVMBridgeClient) SignerGasTokenBalance(ctx context.Context) (*big.Int, error) {
-	return client.client.BalanceAt(ctx, client.signerAddress, nil)
+func (c *EVMBridgeClient) SignerGasTokenBalance(ctx context.Context) (*big.Int, error) {
+	return c.client.BalanceAt(ctx, c.signerAddress, nil)
 }
 
-func (client *EVMBridgeClient) TxFee(ctx context.Context, txHash string) (*big.Int, error) {
-	receipt, err := client.txOnce.Do(txHash, func() (*types.Receipt, error) {
-		return client.client.TransactionReceipt(ctx, common.HexToHash(txHash))
+func (c *EVMBridgeClient) TxFee(ctx context.Context, txHash string) (*big.Int, error) {
+	receipt, err := c.txOnce.Do(txHash, func() (*types.Receipt, error) {
+		return c.client.TransactionReceipt(ctx, common.HexToHash(txHash))
 	})
 	if err != nil {
 		return nil, fmt.Errorf("getting transaction receipt for tx hash %s: %w", txHash, err)
@@ -798,9 +796,9 @@ func (client *EVMBridgeClient) TxFee(ctx context.Context, txHash string) (*big.I
 	return new(big.Int).Mul(receipt.EffectiveGasPrice, new(big.Int).SetUint64(receipt.GasUsed)), nil
 }
 
-func (client *EVMBridgeClient) TxExecutionStatus(ctx context.Context, txHash string) (TxExecutionStatus, error) {
-	receipt, err := client.txOnce.Do(txHash, func() (*types.Receipt, error) {
-		return client.client.TransactionReceipt(ctx, common.HexToHash(txHash))
+func (c *EVMBridgeClient) TxExecutionStatus(ctx context.Context, txHash string) (TxExecutionStatus, error) {
+	receipt, err := c.txOnce.Do(txHash, func() (*types.Receipt, error) {
+		return c.client.TransactionReceipt(ctx, common.HexToHash(txHash))
 	})
 	if err != nil {
 		return TxExecutionStatus{}, fmt.Errorf("getting transaction receipt for tx hash %s: %w", txHash, err)
@@ -816,13 +814,13 @@ func (client *EVMBridgeClient) TxExecutionStatus(ctx context.Context, txHash str
 	}, nil
 }
 
-func (client *EVMBridgeClient) txSigner(ctx context.Context, hash common.Hash) (string, error) {
-	chainID, ok := new(big.Int).SetString(client.chainID, 10)
+func (c *EVMBridgeClient) txSigner(ctx context.Context, hash common.Hash) (string, error) {
+	chainID, ok := new(big.Int).SetString(c.chainID, 10)
 	if !ok {
-		return "", fmt.Errorf("could not convert chain id %s to *big.Int", client.chainID)
+		return "", fmt.Errorf("could not convert chain id %s to *big.Int", c.chainID)
 	}
 
-	tx, _, err := client.client.TransactionByHash(ctx, hash)
+	tx, _, err := c.client.TransactionByHash(ctx, hash)
 	if err != nil {
 		return "", fmt.Errorf("getting transaction for hash %s: %w", hash.String(), err)
 	}
@@ -835,7 +833,7 @@ func (client *EVMBridgeClient) txSigner(ctx context.Context, hash common.Hash) (
 	return sender.String(), nil
 }
 
-func (client *EVMBridgeClient) SendTransfer(
+func (c *EVMBridgeClient) SendTransfer(
 	ctx context.Context,
 	clientID string,
 	denom string,
@@ -843,29 +841,29 @@ func (client *EVMBridgeClient) SendTransfer(
 	amount *big.Int,
 	memo string,
 ) (string, error) {
-	signerFn := signingevm.EthereumSignerToBindSignerFn(ctx, client.signer, client.chainID)
+	signerFn := signingevm.EthereumSignerToBindSignerFn(ctx, c.signer, c.chainID)
 	opts := &bind.TransactOpts{
-		From:    client.signerAddress,
+		From:    c.signerAddress,
 		Signer:  signerFn,
 		Context: ctx,
 	}
 
-	erc20Contract, err := erc20.NewContract(common.HexToAddress(denom), client.client)
+	erc20Contract, err := erc20.NewContract(common.HexToAddress(denom), c.client)
 	if err != nil {
 		return "", fmt.Errorf("creating erc20 contract for denom %s: %w", denom, err)
 	}
 
-	currentApproval, err := erc20Contract.Allowance(nil, client.signerAddress, client.transferAddress)
+	currentApproval, err := erc20Contract.Allowance(nil, c.signerAddress, c.transferAddress)
 	if err != nil {
-		return "", fmt.Errorf("getting current allowance for ics20 transfer %s to spend %s from wallet %s: %w", client.transferAddress.String(), denom, client.signerAddress.String(), err)
+		return "", fmt.Errorf("getting current allowance for ics20 transfer %s to spend %s from wallet %s: %w", c.transferAddress.String(), denom, c.signerAddress.String(), err)
 	}
 
 	if currentApproval.Cmp(amount) < 0 {
-		tx, err := erc20Contract.Approve(opts, client.transferAddress, amount)
+		tx, err := erc20Contract.Approve(opts, c.transferAddress, amount)
 		if err != nil {
-			return "", fmt.Errorf("approving %s to be spent from wallet %s by ics20 transfer %s: %w", amount.String(), client.signerAddress.String(), client.transferAddress.String(), err)
+			return "", fmt.Errorf("approving %s to be spent from wallet %s by ics20 transfer %s: %w", amount.String(), c.signerAddress.String(), c.transferAddress.String(), err)
 		}
-		if err = client.WaitForTx(ctx, tx.Hash().String()); err != nil {
+		if err = c.WaitForTx(ctx, tx.Hash().String()); err != nil {
 			return "", fmt.Errorf("waiting for receipt of erc20 approval tx %s: %w", tx.Hash().String(), err)
 		}
 	}
@@ -878,30 +876,30 @@ func (client *EVMBridgeClient) SendTransfer(
 		Receiver:         receiver,
 		SourceClient:     clientID,
 		DestPort:         transferPort,
-		TimeoutTimestamp: uint64(time.Now().Add(timeout).UTC().Unix()),
+		TimeoutTimestamp: uint64(time.Now().Add(timeout).UTC().Unix()), //nolint:gosec // G115 bounded conversion
 		Memo:             memo,
 	}
-	tx, err := client.ics20Transfer.SendTransfer(opts, msg)
+	tx, err := c.ics20Transfer.SendTransfer(opts, msg)
 	if err != nil {
-		return "", fmt.Errorf("sending transfer from %s of %s %s to %s from client %s: %w", client.signerAddress, amount, denom, receiver, clientID, err)
+		return "", fmt.Errorf("sending transfer from %s of %s %s to %s from client %s: %w", c.signerAddress, amount, denom, receiver, clientID, err)
 	}
 
-	if err = client.WaitForTx(ctx, tx.Hash().String()); err != nil {
+	if err = c.WaitForTx(ctx, tx.Hash().String()); err != nil {
 		return "", fmt.Errorf("waiting for receipt of send transfer tx %s: %w", tx.Hash().String(), err)
 	}
 	return tx.Hash().String(), nil
 }
 
-func (client *EVMBridgeClient) TimestampAtHeight(ctx context.Context, height uint64) (time.Time, error) {
-	header, err := client.client.HeaderByNumber(ctx, big.NewInt(int64(height)))
+func (c *EVMBridgeClient) TimestampAtHeight(ctx context.Context, height uint64) (time.Time, error) {
+	header, err := c.client.HeaderByNumber(ctx, big.NewInt(int64(height))) //nolint:gosec // G115 bounded conversion
 	if err != nil {
 		return time.Time{}, fmt.Errorf("getting block header at height %d: %w", height, err)
 	}
-	return time.Unix(int64(header.Time), 0).UTC(), nil
+	return time.Unix(int64(header.Time), 0).UTC(), nil //nolint:gosec // G115 bounded conversion
 }
 
-func (client *EVMBridgeClient) ClientState(ctx context.Context, clientID string) (ClientState, error) {
-	addr, err := client.ics26Router.GetClient(&bind.CallOpts{Context: ctx}, clientID)
+func (c *EVMBridgeClient) ClientState(ctx context.Context, clientID string) (ClientState, error) {
+	addr, err := c.ics26Router.GetClient(&bind.CallOpts{Context: ctx}, clientID)
 	if err != nil {
 		return ClientState{}, fmt.Errorf("getting client %s: %w", clientID, err)
 	}
@@ -909,7 +907,7 @@ func (client *EVMBridgeClient) ClientState(ctx context.Context, clientID string)
 		return ClientState{}, fmt.Errorf("could not find client %s: %w", clientID, err)
 	}
 
-	lightClient, err := sp1_ics07_tendermint.NewContract(addr, client.client)
+	lightClient, err := sp1_ics07_tendermint.NewContract(addr, c.client)
 	if err != nil {
 		return ClientState{}, fmt.Errorf("creating new instance of sp1 ics07 tendermint contract at address %s: %w", addr.String(), err)
 	}
@@ -927,7 +925,7 @@ func (client *EVMBridgeClient) ClientState(ctx context.Context, clientID string)
 	}, nil
 }
 
-func (client *EVMBridgeClient) WaitForTx(ctx context.Context, hash string) error {
+func (c *EVMBridgeClient) WaitForTx(ctx context.Context, hash string) error {
 	const tick = time.Second * 3
 	ticker := time.NewTicker(tick)
 
@@ -940,7 +938,7 @@ func (client *EVMBridgeClient) WaitForTx(ctx context.Context, hash string) error
 		case <-ticker.C:
 			ticker.Stop()
 
-			receipt, err := client.client.TransactionReceipt(ctx, common.HexToHash(hash))
+			receipt, err := c.client.TransactionReceipt(ctx, common.HexToHash(hash))
 			if err != nil {
 				ticker.Reset(tick)
 				continue
@@ -958,6 +956,6 @@ func (client *EVMBridgeClient) WaitForTx(ctx context.Context, hash string) error
 	}
 }
 
-func (client *EVMBridgeClient) GetTransactionSender(ctx context.Context, hash string) (string, error) {
-	return client.txSigner(ctx, common.HexToHash(hash))
+func (c *EVMBridgeClient) GetTransactionSender(ctx context.Context, hash string) (string, error) {
+	return c.txSigner(ctx, common.HexToHash(hash))
 }

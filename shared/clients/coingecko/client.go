@@ -9,10 +9,11 @@ import (
 	"net/http"
 	"time"
 
-	utils "github.com/cosmos/ibc-relayer/shared/clients/utils"
+	"github.com/cosmos/ibc-relayer/shared/clients/utils"
 	"github.com/cosmos/ibc-relayer/shared/config"
 )
 
+//nolint:revive // CoingeckoClient is the canonical name across the codebase
 type CoingeckoClient struct {
 	client  utils.HTTPClient
 	baseURL string
@@ -23,9 +24,9 @@ func NewCoingeckoClient(client utils.HTTPClient, baseURL string, apiKey string) 
 	return &CoingeckoClient{client, baseURL, apiKey}
 }
 
-func DefaultCoingeckoClient(config config.CoingeckoConfig) *CoingeckoClient {
-	client := utils.DefaultRateLimitedHTTPClient(config.RequestsPerMinute)
-	return NewCoingeckoClient(client, config.BaseURL, config.APIKey)
+func DefaultCoingeckoClient(cfg config.CoingeckoConfig) *CoingeckoClient {
+	client := utils.DefaultRateLimitedHTTPClient(cfg.RequestsPerMinute)
+	return NewCoingeckoClient(client, cfg.BaseURL, cfg.APIKey)
 }
 
 func (c *CoingeckoClient) GetSimplePrice(ctx context.Context, coingeckoID string, currency string) (float64, error) {

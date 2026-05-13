@@ -18,20 +18,20 @@ import (
 type ChainType string
 
 const (
-	ChainType_COSMOS ChainType = "cosmos"
-	ChainType_EVM    ChainType = "evm"
-	ChainType_SVM    ChainType = "svm"
+	ChainTypeCOSMOS ChainType = "cosmos"
+	ChainTypeEVM    ChainType = "evm"
+	ChainTypeSVM    ChainType = "svm"
 )
 
 type BridgeType string
 
 const (
-	BridgeType_IBCV2 BridgeType = "ibcv2"
+	BridgeTypeIBCV2 BridgeType = "ibcv2"
 )
 
 func (t BridgeType) ToDBBridgeType() (db.BridgeType, error) {
 	switch t {
-	case BridgeType_IBCV2:
+	case BridgeTypeIBCV2:
 		return db.BridgeTypeIbcv2, nil
 	default:
 		return "", fmt.Errorf("invalid bridge type %s", t)
@@ -41,8 +41,8 @@ func (t BridgeType) ToDBBridgeType() (db.BridgeType, error) {
 type ChainEnvironment string
 
 const (
-	ChainEnvironment_MAINNET ChainEnvironment = "mainnet"
-	ChainEnvironment_TESTNET ChainEnvironment = "testnet"
+	ChainEnvironmentMAINNET ChainEnvironment = "mainnet"
+	ChainEnvironmentTESTNET ChainEnvironment = "testnet"
 )
 
 const (
@@ -51,13 +51,13 @@ const (
 
 // Config Schema
 type Config struct {
-	Postgres       PostgresConfig         `yaml:"postgres"`
-	Chains         map[string]ChainConfig `yaml:"chains"`
-	Metrics        MetricsConfig          `yaml:"metrics"`
-	RelayerAPI     RelayerAPIConfig       `yaml:"relayer_api"`
-	Coingecko      CoingeckoConfig        `yaml:"coingecko,omitempty"`
-	IBCV2ProofAPI IBCV2ProofAPIConfig   `yaml:"ibcv2_proof_api"`
-	Signing        SigningConfig          `yaml:"signing"`
+	Postgres      PostgresConfig         `yaml:"postgres"`
+	Chains        map[string]ChainConfig `yaml:"chains"`
+	Metrics       MetricsConfig          `yaml:"metrics"`
+	RelayerAPI    RelayerAPIConfig       `yaml:"relayer_api"`
+	Coingecko     CoingeckoConfig        `yaml:"coingecko,omitempty"`
+	IBCV2ProofAPI IBCV2ProofAPIConfig    `yaml:"ibcv2_proof_api"`
+	Signing       SigningConfig          `yaml:"signing"`
 }
 
 type SigningConfig struct {
@@ -161,7 +161,7 @@ type ChainConfig struct {
 	GasTokenCoingeckoID      *string                                       `yaml:"gas_token_coingecko_id"`
 	GasTokenDecimals         uint8                                         `yaml:"gas_token_decimals"`
 	SignerGasAlertThresholds map[BridgeType]SignerGasAlertThresholdsConfig `yaml:"signer_gas_alert_thresholds"`
-	IBCV2                    *IBCV2Config                                 `yaml:"ibcv2"`
+	IBCV2                    *IBCV2Config                                  `yaml:"ibcv2"`
 	SupportedBridges         []BridgeType                                  `yaml:"supported_bridges"`
 }
 
@@ -220,7 +220,7 @@ type SVMConfig struct {
 type CoingeckoConfig struct {
 	BaseURL              string        `yaml:"base_url"`
 	RequestsPerMinute    int           `yaml:"requests_per_minute"`
-	APIKey               string        `yaml:"api_key"`
+	APIKey               string        `yaml:"api_key"` // #nosec G117 -- legitimate config field for upstream API credential
 	CacheRefreshInterval time.Duration `yaml:"cache_refresh_interval"`
 }
 
@@ -255,18 +255,20 @@ func (c Config) Validate() error {
 
 type configContextKey struct{}
 
+//nolint:revive // ConfigReaderContext is the canonical name across the codebase
 func ConfigReaderContext(ctx context.Context, reader ConfigReader) context.Context {
 	return context.WithValue(ctx, configContextKey{}, reader)
 }
 
 func GetConfigReader(ctx context.Context) ConfigReader {
-	return ctx.Value(configContextKey{}).(ConfigReader)
+	return ctx.Value(configContextKey{}).(ConfigReader) //nolint:revive // panic is desired if not set
 }
 
 // Complex Config Queries
 
 var ErrNoSignerForBridge = errors.New("no signer for bridge")
 
+//nolint:revive // ConfigReader is the canonical name across the codebase
 type ConfigReader interface {
 	Config() Config
 
@@ -314,15 +316,15 @@ func (r *configReader) createIndexes() {
 	}
 }
 
-func (r configReader) Config() Config {
+func (r *configReader) Config() Config {
 	return r.config
 }
 
-func (r configReader) GetIBCV2ProofRelayerConfig() IBCV2ProofAPIConfig {
+func (r *configReader) GetIBCV2ProofRelayerConfig() IBCV2ProofAPIConfig {
 	return r.config.IBCV2ProofAPI
 }
 
-func (r configReader) GetIBCV2Chains() []ChainConfig {
+func (r *configReader) GetIBCV2Chains() []ChainConfig {
 	var chains []ChainConfig
 	for _, chain := range r.config.Chains {
 		if chain.IBCV2 != nil {
@@ -332,7 +334,7 @@ func (r configReader) GetIBCV2Chains() []ChainConfig {
 	return chains
 }
 
-func (r configReader) GetIBCV2Config(chainID string) (*IBCV2Config, error) {
+func (r *configReader) GetIBCV2Config(chainID string) (*IBCV2Config, error) {
 	chain, err := r.GetChainConfig(chainID)
 	if err != nil {
 		return nil, err
@@ -343,7 +345,7 @@ func (r configReader) GetIBCV2Config(chainID string) (*IBCV2Config, error) {
 
 // GetClientCounterpartyChainID returns the chainID of the chain that is being
 // tracked by the clientID on chainID
-func (r configReader) GetClientCounterpartyChainID(chainID string, clientID string) (string, error) {
+func (r *configReader) GetClientCounterpartyChainID(chainID string, clientID string) (string, error) {
 	chain, err := r.GetChainConfig(chainID)
 	if err != nil {
 		return "", err
@@ -359,11 +361,11 @@ func (r configReader) GetClientCounterpartyChainID(chainID string, clientID stri
 	return trackedChain, nil
 }
 
-func (r configReader) PostgresIAMAuthEnabled() bool {
+func (r *configReader) PostgresIAMAuthEnabled() bool {
 	return r.config.Postgres.IAMAuthEnabled
 }
 
-func (r configReader) GetPostgresConnString() string {
+func (r *configReader) GetPostgresConnString() string {
 	dbUser, ok := os.LookupEnv("POSTGRES_USER")
 	if !ok {
 		dbUser = "relayer"
@@ -384,7 +386,7 @@ func (r configReader) GetPostgresConnString() string {
 	)
 }
 
-func (r configReader) GetChainEnvironment(chainID string) (ChainEnvironment, error) {
+func (r *configReader) GetChainEnvironment(chainID string) (ChainEnvironment, error) {
 	chain, ok := r.chainIDIndex[chainID]
 	if !ok {
 		return "", fmt.Errorf("chain id %s not found", chainID)
@@ -393,24 +395,24 @@ func (r configReader) GetChainEnvironment(chainID string) (ChainEnvironment, err
 	return chain.Environment, nil
 }
 
-func (r configReader) GetRPCEndpoint(chainID string) (string, error) {
+func (r *configReader) GetRPCEndpoint(chainID string) (string, error) {
 	chain, ok := r.chainIDIndex[chainID]
 	if !ok {
 		return "", fmt.Errorf("chain id %s not found", chainID)
 	}
 
 	switch chain.Type {
-	case ChainType_COSMOS:
+	case ChainTypeCOSMOS:
 		if chain.Cosmos == nil {
 			return "", fmt.Errorf("cosmos config not set for chain %s", chainID)
 		}
 		return chain.Cosmos.RPC, nil
-	case ChainType_EVM:
+	case ChainTypeEVM:
 		if chain.EVM == nil {
 			return "", fmt.Errorf("evm config not set for chain %s", chainID)
 		}
 		return chain.EVM.RPC, nil
-	case ChainType_SVM:
+	case ChainTypeSVM:
 		if chain.SVM == nil {
 			return "", fmt.Errorf("svm config not set for chain %s", chainID)
 		}
@@ -420,28 +422,29 @@ func (r configReader) GetRPCEndpoint(chainID string) (string, error) {
 	}
 }
 
-func (r configReader) GetGRPCEndpoint(chainID string) (string, bool, error) {
+func (r *configReader) GetGRPCEndpoint(chainID string) (string, bool, error) {
 	chain, ok := r.chainIDIndex[chainID]
 	if !ok {
 		return "", false, fmt.Errorf("chain id %s not found", chainID)
 	}
 
 	switch chain.Type {
-	case ChainType_COSMOS:
+	case ChainTypeCOSMOS:
 		if chain.Cosmos == nil {
 			return "", false, fmt.Errorf("cosmos config not set for chain %s", chainID)
 		}
 		return chain.Cosmos.GRPC, chain.Cosmos.GRPCTLSEnabled, nil
-	case ChainType_EVM:
-		return "", false, fmt.Errorf("grpc endpoints not supported for chain type %s", ChainType_EVM)
-	case ChainType_SVM:
-		return "", false, fmt.Errorf("grpc endpoints not supported for chain type %s", ChainType_SVM)
+	case ChainTypeEVM:
+		return "", false, fmt.Errorf("grpc endpoints not supported for chain type %s", ChainTypeEVM)
+	case ChainTypeSVM:
+		return "", false, fmt.Errorf("grpc endpoints not supported for chain type %s", ChainTypeSVM)
 	default:
 		return "", false, fmt.Errorf("unknown chain type %s for chain %s", chain.Type, chainID)
 	}
 }
 
-func (r configReader) GetBasicAuth(chainID string) (*string, error) {
+//nolint:nilnil // nil basic auth indicates no auth configured (idiomatic for this API)
+func (r *configReader) GetBasicAuth(chainID string) (*string, error) {
 	chain, ok := r.chainIDIndex[chainID]
 	if !ok {
 		return nil, fmt.Errorf("chain id %s not found", chainID)
@@ -449,17 +452,17 @@ func (r configReader) GetBasicAuth(chainID string) (*string, error) {
 
 	var basicAuthVar string
 	switch chain.Type {
-	case ChainType_COSMOS:
+	case ChainTypeCOSMOS:
 		if chain.Cosmos == nil {
 			return nil, fmt.Errorf("cosmos config not set for chain %s", chainID)
 		}
 		basicAuthVar = chain.Cosmos.RPCBasicAuthVar
-	case ChainType_EVM:
+	case ChainTypeEVM:
 		if chain.EVM == nil {
 			return nil, fmt.Errorf("evm config not set for chain %s", chainID)
 		}
 		basicAuthVar = chain.EVM.RPCBasicAuthVar
-	case ChainType_SVM:
+	case ChainTypeSVM:
 		// SVM chains don't support basic auth
 		return nil, nil
 	default:
@@ -473,7 +476,7 @@ func (r configReader) GetBasicAuth(chainID string) (*string, error) {
 	return nil, nil
 }
 
-func (r configReader) GetChainConfig(chainID string) (ChainConfig, error) {
+func (r *configReader) GetChainConfig(chainID string) (ChainConfig, error) {
 	chain, ok := r.chainIDIndex[chainID]
 	if !ok {
 		return ChainConfig{}, fmt.Errorf("chain id %s not found", chainID)
@@ -482,7 +485,7 @@ func (r configReader) GetChainConfig(chainID string) (ChainConfig, error) {
 	return chain, nil
 }
 
-func (r configReader) GetAllChainConfigsOfType(chainType ChainType) ([]ChainConfig, error) {
+func (r *configReader) GetAllChainConfigsOfType(chainType ChainType) ([]ChainConfig, error) {
 	var chains []ChainConfig
 	for _, chain := range r.config.Chains {
 		if chain.Type == chainType {
@@ -492,15 +495,15 @@ func (r configReader) GetAllChainConfigsOfType(chainType ChainType) ([]ChainConf
 	return chains, nil
 }
 
-func (r configReader) GetAllChains() []ChainConfig {
-	var chains []ChainConfig
+func (r *configReader) GetAllChains() []ChainConfig {
+	chains := make([]ChainConfig, 0, len(r.config.Chains))
 	for _, chain := range r.config.Chains {
 		chains = append(chains, chain)
 	}
 	return chains
 }
 
-func (r configReader) GetSignerGasAlertThresholds(chainID string, bridgeType BridgeType) (warningThreshold, criticalThreshold *big.Int, err error) {
+func (r *configReader) GetSignerGasAlertThresholds(chainID string, bridgeType BridgeType) (*big.Int, *big.Int, error) {
 	chain, err := r.GetChainConfig(chainID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("getting chain config for chain %s: %w", chainID, err)
@@ -511,29 +514,29 @@ func (r configReader) GetSignerGasAlertThresholds(chainID string, bridgeType Bri
 		return nil, nil, ErrNoSignerForBridge
 	}
 
-	warningThreshold, ok = new(big.Int).SetString(gasConfig.WarningThreshold, 10)
+	warningThreshold, ok := new(big.Int).SetString(gasConfig.WarningThreshold, 10)
 	if !ok {
-		return nil, nil, fmt.Errorf("failed to parse gas balance warning threshold amount")
+		return nil, nil, errors.New("failed to parse gas balance warning threshold amount")
 	}
-	criticalThreshold, ok = new(big.Int).SetString(gasConfig.CriticalThreshold, 10)
+	criticalThreshold, ok := new(big.Int).SetString(gasConfig.CriticalThreshold, 10)
 	if !ok {
-		return nil, nil, fmt.Errorf("failed to parse gas balance critical threshold amount")
+		return nil, nil, errors.New("failed to parse gas balance critical threshold amount")
 	}
 
 	return warningThreshold, criticalThreshold, nil
 }
 
-func (r configReader) GetCoingeckoConfig() CoingeckoConfig {
+func (r *configReader) GetCoingeckoConfig() CoingeckoConfig {
 	return r.config.Coingecko
 }
 
-func (r configReader) GetRelayerAPIConfig() RelayerAPIConfig {
+func (r *configReader) GetRelayerAPIConfig() RelayerAPIConfig {
 	return r.config.RelayerAPI
 }
 
 // GetAllIBCV2ClientsToCounterparties, returns a map of chainIDs -> map of client
 // ids -> counterparty chain IDs
-func (r configReader) GetAllIBCV2ClientsToCounterparties() (map[string]map[string]string, error) {
+func (r *configReader) GetAllIBCV2ClientsToCounterparties() (map[string]map[string]string, error) {
 	clientsToCounterparties := make(map[string]map[string]string)
 	chains := r.GetIBCV2Chains()
 	for _, chain := range chains {
@@ -547,7 +550,7 @@ func (r configReader) GetAllIBCV2ClientsToCounterparties() (map[string]map[strin
 }
 
 func UnaryServerInterceptor(configReader ConfigReader) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		return handler(ConfigReaderContext(ctx, configReader), req)
 	}
 }

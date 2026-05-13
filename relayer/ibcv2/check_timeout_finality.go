@@ -28,8 +28,8 @@ func NewCheckTimeoutFinalityProcessor(
 
 var ErrTimeoutNotFinalized = errors.New("timeout tx not finalized")
 
-func (processor CheckTimeoutFinalityProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
-	destinationChainClient, err := processor.bridgeClientManager.GetClient(ctx, transfer.GetDestinationChainID())
+func (p CheckTimeoutFinalityProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
+	destinationChainClient, err := p.bridgeClientManager.GetClient(ctx, transfer.GetDestinationChainID())
 	if err != nil {
 		return nil, fmt.Errorf("getting destination bridge client for chain %s: %w", transfer.GetDestinationChainID(), err)
 	}
@@ -39,7 +39,7 @@ func (processor CheckTimeoutFinalityProcessor) Process(ctx context.Context, tran
 	finalized, err := destinationChainClient.IsTimestampFinalized(
 		ctx,
 		transfer.GetPacketTimeoutTimestamp(),
-		processor.destinationFinalityOffset,
+		p.destinationFinalityOffset,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("checking timeout finality on chain %s: %w", transfer.GetDestinationChainID(), err)
@@ -51,7 +51,7 @@ func (processor CheckTimeoutFinalityProcessor) Process(ctx context.Context, tran
 	return transfer, nil
 }
 
-func (processor CheckTimeoutFinalityProcessor) Cancel(transfer *IBCV2Transfer, err error) {
+func (CheckTimeoutFinalityProcessor) Cancel(transfer *IBCV2Transfer, err error) {
 	// log error, mark packet as failed if fatal error and we cannot retry, if
 	// not fatal error, do nothing so it will be retried by this stage
 	if errors.Is(err, ErrTimeoutNotFinalized) {
@@ -67,7 +67,7 @@ func (processor CheckTimeoutFinalityProcessor) Cancel(transfer *IBCV2Transfer, e
 }
 
 // ShouldProcess determines when this processor should be run.
-func (processor CheckTimeoutFinalityProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
+func (CheckTimeoutFinalityProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
 	// we only want to try and submit a timeout for a transfer if it is past
 	// its timeout timestamp, and if it does not have a recv or ack submitted
 	// for it. If it does have a recv submitted for it and is past its timeout
@@ -82,6 +82,6 @@ func (processor CheckTimeoutFinalityProcessor) ShouldProcess(transfer *IBCV2Tran
 	return shouldBeTimedOut && !hasTimeoutTxHash
 }
 
-func (processor CheckTimeoutFinalityProcessor) State() db.Ibcv2RelayStatus {
+func (CheckTimeoutFinalityProcessor) State() db.Ibcv2RelayStatus {
 	return db.Ibcv2RelayStatusAWAITINGTIMEOUTFINALITY
 }

@@ -28,19 +28,19 @@ func NewGasMonitor(
 
 func (gm *GasMonitor) Start(ctx context.Context) error {
 	lmt.Logger(ctx).Info("Starting gas monitor")
-	var chains []config.ChainConfig
-	evmChains, err := config.GetConfigReader(ctx).GetAllChainConfigsOfType(config.ChainType_EVM)
+	evmChains, err := config.GetConfigReader(ctx).GetAllChainConfigsOfType(config.ChainTypeEVM)
 	if err != nil {
 		return fmt.Errorf("error getting EVM chains: %w", err)
 	}
-	cosmosChains, err := config.GetConfigReader(ctx).GetAllChainConfigsOfType(config.ChainType_COSMOS)
+	cosmosChains, err := config.GetConfigReader(ctx).GetAllChainConfigsOfType(config.ChainTypeCOSMOS)
 	if err != nil {
 		return fmt.Errorf("error getting cosmos chains: %w", err)
 	}
-	svmChains, err := config.GetConfigReader(ctx).GetAllChainConfigsOfType(config.ChainType_SVM)
+	svmChains, err := config.GetConfigReader(ctx).GetAllChainConfigsOfType(config.ChainTypeSVM)
 	if err != nil {
 		return fmt.Errorf("error getting svm chains: %w", err)
 	}
+	chains := make([]config.ChainConfig, 0, len(evmChains)+len(cosmosChains)+len(svmChains))
 	chains = append(chains, evmChains...)
 	chains = append(chains, cosmosChains...)
 	chains = append(chains, svmChains...)
@@ -61,7 +61,7 @@ func (gm *GasMonitor) Start(ctx context.Context) error {
 }
 
 func (gm *GasMonitor) monitorIBCV2GasBalances(ctx context.Context, chain config.ChainConfig, chainID string) error {
-	warningThreshold, criticalThreshold, err := config.GetConfigReader(ctx).GetSignerGasAlertThresholds(chainID, config.BridgeType_IBCV2)
+	warningThreshold, criticalThreshold, err := config.GetConfigReader(ctx).GetSignerGasAlertThresholds(chainID, config.BridgeTypeIBCV2)
 	if err != nil {
 		if errors.Is(err, config.ErrNoSignerForBridge) {
 			return nil

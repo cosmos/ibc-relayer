@@ -41,20 +41,20 @@ func NewRetryTimeoutPacketProcessor(
 	}
 }
 
-func (processor RetryTimeoutPacketProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
-	sourceChainClient, err := processor.bridgeClientManager.GetClient(ctx, processor.sourceChainID)
+func (p RetryTimeoutPacketProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
+	sourceChainClient, err := p.bridgeClientManager.GetClient(ctx, p.sourceChainID)
 	if err != nil {
-		return nil, fmt.Errorf("getting client for transfer source chain %s: %w", processor.sourceChainID, err)
+		return nil, fmt.Errorf("getting client for transfer source chain %s: %w", p.sourceChainID, err)
 	}
 
 	timeoutTxHash, ok := transfer.GetTimeoutTxHash()
 	if !ok {
-		return nil, fmt.Errorf("transfer does not have timeout tx hash, violates should process, this is a bug")
+		return nil, errors.New("transfer does not have timeout tx hash, violates should process, this is a bug")
 	}
 
 	timeoutTxTime, ok := transfer.GetTimeoutTxTime()
 	if !ok {
-		return nil, fmt.Errorf("transfer does not have a timeout tx time, violates should process, this is a bug")
+		return nil, errors.New("transfer does not have a timeout tx time, violates should process, this is a bug")
 	}
 
 	retry, err := sourceChainClient.ShouldRetryTx(ctx, timeoutTxHash, RetryTimeoutExpiry, timeoutTxTime)
@@ -71,9 +71,9 @@ func (processor RetryTimeoutPacketProcessor) Process(ctx context.Context, transf
 	update := db.ClearTimeoutTxParams{
 		SourceChainID:        transfer.GetSourceChainID(),
 		PacketSourceClientID: transfer.GetPacketSourceClientID(),
-		PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()),
+		PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 	}
-	if err := processor.storage.ClearTimeoutTx(ctx, update); err != nil {
+	if err := p.storage.ClearTimeoutTx(ctx, update); err != nil {
 		return nil, fmt.Errorf("clearing timeout tx hash %s and time %s: %w", timeoutTxHash, timeoutTxTime.UTC().Format(time.RFC3339), err)
 	}
 
@@ -85,7 +85,7 @@ func (processor RetryTimeoutPacketProcessor) Process(ctx context.Context, transf
 	return nil, ErrRetryingTimeoutPacket
 }
 
-func (processor RetryTimeoutPacketProcessor) Cancel(transfer *IBCV2Transfer, err error) {
+func (RetryTimeoutPacketProcessor) Cancel(transfer *IBCV2Transfer, err error) {
 	timeoutTxHash, _ := transfer.GetTimeoutTxHash()
 	timeoutTxTime, _ := transfer.GetTimeoutTxTime()
 
@@ -115,7 +115,7 @@ func (processor RetryTimeoutPacketProcessor) Cancel(transfer *IBCV2Transfer, err
 }
 
 // ShouldProcess determines when this processor should be run.
-func (processor RetryTimeoutPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
+func (RetryTimeoutPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
 	_, hasTimeoutTxHash := transfer.GetTimeoutTxHash()
 	_, hasTimeoutTxTime := transfer.GetTimeoutTxTime()
 
@@ -123,6 +123,6 @@ func (processor RetryTimeoutPacketProcessor) ShouldProcess(transfer *IBCV2Transf
 	return hasTimeoutTxHash && hasTimeoutTxTime
 }
 
-func (processor RetryTimeoutPacketProcessor) State() db.Ibcv2RelayStatus {
+func (RetryTimeoutPacketProcessor) State() db.Ibcv2RelayStatus {
 	return db.Ibcv2RelayStatusDELIVERTIMEOUTPACKET
 }

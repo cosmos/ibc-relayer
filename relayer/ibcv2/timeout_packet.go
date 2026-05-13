@@ -53,10 +53,10 @@ func NewBatchTimeoutPacketProcessor(
 
 // Process uses the ibc ibcv2 proof relayer to get the tx bytes that should be
 // submitted on the source chain for the timeout packet
-func (processor BatchTimeoutPacketProcessor) Process(ctx context.Context, transfers []*IBCV2Transfer) ([]*IBCV2Transfer, error) {
+func (p BatchTimeoutPacketProcessor) Process(ctx context.Context, transfers []*IBCV2Transfer) ([]*IBCV2Transfer, error) {
 	// get tx bytes and packet sequence numbers for all transfers in batch
-	var txIDs [][]byte
-	var sequences []uint64
+	txIDs := make([][]byte, 0, len(transfers))
+	sequences := make([]uint64, 0, len(transfers))
 	txSet := make(map[string]struct{})
 	for _, transfer := range transfers {
 		if _, ok := txSet[transfer.GetSourceTxHash()]; ok {
@@ -81,14 +81,14 @@ func (processor BatchTimeoutPacketProcessor) Process(ctx context.Context, transf
 
 	relayByTxReqStartTs := time.Now()
 	req := &ibcv2relayer.RelayByTxRequest{
-		SrcChain:           processor.destinationChainID,
-		DstChain:           processor.sourceChainID,
+		SrcChain:           p.destinationChainID,
+		DstChain:           p.sourceChainID,
 		TimeoutTxIds:       txIDs,
-		SrcClientId:        processor.destinationClientID,
-		DstClientId:        processor.sourceClientID,
+		SrcClientId:        p.destinationClientID,
+		DstClientId:        p.sourceClientID,
 		DstPacketSequences: sequences,
 	}
-	resp, err := processor.relayService.RelayByTx(ctx, req)
+	resp, err := p.relayService.RelayByTx(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("getting timeout tx bytes from ibcv2 relayer for batch of %d transfers: %w", len(sequences), err)
 	}
@@ -103,12 +103,12 @@ func (processor BatchTimeoutPacketProcessor) Process(ctx context.Context, transf
 	timeoutTxBytes := resp.GetTx()
 	to := resp.GetAddress()
 
-	sourceChainClient, err := processor.bridgeClientManager.GetClient(ctx, processor.sourceChainID)
+	sourceChainClient, err := p.bridgeClientManager.GetClient(ctx, p.sourceChainID)
 	if err != nil {
-		return nil, fmt.Errorf("getting client for transfer source chain %s: %w", processor.sourceChainID, err)
+		return nil, fmt.Errorf("getting client for transfer source chain %s: %w", p.sourceChainID, err)
 	}
 
-	if sourceChainClient.ChainType() == config.ChainType_EVM {
+	if sourceChainClient.ChainType() == config.ChainTypeEVM {
 		// for evm chains, we must wait until the chain has caught up to the
 		// current time before estimating the gas of the tx during delivery or
 		// else it will revert
@@ -130,7 +130,7 @@ func (processor BatchTimeoutPacketProcessor) Process(ctx context.Context, transf
 	logger.Info("delivered batch timeout tx", zap.String("tx_hash", timeoutTx.Hash))
 
 	submittedTransferCount := 0
-	err = processor.transferTimeoutTxWithTxStorage.ExecTx(ctx, func(q *db.Queries) error {
+	err = p.transferTimeoutTxWithTxStorage.ExecTx(ctx, func(q *db.Queries) error {
 		for _, transfer := range transfers {
 			if transfer.ProcessingError != nil {
 				continue
@@ -143,7 +143,7 @@ func (processor BatchTimeoutPacketProcessor) Process(ctx context.Context, transf
 				TimeoutTxRelayerAddress: pgtype.Text{Valid: true, String: timeoutTx.RelayerAddress},
 				SourceChainID:           transfer.GetSourceChainID(),
 				PacketSourceClientID:    transfer.GetPacketSourceClientID(),
-				PacketSequenceNumber:    int32(transfer.GetPacketSequenceNumber()),
+				PacketSequenceNumber:    int32(transfer.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 			}
 			if err = q.UpdateTransferTimeoutTx(ctx, update); err != nil {
 				return fmt.Errorf("updating transfer timeout tx with timeout tx %s: %w", timeoutTx, err)
@@ -156,7 +156,7 @@ func (processor BatchTimeoutPacketProcessor) Process(ctx context.Context, transf
 
 		insert := db.InsertIBCV2RelayerTxSubmissionParams{
 			TxHash:         timeoutTx.Hash,
-			ChainID:        processor.sourceChainID,
+			ChainID:        p.sourceChainID,
 			TxType:         db.Ibcv2RelayerTxSubmissionTypeTIMEOUTPACKET,
 			RelayerAddress: timeoutTx.RelayerAddress,
 			SubmittedAt:    pgtype.Timestamptz{Valid: true, Time: timeoutTx.Timestamp},
@@ -187,7 +187,7 @@ func (processor BatchTimeoutPacketProcessor) Process(ctx context.Context, transf
 	return transfers, nil
 }
 
-func (processor BatchTimeoutPacketProcessor) Cancel(transfers []*IBCV2Transfer, err error) {
+func (BatchTimeoutPacketProcessor) Cancel(transfers []*IBCV2Transfer, err error) {
 	// log error, mark packet as failed if fatal error and we cannot retry, if
 	// not fatal error, do nothing so it will be retried by this stage
 	for _, transfer := range transfers {
@@ -196,7 +196,7 @@ func (processor BatchTimeoutPacketProcessor) Cancel(transfers []*IBCV2Transfer, 
 }
 
 // ShouldProcess determines when this processor should be run.
-func (processor BatchTimeoutPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
+func (BatchTimeoutPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
 	// we only want to try and submit a timeout for a transfer if it is past
 	// its timeout timestamp, and if it does not have a recv or ack submitted
 	// for it. If it does have a recv submitted for it and is past its timeout
@@ -211,6 +211,6 @@ func (processor BatchTimeoutPacketProcessor) ShouldProcess(transfer *IBCV2Transf
 	return shouldBeTimedOut && !hasTimeoutTxHash
 }
 
-func (processor BatchTimeoutPacketProcessor) State() db.Ibcv2RelayStatus {
+func (BatchTimeoutPacketProcessor) State() db.Ibcv2RelayStatus {
 	return db.Ibcv2RelayStatusDELIVERTIMEOUTPACKET
 }

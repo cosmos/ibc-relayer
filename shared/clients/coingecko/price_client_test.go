@@ -29,13 +29,13 @@ func (s *CachedPriceClientTestSuite) TestGetSimplePrice() {
 	price, err := client.GetSimplePrice(ctx, "huahua", "usd")
 
 	s.Require().NoError(err)
-	s.Require().Equal(price, 5.0)
+	s.Require().InDelta(5.0, price, 0.001)
 
 	price, err = client.GetSimplePrice(ctx, "huahua", "usd")
 
 	// Then
 	s.Require().NoError(err)
-	s.Require().Equal(price, 5.0)
+	s.Require().InDelta(5.0, price, 0.001)
 }
 
 func (s *CachedPriceClientTestSuite) TestGetSimplePrice_Error() {

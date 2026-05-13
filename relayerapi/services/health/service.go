@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
+//nolint:revive // HealthService is the canonical name across the codebase
 type HealthService struct {
 	*health.Server
 

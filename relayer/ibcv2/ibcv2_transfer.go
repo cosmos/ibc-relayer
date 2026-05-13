@@ -12,6 +12,7 @@ import (
 	"github.com/cosmos/ibc-relayer/shared/lmt"
 )
 
+//nolint:revive // IBCV2Transfer is the canonical name across the codebase
 type IBCV2Transfer struct {
 	ID int32
 
@@ -127,7 +128,7 @@ func NewIBCV2Transfer(ctx context.Context, transfer db.Ibcv2Transfer) *IBCV2Tran
 		SourceTxHash:              transfer.SourceTxHash,
 		SourceTxTime:              sourceTxTime,
 		SourceTxFinalizedTime:     sourceTxFinalizedTime,
-		PacketSequenceNumber:      uint32(transfer.PacketSequenceNumber),
+		PacketSequenceNumber:      uint32(transfer.PacketSequenceNumber), //nolint:gosec // G115 bounded conversion
 		PacketSourceClientID:      transfer.PacketSourceClientID,
 		PacketDestinationClientID: transfer.PacketDestinationClientID,
 		PacketTimeoutTimestamp:    packetTimeoutTimestamp,
@@ -338,7 +339,7 @@ func (e *IBCV2Transfer) GetAckTxBytes() ([]byte, bool) {
 	return e.AckTxBytes, true
 }
 
-func (e IBCV2Transfer) GetAckTxToAddress() (string, bool) {
+func (e *IBCV2Transfer) GetAckTxToAddress() (string, bool) {
 	if e.AckTxToAddress == nil {
 		return "", false
 	}
@@ -367,7 +368,7 @@ func (e *IBCV2Transfer) GetLogger() *zap.Logger {
 			zap.String("source_chain_id", e.GetSourceChainID()),
 			zap.String("destination_chain_id", e.GetDestinationChainID()),
 			zap.String("source_tx_hash", e.GetSourceTxHash()),
-			zap.Int32("packet_sequence_number", int32(e.GetPacketSequenceNumber())),
+			zap.Int32("packet_sequence_number", int32(e.GetPacketSequenceNumber())), //nolint:gosec // G115 bounded conversion
 			zap.String("packet_source_client_id", e.GetPacketSourceClientID()),
 			zap.String("packet_destination_client_id", e.GetPacketDestinationClientID()),
 			zap.Time("packet_timeout_timestamp", e.GetPacketTimeoutTimestamp()),

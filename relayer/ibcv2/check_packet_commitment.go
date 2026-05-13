@@ -42,8 +42,8 @@ func NewCheckPacketCommitmentProcessor(
 	}
 }
 
-func (processor CheckPacketCommitmentProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
-	sourceChainClient, err := processor.bridgeClientManager.GetClient(ctx, transfer.GetSourceChainID())
+func (p CheckPacketCommitmentProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
+	sourceChainClient, err := p.bridgeClientManager.GetClient(ctx, transfer.GetSourceChainID())
 	if err != nil {
 		return nil, fmt.Errorf("getting bridge client for transfer source chain %s: %w", transfer.GetSourceChainID(), err)
 	}
@@ -103,7 +103,7 @@ func (processor CheckPacketCommitmentProcessor) Process(ctx context.Context, tra
 
 		// returning an error since now that the ack is found, we can cancel
 		// the context of the other goroutine searching for the timeout tx
-		return fmt.Errorf("found ack tx")
+		return errors.New("found ack tx")
 	})
 
 	g.Go(func() error {
@@ -135,12 +135,12 @@ func (processor CheckPacketCommitmentProcessor) Process(ctx context.Context, tra
 
 		// returning an error since now that the timeout is found, we can
 		// cancel the context of the other goroutine searching for the ack tx
-		return fmt.Errorf("found timeout tx")
+		return errors.New("found timeout tx")
 	})
 
 	_ = g.Wait()
 
-	switch true {
+	switch {
 	case ackTx != nil && timeoutTx != nil:
 		return nil, fmt.Errorf("found both timeout tx %s and ack tx %s packet, should not be possible", timeoutTx.Hash, ackTx.Hash)
 	case ackTx != nil:
@@ -150,9 +150,9 @@ func (processor CheckPacketCommitmentProcessor) Process(ctx context.Context, tra
 			AckTxRelayerAddress:  pgtype.Text{Valid: true, String: ackTx.RelayerAddress},
 			SourceChainID:        transfer.GetSourceChainID(),
 			PacketSourceClientID: transfer.GetPacketSourceClientID(),
-			PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()),
+			PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 		}
-		if err = processor.transferAckTimeoutTxStorage.UpdateTransferAckTx(ctx, update); err != nil {
+		if err = p.transferAckTimeoutTxStorage.UpdateTransferAckTx(ctx, update); err != nil {
 			return nil, fmt.Errorf("updating transfer ack tx with existing tx hash %s and timestamp %s: %w", ackTx.Hash, ackTx.Timestamp.Format(time.RFC3339), err)
 		}
 
@@ -167,9 +167,9 @@ func (processor CheckPacketCommitmentProcessor) Process(ctx context.Context, tra
 			TimeoutTxRelayerAddress: pgtype.Text{Valid: true, String: timeoutTx.RelayerAddress},
 			SourceChainID:           transfer.GetSourceChainID(),
 			PacketSourceClientID:    transfer.GetPacketSourceClientID(),
-			PacketSequenceNumber:    int32(transfer.GetPacketSequenceNumber()),
+			PacketSequenceNumber:    int32(transfer.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 		}
-		if err = processor.transferAckTimeoutTxStorage.UpdateTransferTimeoutTx(ctx, update); err != nil {
+		if err = p.transferAckTimeoutTxStorage.UpdateTransferTimeoutTx(ctx, update); err != nil {
 			return nil, fmt.Errorf("updating transfer timeout tx with existing tx hash %s and timestamp %s: %w", timeoutTx.Hash, timeoutTx.Timestamp.Format(time.RFC3339), err)
 		}
 
@@ -185,7 +185,7 @@ func (processor CheckPacketCommitmentProcessor) Process(ctx context.Context, tra
 // Cancel should log error, mark packet as failed in the db if a fatal error
 // and we cannot retry, if not fatal error, do nothing so it will be retried by
 // this stage
-func (processor CheckPacketCommitmentProcessor) Cancel(transfer *IBCV2Transfer, err error) {
+func (CheckPacketCommitmentProcessor) Cancel(transfer *IBCV2Transfer, err error) {
 	// TODO: possibly some db updating for fatal errors (not being able to
 	// decode the source tx hash feels like a fatal error). for now we just
 	// always retry to make it simpler and will come back to impl this 'fatal
@@ -194,7 +194,7 @@ func (processor CheckPacketCommitmentProcessor) Cancel(transfer *IBCV2Transfer, 
 }
 
 // ShouldProcess determines when this processor should be run.
-func (processor CheckPacketCommitmentProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
+func (CheckPacketCommitmentProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
 	// the data that we need to run this processor
 
 	// the data we are going to populate with this processor, no need to run if
@@ -207,6 +207,6 @@ func (processor CheckPacketCommitmentProcessor) ShouldProcess(transfer *IBCV2Tra
 	return !hasAckTxHash && !hasTimeoutTxHash
 }
 
-func (processor CheckPacketCommitmentProcessor) State() db.Ibcv2RelayStatus {
+func (CheckPacketCommitmentProcessor) State() db.Ibcv2RelayStatus {
 	return db.Ibcv2RelayStatusCHECKACKPACKETDELIVERY
 }

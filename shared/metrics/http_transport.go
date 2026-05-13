@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+//nolint:revive // MetricsTrasportMiddleware is the canonical name across the codebase
 type MetricsTrasportMiddleware struct {
 	internal http.RoundTripper
 	config   *TransportConfig
@@ -111,13 +112,13 @@ func getJSONRPCMethodFromRequest(request *http.Request) string {
 		return ""
 	}
 
-	bytes, err := requestBodyBytes(request)
+	body, err := requestBodyBytes(request)
 	if err != nil {
 		return "error: failed to read request body"
 	}
 
 	var jsonRPCBody struct{ Method string }
-	if err := json.Unmarshal(bytes, &jsonRPCBody); err != nil {
+	if err := json.Unmarshal(body, &jsonRPCBody); err != nil {
 		return "error: failed to unmarshal request body"
 	}
 
@@ -129,13 +130,14 @@ func getJSONRPCCodeFromResponse(response *http.Response) string {
 		return ""
 	}
 
-	bytes, err := responseBodyBytes(response)
+	body, err := responseBodyBytes(response)
 	if err != nil {
 		return "error: failed to read response body"
 	}
 
-	var jsonRPCResponse struct{ Error *struct{ Code int } }
-	if err := json.Unmarshal(bytes, &jsonRPCResponse); err != nil {
+	type jsonRPCError struct{ Code int }
+	var jsonRPCResponse struct{ Error *jsonRPCError }
+	if err := json.Unmarshal(body, &jsonRPCResponse); err != nil {
 		return "error: failed to unmarshal response body"
 	}
 
@@ -152,7 +154,7 @@ func isJSONRPCRequest(request *http.Request) bool {
 		return false
 	}
 
-	bytes, err := requestBodyBytes(request)
+	body, err := requestBodyBytes(request)
 	if err != nil {
 		return false
 	}
@@ -163,7 +165,7 @@ func isJSONRPCRequest(request *http.Request) bool {
 		Method  string `json:"method"`
 	}
 	var req jsonRPCRequest
-	if err := json.Unmarshal(bytes, &req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		return false
 	}
 

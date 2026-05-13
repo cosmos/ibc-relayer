@@ -1,4 +1,4 @@
-package ibcv2
+package ibcv2 //nolint:testpackage // tests reference unexported helpers
 
 import (
 	"context"

@@ -2,6 +2,7 @@ package ibcv2_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -11,7 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/cosmos/ibc-relayer/db/gen/db"
-	mock_ibcv2 "github.com/cosmos/ibc-relayer/mocks/relayer/ibcv2"
+	mockibcv2 "github.com/cosmos/ibc-relayer/mocks/relayer/ibcv2"
 	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
 	"github.com/cosmos/ibc-relayer/shared/lmt"
 )
@@ -23,7 +24,7 @@ func TestConditionalBatchProcessor(t *testing.T) {
 		t2 := newTransfer(sourceChainID, destChainID, sourceClientID, 0)
 		t3 := newTransfer(sourceChainID, destChainID, sourceClientID, 0)
 
-		processor := mock_ibcv2.NewMockIBCV2BatchProcessor(t)
+		processor := mockibcv2.NewMockIBCV2BatchProcessor(t)
 		processor.EXPECT().ShouldProcess(mock.Anything).Return(true)
 		processor.EXPECT().State().Return(db.Ibcv2RelayStatusPENDING)
 
@@ -52,13 +53,13 @@ func TestConditionalBatchProcessor(t *testing.T) {
 		ctx := context.Background()
 
 		// create 100 transfers as input
-		var expectedBatchInput []*ibcv2.IBCV2Transfer
+		expectedBatchInput := make([]*ibcv2.IBCV2Transfer, 0, 100)
 		for i := range 100 {
 			transfer := newTransfer(sourceChainID, destChainID, sourceClientID, uint32(i))
 			expectedBatchInput = append(expectedBatchInput, transfer)
 		}
 
-		processor := mock_ibcv2.NewMockIBCV2BatchProcessor(t)
+		processor := mockibcv2.NewMockIBCV2BatchProcessor(t)
 		processor.EXPECT().ShouldProcess(mock.Anything).Return(true)
 		processor.EXPECT().State().Return(db.Ibcv2RelayStatusPENDING)
 
@@ -67,7 +68,7 @@ func TestConditionalBatchProcessor(t *testing.T) {
 		inputs := splitToBatches(expectedBatchInput, 10)
 		hash := "0xdeadbeef"
 		for _, batch := range inputs {
-			var singleBatchOutput []*ibcv2.IBCV2Transfer
+			singleBatchOutput := make([]*ibcv2.IBCV2Transfer, 0, len(batch))
 			for _, input := range batch {
 				output := *input
 				output.AckTxHash = &hash
@@ -111,7 +112,7 @@ func TestConditionalBatchProcessor(t *testing.T) {
 		ctx := context.Background()
 		transfer := newTransfer(sourceChainID, destChainID, sourceClientID, 0)
 
-		processor := mock_ibcv2.NewMockIBCV2BatchProcessor(t)
+		processor := mockibcv2.NewMockIBCV2BatchProcessor(t)
 		processor.EXPECT().ShouldProcess(transfer).Return(false)
 
 		input := make(chan *ibcv2.IBCV2Transfer)
@@ -124,9 +125,9 @@ func TestConditionalBatchProcessor(t *testing.T) {
 	t.Run("errored transfers should not be included", func(t *testing.T) {
 		ctx := context.Background()
 		transfer := newTransfer(sourceChainID, destChainID, sourceClientID, 0)
-		transfer.ProcessingError = fmt.Errorf("i've errored")
+		transfer.ProcessingError = errors.New("i've errored")
 
-		processor := mock_ibcv2.NewMockIBCV2BatchProcessor(t)
+		processor := mockibcv2.NewMockIBCV2BatchProcessor(t)
 		processor.EXPECT().ShouldProcess(transfer).Return(true).Maybe()
 
 		input := make(chan *ibcv2.IBCV2Transfer)
@@ -142,7 +143,7 @@ func TestConditionalBatchProcessor(t *testing.T) {
 		t2 := newTransfer(sourceChainID, destChainID, sourceClientID, 0)
 		t3 := newTransfer(sourceChainID, destChainID, sourceClientID, 0)
 
-		processor := mock_ibcv2.NewMockIBCV2BatchProcessor(t)
+		processor := mockibcv2.NewMockIBCV2BatchProcessor(t)
 		processor.EXPECT().ShouldProcess(mock.Anything).Return(true)
 		processor.EXPECT().State().Return(db.Ibcv2RelayStatusPENDING)
 
@@ -223,7 +224,7 @@ func TestConditionalBatchProcessor(t *testing.T) {
 		t10 := newTransfer(sourceChainID, destChainID, sourceClientID, 10)
 		allTransfers := []*ibcv2.IBCV2Transfer{t1, t2, t3, t4, t5, t6, t7, t8, t9, t10}
 
-		processor := mock_ibcv2.NewMockIBCV2BatchProcessor(t)
+		processor := mockibcv2.NewMockIBCV2BatchProcessor(t)
 		processor.EXPECT().ShouldProcess(mock.Anything).Return(true)
 		processor.EXPECT().State().Return(db.Ibcv2RelayStatusPENDING)
 

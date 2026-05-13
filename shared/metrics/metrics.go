@@ -82,8 +82,8 @@ type (
 	relayTypeContextKey           struct{}
 )
 
-func ContextWithMetrics(ctx context.Context, metrics Metrics) context.Context {
-	return context.WithValue(ctx, metricsContextKey{}, metrics)
+func ContextWithMetrics(ctx context.Context, m Metrics) context.Context {
+	return context.WithValue(ctx, metricsContextKey{}, m)
 }
 
 func ContextWithSourceChainID(ctx context.Context, sourceChainID string) context.Context {
@@ -114,9 +114,8 @@ func FromContext(ctx context.Context) Metrics {
 	metricsFromContext := ctx.Value(metricsContextKey{})
 	if metricsFromContext == nil {
 		return NewNoOpMetrics()
-	} else {
-		return metricsFromContext.(Metrics)
 	}
+	return metricsFromContext.(Metrics) //nolint:revive // panic is desired if value type is wrong
 }
 
 func SourceChainIDFromContext(ctx context.Context) string {
@@ -192,7 +191,7 @@ func BridgeTypeFromContext(ctx context.Context) BridgeType {
 }
 
 func UnaryServerInterceptor(outerCtx context.Context) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) { //nolint:nonamedreturns // err is referenced in deferred metric recording
 		metricsFromServerContext := FromContext(outerCtx)
 		ctx = ContextWithMetrics(ctx, metricsFromServerContext)
 		start := time.Now()
@@ -205,6 +204,7 @@ func UnaryServerInterceptor(outerCtx context.Context) grpc.UnaryServerIntercepto
 	}
 }
 
+//nolint:nonamedreturns // err is referenced in deferred metric recording
 func UnaryClientInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
 	start := time.Now()
 	defer func() {
@@ -384,14 +384,14 @@ func (m *PromMetrics) AddFailedExternalRequest(ctx context.Context, method, code
 	m.addExternalRequest(ctx, method, FailureStatus, code, provider, BridgeTypeFromContext(ctx))
 }
 
-func (m *PromMetrics) addExternalRequest(ctx context.Context, method, status, code, provider string, bridgeType BridgeType) {
+func (m *PromMetrics) addExternalRequest(ctx context.Context, method, requestStatus, code, provider string, bridgeType BridgeType) {
 	sourceChainID := SourceChainIDFromContext(ctx)
 	destChainID := DestinationChainIDFromContext(ctx)
 	sourceClientID := SourceClientIDFromContext(ctx)
 	destinationClientID := DestinationClientIDFromContext(ctx)
 	m.totalExternalRequests.With(
 		methodLabel, method,
-		statusLabel, status,
+		statusLabel, requestStatus,
 		codeLabel, code,
 		providerLabel, provider,
 		bridgeTypeLabel, string(bridgeType),
@@ -502,46 +502,72 @@ func NewNoOpMetrics() Metrics {
 	return &NoOpMetrics{}
 }
 
-func (m *NoOpMetrics) AddRequest(method string, statusCode uint32)                       {}
-func (m *NoOpMetrics) AddRelayRequest(bridgeType BridgeType, statusCode uint32)          {}
-func (m *NoOpMetrics) AddRelayerAPIRequestLatency(method string, duration time.Duration) {}
-func (m *NoOpMetrics) SetGasBalance(chainID, chainName, gasTokenSymbol, chainEnvironment string, gasBalance, warningThreshold, criticalThreshold big.Int, gasTokenDecimals uint8, bridgeType BridgeType) {
+func (*NoOpMetrics) AddRequest(method string, statusCode uint32)                       {}
+func (*NoOpMetrics) AddRelayRequest(bridgeType BridgeType, statusCode uint32)          {}
+func (*NoOpMetrics) AddRelayerAPIRequestLatency(method string, duration time.Duration) {}
+func (*NoOpMetrics) SetGasBalance(chainID, chainName, gasTokenSymbol, chainEnvironment string, gasBalance, warningThreshold, criticalThreshold big.Int, gasTokenDecimals uint8, bridgeType BridgeType) {
 }
 
-func (m *NoOpMetrics) AddTransactionSubmitted(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string) {
+func (*NoOpMetrics) NodeDependencyLatency(chainID, chainName, chainEnvironment, method string, latency time.Duration) {
+}
+func (*NoOpMetrics) AddRelayerLoop()                             {}
+func (*NoOpMetrics) RelayerLoopLatency(duration time.Duration)   {}
+func (*NoOpMetrics) AttestationAPILatency(latency time.Duration) {}
+func (*NoOpMetrics) AddAttestationAPIRequest(u uint32)           {}
+func (*NoOpMetrics) AttestationConfirmationLatency(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, latency time.Duration) {
 }
 
-func (m *NoOpMetrics) AddTransactionRetryAttempt(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType) {
+func (*NoOpMetrics) AddTransactionSubmitted(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string) {
 }
 
-func (m *NoOpMetrics) AddTransactionNonceReplaced(chainID string) {}
-
-func (m *NoOpMetrics) AddTransactionConfirmed(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string) {
+func (*NoOpMetrics) AddTransactionRetryAttempt(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType) {
 }
 
-func (m *NoOpMetrics) AddTransactionGasCost(chainID, chainName, chainEnvironment string, gasCost big.Int, gasTokenDecimals uint8) {
+func (*NoOpMetrics) AddTransactionNonceReplaced(chainID string) {}
+
+func (*NoOpMetrics) AddTransactionConfirmed(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string) {
 }
 
-func (m *NoOpMetrics) AddTransfer(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string) {
+func (*NoOpMetrics) AddTransfer(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string) {
 }
 
-func (m *NoOpMetrics) SetTransferCount(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string, count float64) {
+func (*NoOpMetrics) SetTransferCount(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string, count float64) {
 }
 
-func (m *NoOpMetrics) RelayLatency(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType, latency time.Duration) {
+func (*NoOpMetrics) AddTransactionGasCost(chainID, chainName, chainEnvironment string, gasCost big.Int, gasTokenDecimals uint8) {
 }
 
-func (m *NoOpMetrics) AddExcessiveRelayLatencyObservation(sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType) {
+func (*NoOpMetrics) SetReceiveTransactionGasCost(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, gasCost uint64) {
+}
+func (*NoOpMetrics) AddUntrackedTransfer(chainID, chainName, chainEnvironment string) {}
+func (*NoOpMetrics) RelayLatency(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType, latency time.Duration) {
 }
 
-func (m *NoOpMetrics) AddRelayCompleted(sourceChainID, sourceClientID, destinationChainID, destinationClientID string, relayType RelayType) {
+func (*NoOpMetrics) AddExcessiveRelayLatencyObservation(sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType) {
 }
 
-func (m *NoOpMetrics) AddSuccessfulExternalRequest(ctx context.Context, method, code, provider string) {
+func (*NoOpMetrics) AddUnprofitableRelay(sourceChainName, destinationChainName, chainEnvironment string) {
 }
 
-func (m *NoOpMetrics) AddFailedExternalRequest(ctx context.Context, method, code, provider string) {
+func (*NoOpMetrics) AddTransferMonitorChainHeightIncrease(chainID, chainName, chainEnvironment string) {
 }
 
-func (m *NoOpMetrics) ExternalRequestLatency(ctx context.Context, method, provider string, latency time.Duration) {
+func (*NoOpMetrics) AddRelayCompleted(sourceChainID, sourceClientID, destinationChainID, destinationClientID string, relayType RelayType) {
+}
+
+func (*NoOpMetrics) AddSuccessfulExternalRequest(ctx context.Context, method, code, provider string) {
+}
+
+func (*NoOpMetrics) AddFailedExternalRequest(ctx context.Context, method, code, provider string) {
+}
+
+func (*NoOpMetrics) ExternalRequestLatency(ctx context.Context, method, provider string, latency time.Duration) {
+}
+
+func (*NoOpMetrics) AddClientNeedsUpdated(chainID string, clientID string, counterpartyChainID string) {
+}
+
+func (*NoOpMetrics) AddClientUpdated(chainID string, clientID string, counterpartyChainID string) {}
+
+func (*NoOpMetrics) AddUnrelayedTransferWithAttestationObservation(sourceChainName, destinationChainName, chainEnvironment string) {
 }

@@ -1,7 +1,7 @@
 package ibcv2_test
 
 import (
-	"fmt"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -11,12 +11,17 @@ import (
 	"github.com/cosmos/ibc-relayer/shared/bridges/ibcv2"
 )
 
+const (
+	testKey  = "key"
+	testHash = "0xhash"
+)
+
 func TestOnceWithKey_Do(t *testing.T) {
 	t.Run("single key, action returns without error, value is always cached", func(t *testing.T) {
-		key := "key"
-		ret := "0xhash"
+		key := testKey
+		ret := testHash
 		called := 0
-		action := func() (*string, error) {
+		action := func() (*string, error) { //nolint:unparam // signature required by Once API
 			time.Sleep(1 * time.Second)
 			called++
 			return &ret, nil
@@ -40,10 +45,10 @@ func TestOnceWithKey_Do(t *testing.T) {
 	})
 
 	t.Run("single key, action is timed out on successful invocation after success timeout passes", func(t *testing.T) {
-		key := "key"
-		ret := "0xhash"
+		key := testKey
+		ret := testHash
 		called := 0
-		action := func() (*string, error) {
+		action := func() (*string, error) { //nolint:unparam // signature required by Once API
 			called++
 			return &ret, nil
 		}
@@ -83,8 +88,8 @@ func TestOnceWithKey_Do(t *testing.T) {
 	})
 
 	t.Run("single key, action is success timed out while another call is executing it", func(t *testing.T) {
-		key := "key"
-		ret := "0xhash"
+		key := testKey
+		ret := testHash
 
 		// need this because the tests try to inc called at the same time
 		lock := sync.Mutex{}
@@ -126,7 +131,7 @@ func TestOnceWithKey_Do(t *testing.T) {
 		key1 := "key1"
 		key1ret := "0xhash1"
 		key1called := 0
-		action1 := func() (*string, error) {
+		action1 := func() (*string, error) { //nolint:unparam // signature required by Once API
 			time.Sleep(1 * time.Second)
 			key1called++
 			return &key1ret, nil
@@ -135,7 +140,7 @@ func TestOnceWithKey_Do(t *testing.T) {
 		key2 := "key2"
 		key2ret := "0xhash2"
 		key2called := 0
-		action2 := func() (*string, error) {
+		action2 := func() (*string, error) { //nolint:unparam // signature required by Once API
 			time.Sleep(1 * time.Second)
 			key2called++
 			return &key2ret, nil
@@ -168,9 +173,9 @@ func TestOnceWithKey_Do(t *testing.T) {
 	})
 
 	t.Run("single key, errors and times out, then returns value", func(t *testing.T) {
-		key := "key"
-		ret := "0xhash"
-		targetErr := fmt.Errorf("err")
+		key := testKey
+		ret := testHash
+		targetErr := errors.New("err")
 		called := 0
 		shouldReturnProperly := time.Now().Add(5 * time.Second)
 		action := func() (*string, error) {

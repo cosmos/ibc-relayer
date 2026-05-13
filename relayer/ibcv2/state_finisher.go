@@ -29,13 +29,13 @@ func NewStateFinisherProcessor(transferStateStorage TransferStateStorage, should
 
 // Process updates the state in the db to a finalized state if the transfer has
 // not errored
-func (processor StateFinisher) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
+func (p StateFinisher) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
 	if transfer.Error() != "" {
 		// do nothing for transfers that have errored
 		return transfer, nil
 	}
 
-	if !transfer.IsComplete(processor.shouldRelaySuccessAcks, processor.shouldRelayErrorAcks) {
+	if !transfer.IsComplete(p.shouldRelaySuccessAcks, p.shouldRelayErrorAcks) {
 		// transfer is not done, so dont update its state
 		recv, _ := transfer.GetRecvTxHash()
 		writeAck, _ := transfer.GetWriteAckTxHash()
@@ -89,9 +89,9 @@ func (processor StateFinisher) Process(ctx context.Context, transfer *IBCV2Trans
 		Status:               transfer.GetState(),
 		SourceChainID:        transfer.GetSourceChainID(),
 		PacketSourceClientID: transfer.GetPacketSourceClientID(),
-		PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()),
+		PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 	}
-	if err := processor.transferStateStorage.UpdateTransferState(ctx, update); err != nil {
+	if err := p.transferStateStorage.UpdateTransferState(ctx, update); err != nil {
 		transfer.GetLogger().Error(
 			"error updating transfer to finalized state",
 			zap.Error(err),
@@ -105,7 +105,7 @@ func (processor StateFinisher) Process(ctx context.Context, transfer *IBCV2Trans
 	return transfer, nil
 }
 
-func (processor StateFinisher) Cancel(transfer *IBCV2Transfer, err error) {
+func (StateFinisher) Cancel(transfer *IBCV2Transfer, err error) {
 	// log error, mark packet as failed if fatal error and we cannot retry, if
 	// not fatal error, do nothing so it will be retried by this stage
 	transfer.GetLogger().Error("error updating transfer to finalized state", zap.Error(err))

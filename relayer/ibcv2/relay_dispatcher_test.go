@@ -2,16 +2,17 @@ package ibcv2_test
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/cosmos/ibc-relayer/db/gen/db"
-	mock_ibcv2 "github.com/cosmos/ibc-relayer/mocks/relayer/ibcv2"
-	mock_config "github.com/cosmos/ibc-relayer/mocks/shared/config"
+	mockibcv2 "github.com/cosmos/ibc-relayer/mocks/relayer/ibcv2"
+	mockconfig "github.com/cosmos/ibc-relayer/mocks/shared/config"
 	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
 	"github.com/cosmos/ibc-relayer/shared/config"
 	"github.com/cosmos/ibc-relayer/shared/lmt"
@@ -58,12 +59,12 @@ func (m *MockPipeline) Push(ctx context.Context, transfer *ibcv2.IBCV2Transfer) 
 func (m *MockPipeline) Poll() (*ibcv2.IBCV2Transfer, error) {
 	t, ok := <-m.Output
 	if !ok {
-		return t, fmt.Errorf("closed")
+		return t, errors.New("closed")
 	}
 	return t, nil
 }
 
-func (m *MockPipeline) Close() {
+func (*MockPipeline) Close() {
 }
 
 func TestRelayDispatcher_Run(t *testing.T) {
@@ -76,11 +77,11 @@ func TestRelayDispatcher_Run(t *testing.T) {
 		lmt.ConfigureLogger()
 		ctx, cancel := context.WithCancel(lmt.LoggerContext(context.Background()))
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{IBCV2: &config.IBCV2Config{}}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
-		mockStorage := mock_ibcv2.NewMockUnfinishedIBCV2TransferStorage(t)
+		mockStorage := mockibcv2.NewMockUnfinishedIBCV2TransferStorage(t)
 
 		unfinishedTranfsers := []db.Ibcv2Transfer{
 			newDBTransfer(evmChainID, cosmosChainID, clientID, 0),
@@ -92,7 +93,7 @@ func TestRelayDispatcher_Run(t *testing.T) {
 		mockStorage.EXPECT().GetUnfinishedIBCV2Transfers(ctx).Return(unfinishedTranfsers, nil)
 
 		mockPipeline := newDisconnectedIBCV2Pipeline()
-		mockManager := mock_ibcv2.NewMockPipelineManager(t)
+		mockManager := mockibcv2.NewMockPipelineManager(t)
 		mockManager.EXPECT().Close()
 		for _, transfer := range unfinishedTranfsers {
 			t := ibcv2.NewIBCV2Transfer(ctx, transfer)
@@ -118,11 +119,11 @@ func TestRelayDispatcher_SubmitUnfinishedTransfers(t *testing.T) {
 	t.Run("submits all unfinished transfers", func(t *testing.T) {
 		ctx := context.Background()
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{IBCV2: &config.IBCV2Config{}}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
-		mockStorage := mock_ibcv2.NewMockUnfinishedIBCV2TransferStorage(t)
+		mockStorage := mockibcv2.NewMockUnfinishedIBCV2TransferStorage(t)
 
 		unfinishedTranfsers := []db.Ibcv2Transfer{
 			newDBTransfer(evmChainID, cosmosChainID, clientID, 0),
@@ -137,7 +138,7 @@ func TestRelayDispatcher_SubmitUnfinishedTransfers(t *testing.T) {
 		mockStorage.EXPECT().GetUnfinishedIBCV2Transfers(ctx).Return(unfinishedTranfsers, nil)
 
 		mockPipeline := newDisconnectedIBCV2Pipeline()
-		mockManager := mock_ibcv2.NewMockPipelineManager(t)
+		mockManager := mockibcv2.NewMockPipelineManager(t)
 		for _, transfer := range unfinishedTranfsers {
 			t := ibcv2.NewIBCV2Transfer(ctx, transfer)
 			mockManager.EXPECT().Pipeline(mock.Anything, mock.MatchedBy(func(arg *ibcv2.IBCV2Transfer) bool {
@@ -147,20 +148,20 @@ func TestRelayDispatcher_SubmitUnfinishedTransfers(t *testing.T) {
 
 		pusher := ibcv2.NewRelayDispatcher(mockStorage, 0, mockManager, true)
 
-		assert.NoError(t, pusher.SubmitWaitingUnfinishedTransfers(ctx))
+		require.NoError(t, pusher.SubmitWaitingUnfinishedTransfers(ctx))
 		assert.Len(t, mockPipeline.Input, len(unfinishedTranfsers))
 	})
 
 	t.Run("error getting unfinished transfers", func(t *testing.T) {
 		ctx := context.Background()
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{IBCV2: &config.IBCV2Config{}}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
-		mockStorage := mock_ibcv2.NewMockUnfinishedIBCV2TransferStorage(t)
+		mockStorage := mockibcv2.NewMockUnfinishedIBCV2TransferStorage(t)
 
-		getTransfersErr := fmt.Errorf("error")
+		getTransfersErr := errors.New("error")
 		mockStorage.EXPECT().GetUnfinishedIBCV2Transfers(ctx).Return(nil, getTransfersErr)
 
 		pusher := ibcv2.NewRelayDispatcher(mockStorage, 0, nil, true)
@@ -171,39 +172,39 @@ func TestRelayDispatcher_SubmitUnfinishedTransfers(t *testing.T) {
 	t.Run("submitting transfer fails, transfer is marked as failed", func(t *testing.T) {
 		ctx := context.Background()
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{IBCV2: &config.IBCV2Config{}}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
-		mockStorage := mock_ibcv2.NewMockUnfinishedIBCV2TransferStorage(t)
+		mockStorage := mockibcv2.NewMockUnfinishedIBCV2TransferStorage(t)
 		mockStorage.EXPECT().UpdateTransferState(ctx, db.UpdateTransferStateParams{Status: db.Ibcv2RelayStatusFAILED, SourceChainID: evmChainID, PacketSourceClientID: clientID, PacketSequenceNumber: 0}).Return(nil)
 
 		unfinishedTranfsers := []db.Ibcv2Transfer{newDBTransfer(evmChainID, cosmosChainID, clientID, 0)}
 		mockStorage.EXPECT().GetUnfinishedIBCV2Transfers(ctx).Return(unfinishedTranfsers, nil)
 
 		mockPipeline := newDisconnectedIBCV2Pipeline()
-		mockManager := mock_ibcv2.NewMockPipelineManager(t)
+		mockManager := mockibcv2.NewMockPipelineManager(t)
 		for _, transfer := range unfinishedTranfsers {
 			t := ibcv2.NewIBCV2Transfer(ctx, transfer)
 			mockManager.EXPECT().Pipeline(mock.Anything, mock.MatchedBy(func(arg *ibcv2.IBCV2Transfer) bool {
 				return arg.PacketSequenceNumber == t.PacketSequenceNumber
-			})).Return(nil, fmt.Errorf("unexpected error"))
+			})).Return(nil, errors.New("unexpected error"))
 		}
 
 		pusher := ibcv2.NewRelayDispatcher(mockStorage, 0, mockManager, true)
 
-		assert.NoError(t, pusher.SubmitWaitingUnfinishedTransfers(ctx))
+		require.NoError(t, pusher.SubmitWaitingUnfinishedTransfers(ctx))
 		assert.Empty(t, mockPipeline.Input)
 	})
 
 	t.Run("submitting transfer fails, others in batch are still submitted", func(t *testing.T) {
 		ctx := context.Background()
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{IBCV2: &config.IBCV2Config{}}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
-		mockStorage := mock_ibcv2.NewMockUnfinishedIBCV2TransferStorage(t)
+		mockStorage := mockibcv2.NewMockUnfinishedIBCV2TransferStorage(t)
 		mockStorage.EXPECT().UpdateTransferState(ctx, db.UpdateTransferStateParams{Status: db.Ibcv2RelayStatusFAILED, SourceChainID: evmChainID, PacketSourceClientID: clientID, PacketSequenceNumber: 0}).Return(nil)
 
 		unfinishedTranfsers := []db.Ibcv2Transfer{
@@ -218,13 +219,13 @@ func TestRelayDispatcher_SubmitUnfinishedTransfers(t *testing.T) {
 
 		mockStorage.EXPECT().GetUnfinishedIBCV2Transfers(ctx).Return(unfinishedTranfsers, nil)
 
-		mockManager := mock_ibcv2.NewMockPipelineManager(t)
+		mockManager := mockibcv2.NewMockPipelineManager(t)
 		mockPipeline := newDisconnectedIBCV2Pipeline()
 
 		transfer := ibcv2.NewIBCV2Transfer(ctx, unfinishedTranfsers[0])
 		mockManager.EXPECT().Pipeline(mock.Anything, mock.MatchedBy(func(arg *ibcv2.IBCV2Transfer) bool {
 			return arg.PacketSequenceNumber == transfer.PacketSequenceNumber
-		})).Return(nil, fmt.Errorf("unexpected error"))
+		})).Return(nil, errors.New("unexpected error"))
 
 		for _, transfer := range unfinishedTranfsers[1:] {
 			t := ibcv2.NewIBCV2Transfer(ctx, transfer)
@@ -235,7 +236,7 @@ func TestRelayDispatcher_SubmitUnfinishedTransfers(t *testing.T) {
 
 		pusher := ibcv2.NewRelayDispatcher(mockStorage, 0, mockManager, true)
 
-		assert.NoError(t, pusher.SubmitWaitingUnfinishedTransfers(ctx))
+		require.NoError(t, pusher.SubmitWaitingUnfinishedTransfers(ctx))
 		assert.Len(t, mockPipeline.Input, len(unfinishedTranfsers)-1)
 	})
 }
@@ -244,7 +245,7 @@ func TestRelayDispatcher_SubmitTransfer(t *testing.T) {
 	t.Run("gets pipeline and pushes", func(t *testing.T) {
 		ctx := context.Background()
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{IBCV2: &config.IBCV2Config{}}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
@@ -252,7 +253,7 @@ func TestRelayDispatcher_SubmitTransfer(t *testing.T) {
 		t2 := newTransfer(evmChainID, cosmosChainID, clientID, 1)
 
 		mockPipeline := newDisconnectedIBCV2Pipeline()
-		mockManager := mock_ibcv2.NewMockPipelineManager(t)
+		mockManager := mockibcv2.NewMockPipelineManager(t)
 		mockManager.EXPECT().Pipeline(mock.Anything, mock.MatchedBy(func(arg *ibcv2.IBCV2Transfer) bool {
 			return arg.PacketSequenceNumber == 0
 		})).Return(mockPipeline, nil)
@@ -270,7 +271,7 @@ func TestRelayDispatcher_SubmitTransfer(t *testing.T) {
 	t.Run("returns an error when transfer isnt pushed", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{IBCV2: &config.IBCV2Config{}}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
@@ -278,7 +279,7 @@ func TestRelayDispatcher_SubmitTransfer(t *testing.T) {
 		t2 := newTransfer(evmChainID, cosmosChainID, clientID, 1)
 
 		mockPipeline := newDisconnectedIBCV2Pipeline()
-		mockManager := mock_ibcv2.NewMockPipelineManager(t)
+		mockManager := mockibcv2.NewMockPipelineManager(t)
 		mockManager.EXPECT().Pipeline(mock.Anything, mock.MatchedBy(func(arg *ibcv2.IBCV2Transfer) bool {
 			return arg.PacketSequenceNumber == t1.PacketSequenceNumber
 		})).Return(mockPipeline, nil)
@@ -298,7 +299,7 @@ func TestRelayDispatcher_SubmitTransfer(t *testing.T) {
 			return arg.PacketSequenceNumber == t3.PacketSequenceNumber
 		})).Return(mockPipeline, nil)
 
-		assert.Error(t, pusher.SubmitTransfer(ctx, t3))
+		require.Error(t, pusher.SubmitTransfer(ctx, t3))
 		assert.Len(t, mockPipeline.Input, 2)
 	})
 }
@@ -312,6 +313,7 @@ func newTransfer(sourceChainID, destinationChainID, packetSourceClientID string,
 	}
 }
 
+//nolint:unparam // sourceChainID kept as parameter for test readability
 func newDBTransfer(sourceChainID, destinationChainID, packetSourceClientID string, packetSequenceNumber int32) db.Ibcv2Transfer {
 	return db.Ibcv2Transfer{
 		SourceChainID:        sourceChainID,

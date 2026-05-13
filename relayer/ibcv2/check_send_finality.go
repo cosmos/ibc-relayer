@@ -39,13 +39,13 @@ func NewCheckSendFinalityProcessor(
 
 var ErrSendNotFinalized = errors.New("send tx not finalized")
 
-func (processor CheckSendFinalityProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
-	sourceChainClient, err := processor.bridgeClientManager.GetClient(ctx, transfer.GetSourceChainID())
+func (p CheckSendFinalityProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
+	sourceChainClient, err := p.bridgeClientManager.GetClient(ctx, transfer.GetSourceChainID())
 	if err != nil {
 		return nil, fmt.Errorf("getting source bridge client for chain %s: %w", transfer.GetSourceChainID(), err)
 	}
 
-	finalized, err := sourceChainClient.IsTxFinalized(ctx, transfer.GetSourceTxHash(), processor.sourceFinalityOffset)
+	finalized, err := sourceChainClient.IsTxFinalized(ctx, transfer.GetSourceTxHash(), p.sourceFinalityOffset)
 	if err != nil {
 		return nil, fmt.Errorf("checking if tx %s is finalized on chain %s: %w", transfer.GetSourceTxHash(), transfer.GetSourceChainID(), err)
 	}
@@ -56,10 +56,10 @@ func (processor CheckSendFinalityProcessor) Process(ctx context.Context, transfe
 	if _, sourceTxFinalizedTimeSet := transfer.GetSourceTxFinalizedTime(); !sourceTxFinalizedTimeSet {
 		finalizedTime := time.Now()
 
-		if err := processor.storage.UpdateTransferSourceTxFinalizedTime(ctx, db.UpdateTransferSourceTxFinalizedTimeParams{
+		if err := p.storage.UpdateTransferSourceTxFinalizedTime(ctx, db.UpdateTransferSourceTxFinalizedTimeParams{
 			SourceChainID:         transfer.GetSourceChainID(),
 			PacketSourceClientID:  transfer.GetPacketSourceClientID(),
-			PacketSequenceNumber:  int32(transfer.GetPacketSequenceNumber()),
+			PacketSequenceNumber:  int32(transfer.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 			SourceTxFinalizedTime: pgtype.Timestamp{Valid: true, Time: finalizedTime},
 		}); err != nil {
 			return nil, fmt.Errorf("updating source tx finalized time: %w", err)
@@ -71,7 +71,7 @@ func (processor CheckSendFinalityProcessor) Process(ctx context.Context, transfe
 	return transfer, nil
 }
 
-func (processor CheckSendFinalityProcessor) Cancel(transfer *IBCV2Transfer, err error) {
+func (CheckSendFinalityProcessor) Cancel(transfer *IBCV2Transfer, err error) {
 	// log error, mark packet as failed if fatal error and we cannot retry, if
 	// not fatal error, do nothing so it will be retried by this stage
 	if errors.Is(err, ErrSendNotFinalized) {
@@ -89,11 +89,11 @@ func (processor CheckSendFinalityProcessor) Cancel(transfer *IBCV2Transfer, err 
 }
 
 // ShouldProcess determines when this processor should be run.
-func (processor CheckSendFinalityProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
+func (CheckSendFinalityProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
 	_, hasRecvTxHash := transfer.GetRecvTxHash()
 	return !hasRecvTxHash
 }
 
-func (processor CheckSendFinalityProcessor) State() db.Ibcv2RelayStatus {
+func (CheckSendFinalityProcessor) State() db.Ibcv2RelayStatus {
 	return db.Ibcv2RelayStatusAWAITINGSENDFINALITY
 }

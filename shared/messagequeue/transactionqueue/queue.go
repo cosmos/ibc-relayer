@@ -48,7 +48,7 @@ func (t *consumerTransactionQueueImpl) Pop(ctx context.Context, count int) ([]*T
 	if len(messages) == 0 {
 		return nil, nil
 	}
-	var transactions []*Transaction
+	transactions := make([]*Transaction, 0, len(messages))
 	for _, message := range messages {
 		transactions = append(transactions, &Transaction{
 			ChainID: message.Values["chain_id"].(string),
@@ -78,7 +78,7 @@ type producerTransactionQueueImpl struct {
 }
 
 func (t *producerTransactionQueueImpl) Push(ctx context.Context, txHash, chainID string) error {
-	_, err := t.messageQueue.Push(ctx, map[string]interface{}{
+	_, err := t.messageQueue.Push(ctx, map[string]any{
 		"tx_hash":  txHash,
 		"chain_id": chainID,
 	})

@@ -7,12 +7,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/cosmos/ibc-relayer/proto/gen/relayerapi"
-	"github.com/cosmos/ibc-relayer/shared/lmt"
-
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
+	"github.com/cosmos/ibc-relayer/proto/gen/relayerapi"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
 )
 
 var sourceChainID = flag.String(
@@ -46,11 +46,12 @@ func main() {
 		lmt.Logger(ctx).Fatal("source-chain-id and tx-hash are required")
 	}
 
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
-		InsecureSkipVerify: true,
-		MinVersion:         tls.VersionTLS13,
-	})))
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+			InsecureSkipVerify: true, //nolint:gosec // CLI tool connects to internal services
+			MinVersion:         tls.VersionTLS13,
+		})),
+	}
 	conn, err := grpc.NewClient(*relayerGRPCURL, opts...)
 	if err != nil {
 		lmt.Logger(ctx).Fatal("creating grpc connection to relayer", zap.String("relayer_grpc_url", *relayerGRPCURL), zap.Error(err))

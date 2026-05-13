@@ -36,7 +36,8 @@ func (s *CoingeckoClientTestSuite) TestGetSimplePrice() {
 		Body:       io.NopCloser(bytes.NewBufferString("{\"cosmos\": {\"usd\": 10.0}}")),
 	}
 	s.httpClient.On("Do", mock.Anything).Once().Return(res, nil).Run(func(args mock.Arguments) {
-		req := args.Get(0).(*http.Request)
+		req, ok := args.Get(0).(*http.Request)
+		s.Require().True(ok)
 		s.Require().Equal("GET", req.Method)
 		s.Require().Equal("/simple/price", req.URL.Path)
 		s.Require().Equal("cosmos", req.URL.Query().Get("ids"))
@@ -49,7 +50,7 @@ func (s *CoingeckoClientTestSuite) TestGetSimplePrice() {
 
 	// Then
 	s.Require().NoError(err)
-	s.Require().Equal(float64(10), price)
+	s.Require().InDelta(float64(10), price, 0.001)
 }
 
 func (s *CoingeckoClientTestSuite) TestGetSimplePrice_HTTPClientError() {
@@ -62,7 +63,7 @@ func (s *CoingeckoClientTestSuite) TestGetSimplePrice_HTTPClientError() {
 
 	// Then
 	s.Require().ErrorContains(err, "failed")
-	s.Require().Equal(float64(0), price)
+	s.Require().InDelta(float64(0), price, 0.001)
 }
 
 func (s *CoingeckoClientTestSuite) TestGetSimplePrice_ErrorCoingecko500Response() {
@@ -79,7 +80,7 @@ func (s *CoingeckoClientTestSuite) TestGetSimplePrice_ErrorCoingecko500Response(
 
 	// Then
 	s.Require().ErrorContains(err, "error requesting resource from server")
-	s.Require().Equal(float64(0), price)
+	s.Require().InDelta(float64(0), price, 0.001)
 }
 
 func (s *CoingeckoClientTestSuite) TestGetSimplePrice_ErrorMissingPrice() {
@@ -96,7 +97,7 @@ func (s *CoingeckoClientTestSuite) TestGetSimplePrice_ErrorMissingPrice() {
 
 	// Then
 	s.Require().ErrorContains(err, "failed to return price for coingeckoId")
-	s.Require().Equal(float64(0), price)
+	s.Require().InDelta(float64(0), price, 0.001)
 }
 
 func TestCoingeckoClientTestSuite(t *testing.T) {

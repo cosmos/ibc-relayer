@@ -33,7 +33,7 @@ type RelayerAPIServiceSuite struct {
 func (s *RelayerAPIServiceSuite) SetupTest() {
 	chainConfigMap := map[string]config.ChainConfig{
 		"cosmosChainID": {
-			Type:    config.ChainType_COSMOS,
+			Type:    config.ChainTypeCOSMOS,
 			ChainID: "cosmosChainID",
 			Cosmos: &config.CosmosConfig{
 				AddressPrefix: "noble",
@@ -45,7 +45,7 @@ func (s *RelayerAPIServiceSuite) SetupTest() {
 			},
 		},
 		"evmChainID": {
-			Type:    config.ChainType_EVM,
+			Type:    config.ChainTypeEVM,
 			ChainID: "evmChainID",
 			EVM:     &config.EVMConfig{},
 			IBCV2: &config.IBCV2Config{
@@ -75,7 +75,7 @@ func (s *RelayerAPIServiceSuite) TestRelay_RejectsBlacklistedOFACAddress() {
 
 	mockDB.EXPECT().InsertRelaySubmission(s.Ctx, mock.Anything).Return(nil)
 	mockBridgeClientManager.EXPECT().GetClient(s.Ctx, "evmChainID").Return(mockBridgeClient, nil)
-	mockBridgeClient.EXPECT().ChainType().Return(config.ChainType_EVM)
+	mockBridgeClient.EXPECT().ChainType().Return(config.ChainTypeEVM)
 	mockBridgeClient.EXPECT().GetTransactionSender(s.Ctx, txHash).Return(blacklistedAddress, nil)
 
 	service := relayerapi.NewRelayerAPIService(s.Ctx, mockDB, mockBridgeClientManager)
@@ -103,7 +103,7 @@ func (s *RelayerAPIServiceSuite) TestRelay_SucceedsOnValidTxHash() {
 
 	mockDB.EXPECT().InsertRelaySubmission(s.Ctx, mock.Anything).Return(nil)
 	mockClientManager.EXPECT().GetClient(s.Ctx, "evmChainID").Return(mockBridgeClient, nil)
-	mockBridgeClient.EXPECT().ChainType().Return(config.ChainType_EVM)
+	mockBridgeClient.EXPECT().ChainType().Return(config.ChainTypeEVM)
 	mockBridgeClient.EXPECT().GetTransactionSender(s.Ctx, "0xabc123").Return("0x0000000000000000000000000000000000000000", nil)
 
 	packetTime := time.Now()
@@ -177,7 +177,7 @@ func (s *RelayerAPIServiceSuite) TestRelay_FailsOnDatabaseFailure() {
 
 	mockDB.EXPECT().InsertRelaySubmission(s.Ctx, mock.Anything).Return(nil)
 	mockClientManager.EXPECT().GetClient(s.Ctx, "evmChainID").Return(mockBridgeClient, nil)
-	mockBridgeClient.EXPECT().ChainType().Return(config.ChainType_EVM)
+	mockBridgeClient.EXPECT().ChainType().Return(config.ChainTypeEVM)
 	mockBridgeClient.EXPECT().GetTransactionSender(s.Ctx, "0xabc123").Return("0x0000000000000000000000000000000000000000", nil)
 
 	packetTime := time.Now()
