@@ -18,6 +18,8 @@ type TransferStateStorage interface {
 
 // IBCV2Processor defines the methods needed to be a processor in a ibcv2
 // transfer pipeline and to be wrapped by the IBCV2ProcessorMW helper.
+//
+//nolint:revive // IBCV2Processor is the canonical name across the codebase
 type IBCV2Processor interface {
 	// ShouldProcess returns true if a processor should process some input,
 	// false otherwise
@@ -33,6 +35,8 @@ type IBCV2Processor interface {
 
 // IBCV2ProcessorMW is a wrapper around a pipeline processor that has ibcv2
 // specific helper logic. All ibcv2 processors should be wrapped with this.
+//
+//nolint:revive // IBCV2ProcessorMW is the canonical name across the codebase
 type IBCV2ProcessorMW[Input *IBCV2Transfer, Output *IBCV2Transfer] struct {
 	storage  TransferStateStorage
 	internal IBCV2Processor
@@ -54,7 +58,7 @@ func NewIBCV2ProcessorMW[Input *IBCV2Transfer, Output *IBCV2Transfer](
 // be invoked or skipped. Finally, the internal processor is called. If the
 // processor returns an error, the internal processor's cancel function will be
 // called and the transfer will be marked as an error.
-func (processor IBCV2ProcessorMW[Input, Output]) Process(
+func (p IBCV2ProcessorMW[Input, Output]) Process(
 	ctx context.Context,
 	input *IBCV2Transfer,
 ) (Output, error) {
@@ -70,26 +74,26 @@ func (processor IBCV2ProcessorMW[Input, Output]) Process(
 
 	// check that the internal processor should process the input, if not,
 	// return the input without processing
-	if !processor.internal.ShouldProcess(input) {
+	if !p.internal.ShouldProcess(input) {
 		return input, nil
 	}
 
 	// this internal processor should process this transfer, update its state
 	// to match the processor that is about to process it
 	stateUpdate := db.UpdateTransferStateParams{
-		Status:               processor.internal.State(),
+		Status:               p.internal.State(),
 		SourceChainID:        input.GetSourceChainID(),
 		PacketSourceClientID: input.GetPacketSourceClientID(),
-		PacketSequenceNumber: int32(input.GetPacketSequenceNumber()),
+		PacketSequenceNumber: int32(input.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 	}
-	if err := processor.storage.UpdateTransferState(ctx, stateUpdate); err != nil {
+	if err := p.storage.UpdateTransferState(ctx, stateUpdate); err != nil {
 		wrapped := fmt.Errorf(
 			"updating transfer state to %s from state %s: %w",
-			processor.internal.State(),
+			p.internal.State(),
 			input.GetState(),
 			err,
 		)
-		processor.Cancel(input, wrapped)
+		p.Cancel(input, wrapped)
 		input.ProcessingError = wrapped
 		return input, nil
 	}
@@ -97,7 +101,7 @@ func (processor IBCV2ProcessorMW[Input, Output]) Process(
 	// update the transfers state to the processor that is about to process
 	// this transfer
 	prevState := input.State
-	input.State = processor.internal.State()
+	input.State = p.internal.State()
 	input.RecordTransferState(ctx, string(input.State))
 
 	input.GetLogger().Debug(
@@ -106,7 +110,7 @@ func (processor IBCV2ProcessorMW[Input, Output]) Process(
 		zap.String("prev_state", string(prevState)),
 	)
 
-	output, err := processor.internal.Process(ctx, input)
+	output, err := p.internal.Process(ctx, input)
 	if err != nil {
 		// if the processor returns an error, call the cancel function and set
 		// the transfers ProcessingError to the error.
@@ -130,7 +134,7 @@ func (processor IBCV2ProcessorMW[Input, Output]) Process(
 			return nil, err
 		}
 
-		processor.Cancel(input, err)
+		p.Cancel(input, err)
 		input.ProcessingError = err
 		return input, nil
 	}
@@ -145,15 +149,17 @@ func (processor IBCV2ProcessorMW[Input, Output]) Process(
 }
 
 // Cancel calls the internal processors Cancel function
-func (processor IBCV2ProcessorMW[Input, Output]) Cancel(input *IBCV2Transfer, err error) {
+func (p IBCV2ProcessorMW[Input, Output]) Cancel(input *IBCV2Transfer, err error) {
 	if input == nil {
 		return
 	}
-	processor.internal.Cancel(input, err)
+	p.internal.Cancel(input, err)
 }
 
 // IBCV2Processor defines the methods needed to be a processor in a ibcv2
 // transfer pipeline and to be wrapped by the IBCV2ProcessorMW helper.
+//
+//nolint:revive // IBCV2BatchProcessor is the canonical name across the codebase
 type IBCV2BatchProcessor interface {
 	// ShouldProcess returns true if a processor should process some input
 	// within a batch, false otherwise
@@ -169,6 +175,8 @@ type IBCV2BatchProcessor interface {
 
 // IBCV2BatchProcessorMW is a wrapper around a pipeline processor that has ibcv2
 // specific helper logic. All ibcv2 processors should be wrapped with this.
+//
+//nolint:revive // IBCV2BatchProcessorMW is the canonical name across the codebase
 type IBCV2BatchProcessorMW[Input []*IBCV2Transfer, Output []*IBCV2Transfer] struct {
 	storage  TransferStateStorage
 	internal IBCV2BatchProcessor
@@ -184,17 +192,17 @@ func NewIBCV2BatchProcessorMW[Input []*IBCV2Transfer, Output []*IBCV2Transfer](
 	}
 }
 
-func (processor IBCV2BatchProcessorMW[Input, Output]) Process(
+func (p IBCV2BatchProcessorMW[Input, Output]) Process(
 	ctx context.Context,
 	batch []*IBCV2Transfer,
 ) ([]*IBCV2Transfer, error) {
 	lmt.Logger(ctx).Debug(
 		fmt.Sprintf("processing %d transfer batch", len(batch)),
-		zap.String("state", string(processor.internal.State())),
+		zap.String("state", string(p.internal.State())),
 	)
 
 	var notProcessing []*IBCV2Transfer
-	var toProcess []*IBCV2Transfer
+	toProcess := make([]*IBCV2Transfer, 0, len(batch))
 	for _, input := range batch {
 		if input.Error() != "" {
 			// note that if we return an error here then processing the entire
@@ -209,7 +217,7 @@ func (processor IBCV2BatchProcessorMW[Input, Output]) Process(
 			continue
 		}
 
-		if !processor.internal.ShouldProcess(input) {
+		if !p.internal.ShouldProcess(input) {
 			// note that if we return an error here then processing the entire
 			// batch will fail, we instead we just ignore this input when
 			// processing
@@ -220,19 +228,19 @@ func (processor IBCV2BatchProcessorMW[Input, Output]) Process(
 		// this internal processor should process this input in a batch, update
 		// its state to match the processor that is about to process it
 		stateUpdate := db.UpdateTransferStateParams{
-			Status:               processor.internal.State(),
+			Status:               p.internal.State(),
 			SourceChainID:        input.GetSourceChainID(),
 			PacketSourceClientID: input.GetPacketSourceClientID(),
-			PacketSequenceNumber: int32(input.GetPacketSequenceNumber()),
+			PacketSequenceNumber: int32(input.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 		}
-		if err := processor.storage.UpdateTransferState(ctx, stateUpdate); err != nil {
+		if err := p.storage.UpdateTransferState(ctx, stateUpdate); err != nil {
 			wrapped := fmt.Errorf(
 				"updating transfer state to %s from state %s: %w",
-				processor.internal.State(),
+				p.internal.State(),
 				input.GetState(),
 				err,
 			)
-			processor.Cancel([]*IBCV2Transfer{input}, wrapped)
+			p.Cancel([]*IBCV2Transfer{input}, wrapped)
 			input.ProcessingError = wrapped
 			notProcessing = append(notProcessing, input)
 			continue
@@ -240,7 +248,7 @@ func (processor IBCV2BatchProcessorMW[Input, Output]) Process(
 
 		// update the transfers state to the processor that is about to process
 		// this transfer
-		input.State = processor.internal.State()
+		input.State = p.internal.State()
 		input.RecordTransferState(ctx, string(input.State))
 		toProcess = append(toProcess, input)
 	}
@@ -249,7 +257,7 @@ func (processor IBCV2BatchProcessorMW[Input, Output]) Process(
 		return notProcessing, nil
 	}
 
-	output, err := processor.internal.Process(ctx, toProcess)
+	output, err := p.internal.Process(ctx, toProcess)
 	if err != nil {
 		// if the processor returns an error, call the cancel function and set
 		// the transfers ProcessingError to the error.
@@ -273,7 +281,7 @@ func (processor IBCV2BatchProcessorMW[Input, Output]) Process(
 			return nil, err
 		}
 
-		processor.Cancel(toProcess, err)
+		p.Cancel(toProcess, err)
 		for _, input := range toProcess {
 			input.ProcessingError = err
 		}
@@ -284,14 +292,14 @@ func (processor IBCV2BatchProcessorMW[Input, Output]) Process(
 }
 
 // Cancel calls the internal processors Cancel function
-func (processor IBCV2BatchProcessorMW[Input, Output]) Cancel(input []*IBCV2Transfer, err error) {
-	processor.internal.Cancel(input, err)
+func (p IBCV2BatchProcessorMW[Input, Output]) Cancel(input []*IBCV2Transfer, err error) {
+	p.internal.Cancel(input, err)
 }
 
-func (processor IBCV2BatchProcessorMW[Input, Output]) ShouldProcess(input *IBCV2Transfer) bool {
-	return processor.internal.ShouldProcess(input)
+func (p IBCV2BatchProcessorMW[Input, Output]) ShouldProcess(input *IBCV2Transfer) bool {
+	return p.internal.ShouldProcess(input)
 }
 
-func (processor IBCV2BatchProcessorMW[Input, Output]) State() db.Ibcv2RelayStatus {
-	return processor.internal.State()
+func (p IBCV2BatchProcessorMW[Input, Output]) State() db.Ibcv2RelayStatus {
+	return p.internal.State()
 }

@@ -2,6 +2,7 @@ package ibcv2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"go.uber.org/zap"
@@ -37,15 +38,15 @@ func NewAckTxGasCalculatorProcessor(
 	}
 }
 
-func (processor AckTxGasCalculatorProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
-	sourceBridgeClient, err := processor.bridgeClientManager.GetClient(ctx, transfer.GetSourceChainID())
+func (p AckTxGasCalculatorProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
+	sourceBridgeClient, err := p.bridgeClientManager.GetClient(ctx, transfer.GetSourceChainID())
 	if err != nil {
 		return nil, fmt.Errorf("getting ibcv2 bridge client for transfer source chain %s: %w", transfer.GetSourceChainID(), err)
 	}
 
 	ackTxHash, hasAckTxHash := transfer.GetAckTxHash()
 	if !hasAckTxHash {
-		return nil, fmt.Errorf("this is a bug! transfer does not have a ack tx, violating should process")
+		return nil, errors.New("this is a bug! transfer does not have a ack tx, violating should process")
 	}
 
 	gasCostInGasToken, err := sourceBridgeClient.TxFee(ctx, ackTxHash)
@@ -53,7 +54,7 @@ func (processor AckTxGasCalculatorProcessor) Process(ctx context.Context, transf
 		return nil, fmt.Errorf("getting gas cost of ack tx %s on %s: %w", ackTxHash, transfer.GetSourceChainID(), err)
 	}
 
-	gasCostUSD, err := processor.priceClient.GetCoinUsdValue(ctx, processor.sourceChainGasTokenCoingeckoID, processor.sourceChainGasTokenDecimals, gasCostInGasToken)
+	gasCostUSD, err := p.priceClient.GetCoinUsdValue(ctx, p.sourceChainGasTokenCoingeckoID, p.sourceChainGasTokenDecimals, gasCostInGasToken)
 	if err != nil {
 		return nil, fmt.Errorf("getting usd value of ack tx gas cost on chain %s: %w", transfer.GetSourceChainID(), err)
 	}
@@ -62,22 +63,22 @@ func (processor AckTxGasCalculatorProcessor) Process(ctx context.Context, transf
 		AckTxGasCostUsd:      gasCostUSD,
 		SourceChainID:        transfer.GetSourceChainID(),
 		PacketSourceClientID: transfer.GetPacketSourceClientID(),
-		PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()),
+		PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 	}
-	if err := processor.storage.UpdateTransferAckTxGasCostUSD(ctx, update); err != nil {
+	if err := p.storage.UpdateTransferAckTxGasCostUSD(ctx, update); err != nil {
 		return nil, fmt.Errorf("updating transfer ack tx gas cost usd value: %w", err)
 	}
 
 	return transfer, nil
 }
 
-func (processor AckTxGasCalculatorProcessor) Cancel(transfer *IBCV2Transfer, err error) {
+func (AckTxGasCalculatorProcessor) Cancel(transfer *IBCV2Transfer, err error) {
 	ackTxHash, _ := transfer.GetAckTxHash()
 	ackTxTime, _ := transfer.GetAckTxTime()
 	transfer.GetLogger().Error("calculating ack packet gas cost", zap.Error(err), zap.String("ack_tx_hash", ackTxHash), zap.Time("ack_tx_time", ackTxTime))
 }
 
-func (processor AckTxGasCalculatorProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
+func (AckTxGasCalculatorProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
 	_, hasAckGasCostUSD := transfer.GetAckGasCostUSD()
 	if hasAckGasCostUSD {
 		return false
@@ -87,6 +88,6 @@ func (processor AckTxGasCalculatorProcessor) ShouldProcess(transfer *IBCV2Transf
 	return hasAckTxHash
 }
 
-func (processor AckTxGasCalculatorProcessor) State() db.Ibcv2RelayStatus {
+func (AckTxGasCalculatorProcessor) State() db.Ibcv2RelayStatus {
 	return db.Ibcv2RelayStatusCALCULATINGACKTXGASCOST
 }

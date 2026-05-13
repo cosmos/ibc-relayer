@@ -23,9 +23,10 @@ import (
 )
 
 const (
-	ErrCode_DuplicateKey = "23505"
+	ErrCodeDuplicateKey = "23505"
 )
 
+//nolint:revive // RelayerAPIService is the canonical name across the codebase
 type RelayerAPIService struct {
 	protorelayerapi.UnsafeRelayerApiServiceServer
 	config              config.ConfigReader
@@ -33,6 +34,7 @@ type RelayerAPIService struct {
 	bridgeClientManager ibcv2.BridgeClientManager
 }
 
+//nolint:revive // RelayerAPIQueries is the canonical name across the codebase
 type RelayerAPIQueries interface {
 	InsertIBCV2Transfer(ctx context.Context, arg db.InsertIBCV2TransferParams) error
 	GetTransfersBySourceTx(ctx context.Context, arg db.GetTransfersBySourceTxParams) ([]db.Ibcv2Transfer, error)
@@ -42,11 +44,11 @@ type RelayerAPIQueries interface {
 
 func NewRelayerAPIService(
 	ctx context.Context,
-	db RelayerAPIQueries,
+	queries RelayerAPIQueries,
 	bridgeClientManager ibcv2.BridgeClientManager,
 ) *RelayerAPIService {
 	return &RelayerAPIService{
-		db:                  db,
+		db:                  queries,
 		config:              config.GetConfigReader(ctx),
 		bridgeClientManager: bridgeClientManager,
 	}
@@ -81,11 +83,11 @@ func (s *RelayerAPIService) Status(
 		return nil, status.Errorf(codes.Internal, "failed to query transfers")
 	}
 
-	var statuses []*protorelayerapi.PacketStatus
+	statuses := make([]*protorelayerapi.PacketStatus, 0, len(transfers))
 	for _, t := range transfers {
 		statuses = append(statuses, &protorelayerapi.PacketStatus{
 			State:          mapDBStatusToProto(t.Status),
-			SequenceNumber: uint64(t.PacketSequenceNumber),
+			SequenceNumber: uint64(t.PacketSequenceNumber), //nolint:gosec // G115 bounded conversion
 			SourceClientId: t.PacketSourceClientID,
 			SendTx:         &protorelayerapi.TransactionInfo{TxHash: t.SourceTxHash, ChainId: t.SourceChainID},
 			RecvTx:         toTxInfo(t.RecvTxHash, t.DestinationChainID),
@@ -116,7 +118,7 @@ func (s *RelayerAPIService) Relay(
 		SourceTxHash:  request.GetTxHash(),
 	}); err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == ErrCode_DuplicateKey {
+		if errors.As(err, &pgErr) && pgErr.Code == ErrCodeDuplicateKey {
 			metrics.FromContext(ctx).AddRelayRequest(metrics.IBCV2BridgeType, uint32(codes.OK))
 			return &protorelayerapi.RelayResponse{}, nil
 		}
@@ -131,7 +133,7 @@ func (s *RelayerAPIService) Relay(
 	}
 
 	// Check for blacklisted OFAC accounts
-	if client.ChainType() == config.ChainType_EVM {
+	if client.ChainType() == config.ChainTypeEVM {
 		transactionSender, err := client.GetTransactionSender(ctx, request.GetTxHash())
 		if err != nil {
 			return nil, fmt.Errorf("checking OFAC Blacklist - error getting transaction sender: %w", err)
@@ -166,7 +168,7 @@ func (s *RelayerAPIService) Relay(
 			DestinationChainID:        destChainID,
 			SourceTxHash:              request.GetTxHash(),
 			SourceTxTime:              pgtype.Timestamp{Valid: true, Time: packet.Timestamp},
-			PacketSequenceNumber:      int32(packet.Sequence),
+			PacketSequenceNumber:      int32(packet.Sequence), //nolint:gosec // G115 bounded conversion
 			PacketSourceClientID:      packet.SourceClient,
 			PacketDestinationClientID: packet.DestinationClient,
 			PacketTimeoutTimestamp:    pgtype.Timestamp{Valid: true, Time: packet.TimeoutTimestamp},
@@ -174,7 +176,7 @@ func (s *RelayerAPIService) Relay(
 
 		if err := s.db.InsertIBCV2Transfer(ctx, insert); err != nil {
 			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) && pgErr.Code == ErrCode_DuplicateKey {
+			if errors.As(err, &pgErr) && pgErr.Code == ErrCodeDuplicateKey {
 				lmt.Logger(ctx).Debug("packet already exists",
 					zap.Uint64("sequence", packet.Sequence),
 				)

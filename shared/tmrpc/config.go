@@ -13,7 +13,7 @@ type TendermintRPCClientManagerConfig struct {
 type Remote struct {
 	Endpoint string `yaml:"endpoint"`
 	Username string `yaml:"username"`
-	Password string `yaml:"password"`
+	Password string `yaml:"password"` // #nosec G117 -- legitimate basic-auth password field
 }
 
 func LoadConfig(path string) (TendermintRPCClientManagerConfig, error) {

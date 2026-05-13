@@ -189,7 +189,7 @@ func (t *SubmittedTxCostTracker) resolveGasCosts(
 ) (*big.Int, pgtype.Numeric, error) {
 	gasCostAmount, err := client.TxFee(ctx, submission.TxHash)
 	if err != nil {
-		return nil, pgtype.Numeric{}, fmt.Errorf("unable to get native gas cost: %s", err)
+		return nil, pgtype.Numeric{}, fmt.Errorf("unable to get native gas cost: %w", err)
 	}
 	if gasCostAmount == nil {
 		gasCostAmount = big.NewInt(0)
@@ -217,7 +217,7 @@ func submissionExecutionChainID(submission db.GetUnresolvedIBCV2RelayerTxSubmiss
 	return submission.ChainID
 }
 
-func (t *SubmittedTxCostTracker) recordResolvedSubmissionMetrics(ctx context.Context, submission db.GetUnresolvedIBCV2RelayerTxSubmissionsRow, executionStatus string, gasCostAmount *big.Int) {
+func (*SubmittedTxCostTracker) recordResolvedSubmissionMetrics(ctx context.Context, submission db.GetUnresolvedIBCV2RelayerTxSubmissionsRow, executionStatus string, gasCostAmount *big.Int) {
 	sourceConfig, destConfig := chainConfigs(ctx, submission.ChainID, submission.DestinationChainID)
 
 	metrics.FromContext(ctx).AddTransactionConfirmed(

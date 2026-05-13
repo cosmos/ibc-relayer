@@ -2,6 +2,7 @@ package ibcv2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"sync"
@@ -16,6 +17,7 @@ import (
 	"github.com/cosmos/ibc-relayer/shared/metrics"
 )
 
+//nolint:revive // IBCV2Pipeline is the canonical name across the codebase
 type IBCV2Pipeline interface {
 	// Push pushes a transfer onto the pipelines input to be relayed, and
 	// returns if the transfer was successfully accepted to be relayed or not
@@ -218,7 +220,7 @@ func (p Pipeline[Input, Output]) Push(_ context.Context, i Input) bool {
 func (p Pipeline[Input, Output]) Poll() (Output, error) {
 	t, ok := <-p.Output
 	if !ok {
-		return t, fmt.Errorf("closed")
+		return t, errors.New("closed")
 	}
 	return t, nil
 }
@@ -230,6 +232,8 @@ func (p Pipeline[Input, Output]) Close() {
 // IBCV2PipelineManager creates and gives out pipelines for transfers. Each pipeline
 // instance is unique to a (source chain, source client, dest chain, dest
 // client) combination.
+//
+//nolint:revive // IBCV2PipelineManager is the canonical name across the codebase
 type IBCV2PipelineManager struct {
 	storage             Storage
 	bridgeClientManager BridgeClientManager
@@ -253,22 +257,22 @@ func NewIBCV2PipelineManager(
 	}
 }
 
-func (creator *IBCV2PipelineManager) Pipeline(ctx context.Context, transfer *IBCV2Transfer) (IBCV2Pipeline, error) {
+func (m *IBCV2PipelineManager) Pipeline(ctx context.Context, transfer *IBCV2Transfer) (IBCV2Pipeline, error) {
 	key := newPipelineKey(transfer)
-	if pipeline, ok := creator.pipelines[key]; ok {
-		return pipeline, nil
+	if existing, ok := m.pipelines[key]; ok {
+		return existing, nil
 	}
 
-	pipeline, err := creator.newPipelineForTransfer(ctx, transfer)
+	created, err := m.newPipelineForTransfer(ctx, transfer)
 	if err != nil {
 		return nil, fmt.Errorf("creating new pipeline for transfer from %s to %s: %w", transfer.GetSourceChainID(), transfer.GetDestinationChainID(), err)
 	}
 
-	creator.pipelines[key] = pipeline
-	return pipeline, nil
+	m.pipelines[key] = created
+	return created, nil
 }
 
-func (creator *IBCV2PipelineManager) newPipelineForTransfer(ctx context.Context, transfer *IBCV2Transfer) (IBCV2Pipeline, error) {
+func (m *IBCV2PipelineManager) newPipelineForTransfer(ctx context.Context, transfer *IBCV2Transfer) (IBCV2Pipeline, error) {
 	key := newPipelineKey(transfer)
 
 	opts, err := NewPipelineOpts(ctx, transfer)
@@ -284,10 +288,10 @@ func (creator *IBCV2PipelineManager) newPipelineForTransfer(ctx context.Context,
 
 	return NewPipelineDeduper(NewPipeline(
 		ctx,
-		creator.storage,
-		creator.bridgeClientManager,
-		creator.relayService,
-		creator.priceClient,
+		m.storage,
+		m.bridgeClientManager,
+		m.relayService,
+		m.priceClient,
 		key.SourceChainID,
 		key.SourceClientID,
 		key.DestinationChainID,
@@ -296,9 +300,9 @@ func (creator *IBCV2PipelineManager) newPipelineForTransfer(ctx context.Context,
 	)), nil
 }
 
-func (creator *IBCV2PipelineManager) Close() {
-	for _, pipeline := range creator.pipelines {
-		pipeline.Close()
+func (m *IBCV2PipelineManager) Close() {
+	for _, p := range m.pipelines {
+		p.Close()
 	}
 }
 
@@ -332,9 +336,9 @@ type PipelineDeduper struct {
 	done           chan struct{}
 }
 
-func NewPipelineDeduper(pipeline IBCV2Pipeline) *PipelineDeduper {
+func NewPipelineDeduper(p IBCV2Pipeline) *PipelineDeduper {
 	return &PipelineDeduper{
-		pipeline:       pipeline,
+		pipeline:       p,
 		inPipeline:     make(map[transferKey]struct{}),
 		inPipelineLock: new(sync.RWMutex),
 		once:           new(sync.Once),
@@ -342,54 +346,56 @@ func NewPipelineDeduper(pipeline IBCV2Pipeline) *PipelineDeduper {
 	}
 }
 
-func (deduper *PipelineDeduper) Push(ctx context.Context, transfer *IBCV2Transfer) bool {
-	deduper.once.Do(func() {
+func (d *PipelineDeduper) Push(ctx context.Context, transfer *IBCV2Transfer) bool {
+	d.once.Do(func() {
 		// if this is the first time we are pushing a transfer onto this
 		// pipeline, spawn a goroutine to watch the output channel to delete
 		// entries from the inPipeline map
 		go func() {
 			defer func() {
-				deduper.done <- struct{}{}
+				d.done <- struct{}{}
 			}()
 
 			for {
-				output, err := deduper.pipeline.Poll()
+				output, err := d.pipeline.Poll()
 				if err != nil {
 					return
 				}
 				if output == nil {
 					return
 				}
-				deduper.inPipelineLock.Lock()
-				delete(deduper.inPipeline, newTransferKey(output))
-				deduper.inPipelineLock.Unlock()
+				d.inPipelineLock.Lock()
+				delete(d.inPipeline, newTransferKey(output))
+				d.inPipelineLock.Unlock()
 			}
 		}()
 	})
 
-	deduper.inPipelineLock.Lock()
-	defer deduper.inPipelineLock.Unlock()
+	d.inPipelineLock.Lock()
+	defer d.inPipelineLock.Unlock()
 
 	key := newTransferKey(transfer)
 
 	// check if transfer already is in the pipeline
-	if _, ok := deduper.inPipeline[key]; ok {
+	if _, ok := d.inPipeline[key]; ok {
 		return false
 	}
 
 	// mark transfer as in pipeline and push
-	deduper.inPipeline[key] = struct{}{}
-	return deduper.pipeline.Push(ctx, transfer)
+	d.inPipeline[key] = struct{}{}
+	return d.pipeline.Push(ctx, transfer)
 }
 
 // Poll does nothing for a pipeline deduper, it overrides the output and consumes it infernally
-func (deduper *PipelineDeduper) Poll() (*IBCV2Transfer, error) {
+//
+//nolint:nilnil // intentional: deduper consumes output internally, Poll is a no-op
+func (*PipelineDeduper) Poll() (*IBCV2Transfer, error) {
 	return nil, nil
 }
 
-func (deduper *PipelineDeduper) Close() {
-	deduper.pipeline.Close()
-	<-deduper.done
+func (d *PipelineDeduper) Close() {
+	d.pipeline.Close()
+	<-d.done
 }
 
 type transferKey struct {

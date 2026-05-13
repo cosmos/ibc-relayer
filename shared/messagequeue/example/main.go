@@ -49,7 +49,7 @@ func main() {
 			}
 
 			for range 10 {
-				_, err = mq.Push(ctx, map[string]interface{}{"message": fmt.Sprintf("message-%d", i), "number": rand.Intn(1000000)})
+				_, err = mq.Push(ctx, map[string]any{"message": fmt.Sprintf("message-%d", i), "number": rand.Intn(1000000)}) //nolint:gosec // example code, not security sensitive
 				if err != nil {
 					lmt.Logger(ctx).Error("Unable to push message to queue", zap.Int("i", i), zap.Error(err))
 					return err
@@ -84,7 +84,7 @@ func main() {
 				ids := make([]string, 0, len(messages))
 				for _, message := range messages {
 					// Simulate flakiness
-					x := rand.Float64()
+					x := rand.Float64() //nolint:gosec // example code, not security sensitive
 					if x < 0.1 {
 						lmt.Logger(ctx).Warn("Dropping message", zap.String("id", message.ID))
 						continue // drop packet

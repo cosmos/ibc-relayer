@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpcmiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
@@ -35,7 +36,7 @@ func NewRelayerGRPCServer(ctx context.Context, pool *pgxpool.Pool, bridgeClientM
 	configInterceptor := config.UnaryServerInterceptor(config.GetConfigReader(ctx))
 
 	healthService := health.NewHealthService(pool)
-	server := grpc.NewServer(grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(metricsInterceptor, configInterceptor)))
+	server := grpc.NewServer(grpc.UnaryInterceptor(grpcmiddleware.ChainUnaryServer(metricsInterceptor, configInterceptor)))
 	genrelayservice.RegisterRelayerApiServiceServer(
 		server,
 		relayerapi.NewRelayerAPIService(
@@ -71,7 +72,7 @@ func (s *RelayerGRPCServer) Start(ctx context.Context) {
 
 	lmt.Logger(ctx).Info(
 		"relayer gRPC server is listening",
-		zap.String("address", fmt.Sprintf("http://%s", listener.Addr())),
+		zap.String("address", fmt.Sprintf("http://%s", listener.Addr())), //nolint:revive // local listener address for logging
 	)
 
 	go func() {
@@ -116,7 +117,7 @@ func newHealthcheckServer(ctx context.Context, healthService *health.HealthServi
 			}
 		}
 	})
-	healthcheckServer := http.Server{Handler: mux}
+	healthcheckServer := http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 
 	return &healthcheckServer
 }

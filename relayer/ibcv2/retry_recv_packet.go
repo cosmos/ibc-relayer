@@ -41,20 +41,20 @@ func NewRetryRecvPacketProcessor(
 	}
 }
 
-func (processor RetryRecvPacketProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
-	destinationChainClient, err := processor.bridgeClientManager.GetClient(ctx, processor.destinationChainID)
+func (p RetryRecvPacketProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
+	destinationChainClient, err := p.bridgeClientManager.GetClient(ctx, p.destinationChainID)
 	if err != nil {
-		return nil, fmt.Errorf("getting client for transfer destination chain %s: %w", processor.destinationChainID, err)
+		return nil, fmt.Errorf("getting client for transfer destination chain %s: %w", p.destinationChainID, err)
 	}
 
 	recvTxHash, ok := transfer.GetRecvTxHash()
 	if !ok {
-		return nil, fmt.Errorf("transfer does not have recv tx hash, violates should process, this is a bug")
+		return nil, errors.New("transfer does not have recv tx hash, violates should process, this is a bug")
 	}
 
 	recvTxTime, ok := transfer.GetRecvTxTime()
 	if !ok {
-		return nil, fmt.Errorf("transfer does not have a recv tx time, violates should process, this is a bug")
+		return nil, errors.New("transfer does not have a recv tx time, violates should process, this is a bug")
 	}
 
 	retry, err := destinationChainClient.ShouldRetryTx(ctx, recvTxHash, RetryRecvExpiry, recvTxTime)
@@ -69,9 +69,9 @@ func (processor RetryRecvPacketProcessor) Process(ctx context.Context, transfer 
 	update := db.ClearRecvTxParams{
 		SourceChainID:        transfer.GetSourceChainID(),
 		PacketSourceClientID: transfer.GetPacketSourceClientID(),
-		PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()),
+		PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 	}
-	if err := processor.storage.ClearRecvTx(ctx, update); err != nil {
+	if err := p.storage.ClearRecvTx(ctx, update); err != nil {
 		return nil, fmt.Errorf("clearing recv tx hash %s and time %s: %w", recvTxHash, recvTxTime.UTC().Format(time.RFC3339), err)
 	}
 
@@ -83,7 +83,7 @@ func (processor RetryRecvPacketProcessor) Process(ctx context.Context, transfer 
 	return nil, ErrRetryingRecvPacket
 }
 
-func (processor RetryRecvPacketProcessor) Cancel(transfer *IBCV2Transfer, err error) {
+func (RetryRecvPacketProcessor) Cancel(transfer *IBCV2Transfer, err error) {
 	recvTxHash, _ := transfer.GetRecvTxHash()
 	recvTxTime, _ := transfer.GetRecvTxTime()
 
@@ -113,7 +113,7 @@ func (processor RetryRecvPacketProcessor) Cancel(transfer *IBCV2Transfer, err er
 }
 
 // ShouldProcess determines when this processor should be run.
-func (processor RetryRecvPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
+func (RetryRecvPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
 	_, hasRecvTxHash := transfer.GetRecvTxHash()
 	_, hasRecvTxTime := transfer.GetRecvTxTime()
 	_, hasWriteAckTxHash := transfer.GetWriteAckTxHash()
@@ -123,6 +123,6 @@ func (processor RetryRecvPacketProcessor) ShouldProcess(transfer *IBCV2Transfer)
 	return hasRecvTxHash && hasRecvTxTime && !hasWriteAckTxHash
 }
 
-func (processor RetryRecvPacketProcessor) State() db.Ibcv2RelayStatus {
+func (RetryRecvPacketProcessor) State() db.Ibcv2RelayStatus {
 	return db.Ibcv2RelayStatusDELIVERRECVPACKET
 }

@@ -11,7 +11,7 @@ type Client interface {
 type AuthenticatedTransport struct {
 	UnderlyingTransport gohttp.RoundTripper
 	Username            string
-	Password            string
+	Password            string // #nosec G117 -- legitimate basic-auth password field
 }
 
 func (at *AuthenticatedTransport) RoundTrip(req *gohttp.Request) (*gohttp.Response, error) {

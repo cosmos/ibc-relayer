@@ -41,20 +41,20 @@ func NewRetryAckPacketProcessor(
 	}
 }
 
-func (processor RetryAckPacketProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
-	sourceChainClient, err := processor.bridgeClientManager.GetClient(ctx, processor.sourceChainID)
+func (p RetryAckPacketProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
+	sourceChainClient, err := p.bridgeClientManager.GetClient(ctx, p.sourceChainID)
 	if err != nil {
-		return nil, fmt.Errorf("getting client for transfer source chain %s: %w", processor.sourceChainID, err)
+		return nil, fmt.Errorf("getting client for transfer source chain %s: %w", p.sourceChainID, err)
 	}
 
 	ackTxHash, ok := transfer.GetAckTxHash()
 	if !ok {
-		return nil, fmt.Errorf("transfer does not have ack tx hash, violates should process, this is a bug")
+		return nil, errors.New("transfer does not have ack tx hash, violates should process, this is a bug")
 	}
 
 	ackTxTime, ok := transfer.GetAckTxTime()
 	if !ok {
-		return nil, fmt.Errorf("transfer does not have a ack tx time, violates should process, this is a bug")
+		return nil, errors.New("transfer does not have a ack tx time, violates should process, this is a bug")
 	}
 
 	retry, err := sourceChainClient.ShouldRetryTx(ctx, ackTxHash, RetryAckExpiry, ackTxTime)
@@ -71,9 +71,9 @@ func (processor RetryAckPacketProcessor) Process(ctx context.Context, transfer *
 	update := db.ClearAckTxParams{
 		SourceChainID:        transfer.GetSourceChainID(),
 		PacketSourceClientID: transfer.GetPacketSourceClientID(),
-		PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()),
+		PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 	}
-	if err := processor.storage.ClearAckTx(ctx, update); err != nil {
+	if err := p.storage.ClearAckTx(ctx, update); err != nil {
 		return nil, fmt.Errorf("clearing ack tx hash %s and time %s: %w", ackTxHash, ackTxTime.UTC().Format(time.RFC3339), err)
 	}
 
@@ -85,7 +85,7 @@ func (processor RetryAckPacketProcessor) Process(ctx context.Context, transfer *
 	return nil, ErrRetryingAckPacket
 }
 
-func (processor RetryAckPacketProcessor) Cancel(transfer *IBCV2Transfer, err error) {
+func (RetryAckPacketProcessor) Cancel(transfer *IBCV2Transfer, err error) {
 	ackTxHash, _ := transfer.GetAckTxHash()
 	ackTxTime, _ := transfer.GetAckTxTime()
 
@@ -115,7 +115,7 @@ func (processor RetryAckPacketProcessor) Cancel(transfer *IBCV2Transfer, err err
 }
 
 // ShouldProcess determines when this processor should be run.
-func (processor RetryAckPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
+func (RetryAckPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
 	_, hasAckTxHash := transfer.GetAckTxHash()
 	_, hasAckTxTime := transfer.GetAckTxTime()
 
@@ -123,6 +123,6 @@ func (processor RetryAckPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) 
 	return hasAckTxHash && hasAckTxTime
 }
 
-func (processor RetryAckPacketProcessor) State() db.Ibcv2RelayStatus {
+func (RetryAckPacketProcessor) State() db.Ibcv2RelayStatus {
 	return db.Ibcv2RelayStatusDELIVERACKPACKET
 }

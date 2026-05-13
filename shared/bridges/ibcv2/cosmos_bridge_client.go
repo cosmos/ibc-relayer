@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -13,22 +14,22 @@ import (
 	"sync"
 	"time"
 
-	sdk_math "cosmossdk.io/math"
+	sdkmath "cosmossdk.io/math"
 	abci "github.com/cometbft/cometbft/abci/types"
-	comet_bytes "github.com/cometbft/cometbft/libs/bytes"
-	tmRPC "github.com/cometbft/cometbft/rpc/client"
+	cometbytes "github.com/cometbft/cometbft/libs/bytes"
+	tmrpc "github.com/cometbft/cometbft/rpc/client"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
-	codec_types "github.com/cosmos/cosmos-sdk/codec/types"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/std"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/bech32"
 	"github.com/cosmos/cosmos-sdk/types/msgservice"
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/cosmos/cosmos-sdk/x/auth/tx"
-	auth_types "github.com/cosmos/cosmos-sdk/x/auth/types"
-	bank_types "github.com/cosmos/cosmos-sdk/x/bank/types"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/cosmos/gogoproto/proto"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -36,11 +37,11 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/cosmos/ibc-relayer/db/gen/db"
-	ibc_channel_v2_types "github.com/cosmos/ibc-relayer/proto/gen/ibc/core/channel/v2"
-	ibc_client_v1_types "github.com/cosmos/ibc-relayer/proto/gen/ibc/core/client/v1"
-	attestations_v1_types "github.com/cosmos/ibc-relayer/proto/gen/ibc/lightclients/attestations/v1"
-	tendermint_v1_types "github.com/cosmos/ibc-relayer/proto/gen/ibc/lightclients/tendermint/v1"
-	wasm_v1_types "github.com/cosmos/ibc-relayer/proto/gen/ibc/lightclients/wasm/v1"
+	ibcchannelv2types "github.com/cosmos/ibc-relayer/proto/gen/ibc/core/channel/v2"
+	ibcclientv1types "github.com/cosmos/ibc-relayer/proto/gen/ibc/core/client/v1"
+	attestationsv1types "github.com/cosmos/ibc-relayer/proto/gen/ibc/lightclients/attestations/v1"
+	tendermintv1types "github.com/cosmos/ibc-relayer/proto/gen/ibc/lightclients/tendermint/v1"
+	wasmv1types "github.com/cosmos/ibc-relayer/proto/gen/ibc/lightclients/wasm/v1"
 	"github.com/cosmos/ibc-relayer/shared/config"
 	"github.com/cosmos/ibc-relayer/shared/lmt"
 	"github.com/cosmos/ibc-relayer/shared/signing"
@@ -59,32 +60,32 @@ const (
 	eventTypeSendPacket    = "send_packet"
 )
 
-func newInterfaceRegistry() codec_types.InterfaceRegistry {
-	reg := codec_types.NewInterfaceRegistry()
+func newInterfaceRegistry() codectypes.InterfaceRegistry {
+	reg := codectypes.NewInterfaceRegistry()
 	std.RegisterInterfaces(reg)
-	auth_types.RegisterInterfaces(reg)
+	authtypes.RegisterInterfaces(reg)
 
 	msgs := []proto.Message{
-		&ibc_channel_v2_types.MsgSendPacket{},
-		&ibc_channel_v2_types.MsgRecvPacket{},
-		&ibc_channel_v2_types.MsgTimeout{},
-		&ibc_channel_v2_types.MsgAcknowledgement{},
-		&ibc_client_v1_types.MsgUpdateClient{},
-		&attestations_v1_types.ClientState{},
-		&attestations_v1_types.ConsensusState{},
-		&attestations_v1_types.AttestationProof{},
-		&tendermint_v1_types.ClientState{},
-		&tendermint_v1_types.Misbehaviour{},
-		&tendermint_v1_types.ConsensusState{},
-		&tendermint_v1_types.Header{},
-		&tendermint_v1_types.Fraction{},
-		&wasm_v1_types.ClientState{},
-		&wasm_v1_types.ConsensusState{},
-		&wasm_v1_types.ClientMessage{},
+		&ibcchannelv2types.MsgSendPacket{},
+		&ibcchannelv2types.MsgRecvPacket{},
+		&ibcchannelv2types.MsgTimeout{},
+		&ibcchannelv2types.MsgAcknowledgement{},
+		&ibcclientv1types.MsgUpdateClient{},
+		&attestationsv1types.ClientState{},
+		&attestationsv1types.ConsensusState{},
+		&attestationsv1types.AttestationProof{},
+		&tendermintv1types.ClientState{},
+		&tendermintv1types.Misbehaviour{},
+		&tendermintv1types.ConsensusState{},
+		&tendermintv1types.Header{},
+		&tendermintv1types.Fraction{},
+		&wasmv1types.ClientState{},
+		&wasmv1types.ConsensusState{},
+		&wasmv1types.ClientMessage{},
 	}
 
 	reg.RegisterImplementations((*sdk.Msg)(nil), msgs...)
-	msgservice.RegisterMsgServiceDesc(reg, &ibc_channel_v2_types.Msg_serviceDesc)
+	msgservice.RegisterMsgServiceDesc(reg, &ibcchannelv2types.Msg_serviceDesc)
 
 	return reg
 }
@@ -99,11 +100,11 @@ type CosmosBridgeClient struct {
 	feeAmount uint64
 
 	conn  grpc.ClientConnInterface
-	tmRPC tmRPC.Client
+	tmrpc tmrpc.Client
 
 	txConfig client.TxConfig
 	cdc      *codec.ProtoCodec
-	reg      codec_types.InterfaceRegistry
+	reg      codectypes.InterfaceRegistry
 
 	txOnce             *OnceWithKey[*coretypes.ResultTx]
 	txSubmissionLock   *sync.Mutex
@@ -121,7 +122,7 @@ func NewCosmosBridgeClient(
 	feeDenom string,
 	feeAmount uint64,
 	conn grpc.ClientConnInterface,
-	tmRPC tmRPC.Client,
+	rpcClient tmrpc.Client,
 ) *CosmosBridgeClient {
 	reg := newInterfaceRegistry()
 	cdc := codec.NewProtoCodec(reg)
@@ -134,7 +135,7 @@ func NewCosmosBridgeClient(
 		feeDenom:            feeDenom,
 		feeAmount:           feeAmount,
 		conn:                conn,
-		tmRPC:               tmRPC,
+		tmrpc:               rpcClient,
 		txConfig:            tx.NewTxConfig(cdc, tx.DefaultSignModes),
 		cdc:                 cdc,
 		reg:                 reg,
@@ -145,12 +146,12 @@ func NewCosmosBridgeClient(
 	}
 }
 
-func (client *CosmosBridgeClient) IsPacketReceived(ctx context.Context, destinationClientID string, sequence uint64) (bool, error) {
-	in := &ibc_channel_v2_types.QueryPacketReceiptRequest{
+func (c *CosmosBridgeClient) IsPacketReceived(ctx context.Context, destinationClientID string, sequence uint64) (bool, error) {
+	in := &ibcchannelv2types.QueryPacketReceiptRequest{
 		ClientId: destinationClientID,
 		Sequence: sequence,
 	}
-	resp, err := ibc_channel_v2_types.NewQueryClient(client.conn).PacketReceipt(ctx, in)
+	resp, err := ibcchannelv2types.NewQueryClient(c.conn).PacketReceipt(ctx, in)
 	if err != nil {
 		return false, fmt.Errorf("querying for packet receipt with sequence number %d to destination client %s: %w", sequence, destinationClientID, err)
 	}
@@ -158,15 +159,15 @@ func (client *CosmosBridgeClient) IsPacketReceived(ctx context.Context, destinat
 	return resp.Received, nil
 }
 
-func (client *CosmosBridgeClient) IsPacketCommitted(ctx context.Context, sourceClientID string, sequence uint64) (bool, error) {
-	in := &ibc_channel_v2_types.QueryPacketCommitmentRequest{
+func (c *CosmosBridgeClient) IsPacketCommitted(ctx context.Context, sourceClientID string, sequence uint64) (bool, error) {
+	in := &ibcchannelv2types.QueryPacketCommitmentRequest{
 		ClientId: sourceClientID,
 		Sequence: sequence,
 	}
-	_, err := ibc_channel_v2_types.NewQueryClient(client.conn).PacketCommitment(ctx, in)
+	_, err := ibcchannelv2types.NewQueryClient(c.conn).PacketCommitment(ctx, in)
 	if err != nil {
-		if status, ok := status.FromError(err); ok {
-			if status.Code() == codes.NotFound {
+		if st, ok := status.FromError(err); ok {
+			if st.Code() == codes.NotFound {
 				return false, nil
 			}
 		}
@@ -176,7 +177,7 @@ func (client *CosmosBridgeClient) IsPacketCommitted(ctx context.Context, sourceC
 	return true, nil
 }
 
-func (client *CosmosBridgeClient) FindRecvTx(
+func (c *CosmosBridgeClient) FindRecvTx(
 	ctx context.Context,
 	sourceClientID string,
 	destClientID string,
@@ -190,7 +191,7 @@ func (client *CosmosBridgeClient) FindRecvTx(
 		fmt.Sprintf("%s.%s=%d", eventTypeRecvPacket, attributeKeyPacketTimeoutTimestamp, timeoutTimestamp.Unix()),
 	}, " AND ")
 
-	searchResult, err := client.tmRPC.TxSearch(ctx, query, false, nil, nil, "desc")
+	searchResult, err := c.tmrpc.TxSearch(ctx, query, false, nil, nil, "desc")
 	if err != nil {
 		return nil, fmt.Errorf(
 			"searching for recv tx from source client %s to dest client %s with sequence %d and timeout tx %d: %w",
@@ -211,7 +212,7 @@ func (client *CosmosBridgeClient) FindRecvTx(
 	recvTx := searchResult.Txs[0]
 
 	// fetch header at block height to get timestamp
-	headerResult, err := client.tmRPC.Header(ctx, &recvTx.Height)
+	headerResult, err := c.tmrpc.Header(ctx, &recvTx.Height)
 	if err != nil {
 		return nil, fmt.Errorf("fetching block header at recv tx height %d: %w", recvTx.Height, err)
 	}
@@ -219,7 +220,7 @@ func (client *CosmosBridgeClient) FindRecvTx(
 		return nil, fmt.Errorf("fetched block header at recv tx height %d without err but header was nil", recvTx.Height)
 	}
 
-	signer, err := client.txSigner(recvTx)
+	signer, err := c.txSigner(recvTx)
 	if err != nil {
 		// the above could fail for many reasons (some other relayer included
 		// some crazy message types in the recv we are unable to decode, weird
@@ -236,7 +237,7 @@ func (client *CosmosBridgeClient) FindRecvTx(
 	}, nil
 }
 
-func (client *CosmosBridgeClient) FindAckTx(
+func (c *CosmosBridgeClient) FindAckTx(
 	ctx context.Context,
 	sourceClientID string,
 	destClientID string,
@@ -248,7 +249,7 @@ func (client *CosmosBridgeClient) FindAckTx(
 		fmt.Sprintf("%s.%s=%d", eventTypeAckPacket, attributeKeyPacketSequence, sequence),
 	}, " AND ")
 
-	searchResult, err := client.tmRPC.TxSearch(ctx, query, false, nil, nil, "desc")
+	searchResult, err := c.tmrpc.TxSearch(ctx, query, false, nil, nil, "desc")
 	if err != nil {
 		return nil, fmt.Errorf(
 			"searching for ack tx from source client %s to dest client %s with sequence %d: %w",
@@ -268,7 +269,7 @@ func (client *CosmosBridgeClient) FindAckTx(
 	ackTx := searchResult.Txs[0]
 
 	// fetch header at block height to get timestamp
-	headerResult, err := client.tmRPC.Header(ctx, &ackTx.Height)
+	headerResult, err := c.tmrpc.Header(ctx, &ackTx.Height)
 	if err != nil {
 		return nil, fmt.Errorf("fetching block header at ack tx height %d: %w", ackTx.Height, err)
 	}
@@ -276,7 +277,7 @@ func (client *CosmosBridgeClient) FindAckTx(
 		return nil, fmt.Errorf("fetched block header at ack tx height %d without err but header was nil", ackTx.Height)
 	}
 
-	signer, err := client.txSigner(ackTx)
+	signer, err := c.txSigner(ackTx)
 	if err != nil {
 		// the above could fail for many reasons (some other relayer included
 		// some crazy message types in the ack we are unable to decode, weird
@@ -293,7 +294,7 @@ func (client *CosmosBridgeClient) FindAckTx(
 	}, nil
 }
 
-func (client *CosmosBridgeClient) FindTimeoutTx(
+func (c *CosmosBridgeClient) FindTimeoutTx(
 	ctx context.Context,
 	sourceClientID string,
 	destClientID string,
@@ -305,7 +306,7 @@ func (client *CosmosBridgeClient) FindTimeoutTx(
 		fmt.Sprintf("%s.%s=%d", eventTypeTimeoutPacket, attributeKeyPacketSequence, sequence),
 	}, " AND ")
 
-	searchResult, err := client.tmRPC.TxSearch(ctx, query, false, nil, nil, "desc")
+	searchResult, err := c.tmrpc.TxSearch(ctx, query, false, nil, nil, "desc")
 	if err != nil {
 		return nil, fmt.Errorf(
 			"searching for timeout tx from source client %s to dest client %s with sequence %d: %w",
@@ -325,7 +326,7 @@ func (client *CosmosBridgeClient) FindTimeoutTx(
 	timeoutTx := searchResult.Txs[0]
 
 	// fetch header at block height to get timestamp
-	headerResult, err := client.tmRPC.Header(ctx, &timeoutTx.Height)
+	headerResult, err := c.tmrpc.Header(ctx, &timeoutTx.Height)
 	if err != nil {
 		return nil, fmt.Errorf("fetching block header at timeout tx height %d: %w", timeoutTx.Height, err)
 	}
@@ -333,7 +334,7 @@ func (client *CosmosBridgeClient) FindTimeoutTx(
 		return nil, fmt.Errorf("fetched block header at timeout tx height %d without err but header was nil", timeoutTx.Height)
 	}
 
-	signer, err := client.txSigner(timeoutTx)
+	signer, err := c.txSigner(timeoutTx)
 	if err != nil {
 		// the above could fail for many reasons (some other relayer included
 		// some crazy message types in the timeout we are unable to decode, weird
@@ -350,27 +351,27 @@ func (client *CosmosBridgeClient) FindTimeoutTx(
 	}, nil
 }
 
-func (client *CosmosBridgeClient) DeliverTx(ctx context.Context, bz []byte, _ string) (*BridgeTx, error) {
+func (c *CosmosBridgeClient) DeliverTx(ctx context.Context, bz []byte, _ string) (*BridgeTx, error) {
 	var err error
-	client.txSubmissionLock.Lock()
+	c.txSubmissionLock.Lock()
 	defer func() {
 		if err == nil {
-			client.lastSubmissionTime = time.Now()
+			c.lastSubmissionTime = time.Now()
 		}
-		client.txSubmissionLock.Unlock()
+		c.txSubmissionLock.Unlock()
 	}()
 	select {
-	case <-time.After(time.Until(client.lastSubmissionTime.Add(client.txSubmissionDelay))):
+	case <-time.After(time.Until(c.lastSubmissionTime.Add(c.txSubmissionDelay))):
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
 
-	bech32Address, err := bech32.ConvertAndEncode(client.prefix, client.signer.Address(ctx))
+	bech32Address, err := bech32.ConvertAndEncode(c.prefix, c.signer.Address(ctx))
 	if err != nil {
-		return nil, fmt.Errorf("converting and encoding signer address %s with prefix %s to bech32: %w", client.signer.Address(ctx), client.prefix, err)
+		return nil, fmt.Errorf("converting and encoding signer address %s with prefix %s to bech32: %w", c.signer.Address(ctx), c.prefix, err)
 	}
 
-	hash, err := client.signAndSubmit(ctx, bz)
+	hash, err := c.signAndSubmit(ctx, bz)
 	if err != nil {
 		return nil, fmt.Errorf("signing and submitting recv tx: %w", err)
 	}
@@ -382,7 +383,7 @@ func (client *CosmosBridgeClient) DeliverTx(ctx context.Context, bz []byte, _ st
 	}, nil
 }
 
-func (client *CosmosBridgeClient) PacketWriteAckStatus(
+func (c *CosmosBridgeClient) PacketWriteAckStatus(
 	ctx context.Context,
 	hash string,
 	sequence uint64,
@@ -396,8 +397,8 @@ func (client *CosmosBridgeClient) PacketWriteAckStatus(
 
 	// we use the once wrapper so that this function is only called once for a
 	// particular value of hash bytes even for many invocations
-	txResult, err := client.txOnce.Do(hash, func() (*coretypes.ResultTx, error) {
-		return client.tmRPC.Tx(ctx, hashBytes, false)
+	txResult, err := c.txOnce.Do(hash, func() (*coretypes.ResultTx, error) {
+		return c.tmrpc.Tx(ctx, hashBytes, false)
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -415,7 +416,7 @@ func (client *CosmosBridgeClient) PacketWriteAckStatus(
 		for _, attribute := range event.GetAttributes() {
 			switch attribute.GetKey() {
 			case attributeKeyPacketSequence:
-				if attribute.GetValue() == strconv.Itoa(int(sequence)) {
+				if attribute.GetValue() == strconv.Itoa(int(sequence)) { //nolint:gosec // G115 bounded conversion
 					sequenceMatch = true
 				}
 			case attributeKeyPacketSourceClient:
@@ -453,7 +454,7 @@ func parseWriteAckStatusForPacket(writeAckEvent abci.Event) (db.Ibcv2WriteAckSta
 			return db.Ibcv2WriteAckStatusUNKNOWN, fmt.Errorf("%w:%w", ErrWriteAckDecoding, err)
 		}
 
-		var ack ibc_channel_v2_types.Acknowledgement
+		var ack ibcchannelv2types.Acknowledgement
 		if err = proto.Unmarshal(protoAckBytes, &ack); err != nil {
 			return db.Ibcv2WriteAckStatusUNKNOWN, fmt.Errorf("%w:%w", ErrWriteAckDecoding, err)
 		}
@@ -470,18 +471,18 @@ func parseWriteAckStatusForPacket(writeAckEvent abci.Event) (db.Ibcv2WriteAckSta
 	return db.Ibcv2WriteAckStatusUNKNOWN, nil
 }
 
-func (client *CosmosBridgeClient) SendPacketsFromTx(ctx context.Context, sourceChainID string, txHash string) ([]*PacketInfo, error) {
+func (c *CosmosBridgeClient) SendPacketsFromTx(ctx context.Context, sourceChainID string, txHash string) ([]*PacketInfo, error) {
 	hashBytes, err := hex.DecodeString(txHash)
 	if err != nil {
 		return nil, fmt.Errorf("hex decoding tx hash: %w", err)
 	}
 
-	txResult, err := client.tmRPC.Tx(ctx, hashBytes, false)
+	txResult, err := c.tmrpc.Tx(ctx, hashBytes, false)
 	if err != nil {
 		return nil, fmt.Errorf("getting tx result: %w", err)
 	}
 
-	var packets []*PacketInfo
+	packets := make([]*PacketInfo, 0, len(txResult.TxResult.GetEvents()))
 	for _, event := range txResult.TxResult.GetEvents() {
 		if event.GetType() != eventTypeSendPacket {
 			continue
@@ -494,7 +495,7 @@ func (client *CosmosBridgeClient) SendPacketsFromTx(ctx context.Context, sourceC
 				if err != nil {
 					return nil, fmt.Errorf("converting packet sequence %s to int", attribute.GetValue())
 				}
-				packet.Sequence = uint64(sequence)
+				packet.Sequence = uint64(sequence) //nolint:gosec // G115 bounded conversion
 			case attributeKeyPacketSourceClient:
 				packet.SourceClient = attribute.GetValue()
 			case attributeKeyPacketDestClient:
@@ -523,7 +524,7 @@ func (client *CosmosBridgeClient) SendPacketsFromTx(ctx context.Context, sourceC
 	// only query for the header if we have actually found packets within the
 	// tx, doing this after the loop just saves us a call if there are not send
 	// packets found in the tx
-	header, err := client.tmRPC.Header(ctx, &txResult.Height)
+	header, err := c.tmrpc.Header(ctx, &txResult.Height)
 	if err != nil {
 		return nil, fmt.Errorf("getting header for height %d: %w", txResult.Height, err)
 	}
@@ -538,25 +539,25 @@ func (client *CosmosBridgeClient) SendPacketsFromTx(ctx context.Context, sourceC
 	return packets, nil
 }
 
-func (client *CosmosBridgeClient) ShouldRetryTx(ctx context.Context, txHash string, expiry time.Duration, sentTs time.Time) (bool, error) {
+func (c *CosmosBridgeClient) ShouldRetryTx(ctx context.Context, txHash string, expiry time.Duration, sentTs time.Time) (bool, error) {
 	txHashBytes, err := hex.DecodeString(txHash)
 	if err != nil {
 		return false, fmt.Errorf("decoding hex tx hash %s to bytes: %w", txHash, err)
 	}
 
-	resp, err := client.txOnce.Do(txHash, func() (*coretypes.ResultTx, error) { return client.tmRPC.Tx(ctx, txHashBytes, false) })
+	resp, err := c.txOnce.Do(txHash, func() (*coretypes.ResultTx, error) { return c.tmrpc.Tx(ctx, txHashBytes, false) })
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			// tx not found on chain, check if we have waited longer than the
 			// expiry of on chain time, and if we have, the tx should be
 			// retried
 
-			latestHeaderResult, err := client.tmRPC.Header(ctx, nil)
+			latestHeaderResult, err := c.tmrpc.Header(ctx, nil)
 			if err != nil {
 				return false, fmt.Errorf("getting latest block header: %w", err)
 			}
 			if latestHeaderResult.Header == nil {
-				return false, fmt.Errorf("fetched block header at latest height without err but header was nil")
+				return false, errors.New("fetched block header at latest height without err but header was nil")
 			}
 
 			expiresAt := sentTs.UTC().Add(expiry)
@@ -585,7 +586,7 @@ func (client *CosmosBridgeClient) ShouldRetryTx(ctx context.Context, txHash stri
 	return false, nil
 }
 
-func (client *CosmosBridgeClient) WaitForChain(ctx context.Context) error {
+func (c *CosmosBridgeClient) WaitForChain(ctx context.Context) error {
 	const initialTick = time.Millisecond
 	const tick = time.Second
 
@@ -599,12 +600,12 @@ func (client *CosmosBridgeClient) WaitForChain(ctx context.Context) error {
 		case <-ticker.C:
 			ticker.Stop()
 
-			latest, err := client.tmRPC.Header(ctx, nil)
+			latest, err := c.tmrpc.Header(ctx, nil)
 			if err != nil {
 				return fmt.Errorf("getting latest block header: %w", err)
 			}
 			if latest.Header == nil {
-				return fmt.Errorf("latest header was nil")
+				return errors.New("latest header was nil")
 			}
 
 			if latest.Header.Time.After(now) {
@@ -632,47 +633,47 @@ func (client *CosmosBridgeClient) WaitForChain(ctx context.Context) error {
 	}
 }
 
-func (client *CosmosBridgeClient) IsTxFinalized(ctx context.Context, txHash string, offset *uint64) (bool, error) {
+func (*CosmosBridgeClient) IsTxFinalized(ctx context.Context, txHash string, offset *uint64) (bool, error) {
 	return true, nil
 }
 
-func (client *CosmosBridgeClient) IsTimestampFinalized(ctx context.Context, timestamp time.Time, offset *uint64) (bool, error) {
+func (c *CosmosBridgeClient) IsTimestampFinalized(ctx context.Context, timestamp time.Time, offset *uint64) (bool, error) {
 	// Cosmos chains have instant finality, so we just need to check if the latest
 	// block timestamp has passed the target timestamp.
 	// Note: We don't use LatestOnChainTimestamp here because it caches the result.
-	header, err := client.tmRPC.Header(ctx, nil)
+	header, err := c.tmrpc.Header(ctx, nil)
 	if err != nil {
 		return false, fmt.Errorf("getting latest header: %w", err)
 	}
 	if header.Header == nil {
-		return false, fmt.Errorf("got nil header when fetching latest header")
+		return false, errors.New("got nil header when fetching latest header")
 	}
 	return header.Header.Time.After(timestamp), nil
 }
 
-func (client *CosmosBridgeClient) ChainType() config.ChainType {
-	return config.ChainType_COSMOS
+func (*CosmosBridgeClient) ChainType() config.ChainType {
+	return config.ChainTypeCOSMOS
 }
 
-func (client *CosmosBridgeClient) signAndSubmit(ctx context.Context, bz []byte) (comet_bytes.HexBytes, error) {
+func (c *CosmosBridgeClient) signAndSubmit(ctx context.Context, bz []byte) (cometbytes.HexBytes, error) {
 	var txBody txtypes.TxBody
 	if err := proto.Unmarshal(bz, &txBody); err != nil {
 		return nil, fmt.Errorf("unmarshaling tx bytes: %w", err)
 	}
 	if len(txBody.Messages) == 0 {
-		return nil, fmt.Errorf("no messages to relay")
+		return nil, errors.New("no messages to relay")
 	}
 
 	var numClientUpdates int
-	updateClientTypeURL := codec_types.MsgTypeURL(&ibc_client_v1_types.MsgUpdateClient{})
+	updateClientTypeURL := codectypes.MsgTypeURL(&ibcclientv1types.MsgUpdateClient{})
 
-	var msgs []sdk.Msg
+	msgs := make([]sdk.Msg, 0, len(txBody.Messages))
 	for _, msg := range txBody.Messages {
 		var sdkMsg sdk.Msg
-		if err := client.reg.UnpackAny(msg, &sdkMsg); err != nil {
+		if err := c.reg.UnpackAny(msg, &sdkMsg); err != nil {
 			return nil, fmt.Errorf("unpacking msg into sdk.Msg: %w", err)
 		}
-		if codec_types.MsgTypeURL(sdkMsg) == updateClientTypeURL {
+		if codectypes.MsgTypeURL(sdkMsg) == updateClientTypeURL {
 			numClientUpdates++
 		}
 		msgs = append(msgs, sdkMsg)
@@ -690,22 +691,22 @@ func (client *CosmosBridgeClient) signAndSubmit(ctx context.Context, bz []byte) 
 		var numSubmitted int
 		var nonClientUpdateMsgs []sdk.Msg
 		for _, msg := range msgs {
-			if codec_types.MsgTypeURL(msg) != updateClientTypeURL {
+			if codectypes.MsgTypeURL(msg) != updateClientTypeURL {
 				nonClientUpdateMsgs = append(nonClientUpdateMsgs, msg)
 				continue
 			}
 
-			hash, err := client.signAndSubmitMessages(ctx, msg)
+			hash, err := c.signAndSubmitMessages(ctx, msg)
 			if err != nil {
 				return nil, fmt.Errorf("submitting individual update client message number %d since there were %d included in tx: %w", numSubmitted, numClientUpdates, err)
 			}
 			numSubmitted++
 
 			lmt.Logger(ctx).Info(
-				fmt.Sprintf("submitted individual client update, sleeping for %s to submit next tx", client.txSubmissionDelay),
+				fmt.Sprintf("submitted individual client update, sleeping for %s to submit next tx", c.txSubmissionDelay),
 				zap.String("tx_hash", hash.String()),
 			)
-			time.Sleep(client.txSubmissionDelay)
+			time.Sleep(c.txSubmissionDelay)
 		}
 
 		// we have submitted all client update msgs individually, now only
@@ -714,56 +715,56 @@ func (client *CosmosBridgeClient) signAndSubmit(ctx context.Context, bz []byte) 
 		msgs = nonClientUpdateMsgs
 	}
 
-	return client.signAndSubmitMessages(ctx, msgs...)
+	return c.signAndSubmitMessages(ctx, msgs...)
 }
 
-func (client *CosmosBridgeClient) signAndSubmitMessages(ctx context.Context, msgs ...sdk.Msg) (comet_bytes.HexBytes, error) {
-	bech32Address, err := bech32.ConvertAndEncode(client.prefix, client.signer.Address(ctx))
+func (c *CosmosBridgeClient) signAndSubmitMessages(ctx context.Context, msgs ...sdk.Msg) (cometbytes.HexBytes, error) {
+	bech32Address, err := bech32.ConvertAndEncode(c.prefix, c.signer.Address(ctx))
 	if err != nil {
-		return nil, fmt.Errorf("converting and encoding signer address %s with prefix %s to bech32: %w", client.signer.Address(ctx), client.prefix, err)
+		return nil, fmt.Errorf("converting and encoding signer address %s with prefix %s to bech32: %w", c.signer.Address(ctx), c.prefix, err)
 	}
 
-	accountClient := auth_types.NewQueryClient(client.conn)
-	account, err := accountClient.AccountInfo(ctx, &auth_types.QueryAccountInfoRequest{Address: bech32Address})
+	accountClient := authtypes.NewQueryClient(c.conn)
+	account, err := accountClient.AccountInfo(ctx, &authtypes.QueryAccountInfoRequest{Address: bech32Address})
 	if err != nil {
-		return nil, fmt.Errorf("getting account info for cosmos signer %s on chain %s: %w", bech32Address, client.chainID, err)
+		return nil, fmt.Errorf("getting account info for cosmos signer %s on chain %s: %w", bech32Address, c.chainID, err)
 	}
 	accountInfo := account.GetInfo()
 	if accountInfo == nil {
-		return nil, fmt.Errorf("got no info for cosmos signer account %s on chain %s: %w", bech32Address, client.chainID, err)
+		return nil, fmt.Errorf("got no info for cosmos signer account %s on chain %s: %w", bech32Address, c.chainID, err)
 	}
 
-	txBuilder := client.txConfig.NewTxBuilder()
+	txBuilder := c.txConfig.NewTxBuilder()
 	if err = txBuilder.SetMsgs(msgs...); err != nil {
 		return nil, fmt.Errorf("setting message in tx: %w", err)
 	}
 
-	gasLimit, err := client.getEstimatedGasLimit(ctx, txBuilder, accountInfo)
+	gasLimit, err := c.getEstimatedGasLimit(ctx, txBuilder, accountInfo)
 	if err != nil {
 		return nil, fmt.Errorf("getting estimated gas limit for tx: %w", err)
 	}
 	txBuilder.SetGasLimit(gasLimit)
 
-	if client.feeDenom != "" {
-		fee, err := client.getTxFee(gasLimit)
+	if c.feeDenom != "" {
+		fee, err := c.getTxFee(gasLimit)
 		if err != nil {
 			return nil, fmt.Errorf("getting tx fee: %w", err)
 		}
 		txBuilder.SetFeeAmount(sdk.NewCoins(fee))
 	}
 
-	unsigedTx := signing.NewCosmosTransaction(txBuilder.GetTx(), accountInfo.GetAccountNumber(), accountInfo.Sequence, client.txConfig)
-	signedTx, err := client.signer.Sign(ctx, client.chainID, unsigedTx)
+	unsigedTx := signing.NewCosmosTransaction(txBuilder.GetTx(), accountInfo.GetAccountNumber(), accountInfo.Sequence, c.txConfig)
+	signedTx, err := c.signer.Sign(ctx, c.chainID, unsigedTx)
 	if err != nil {
 		return nil, fmt.Errorf("signing tx: %w", err)
 	}
 
-	signedTxBytes, err := client.txConfig.TxEncoder()(signedTx.(*signing.CosmosTransaction).Tx)
+	signedTxBytes, err := c.txConfig.TxEncoder()(signedTx.(*signing.CosmosTransaction).Tx)
 	if err != nil {
 		return nil, fmt.Errorf("encoding signed tx: %w", err)
 	}
 
-	result, err := client.tmRPC.BroadcastTxSync(ctx, signedTxBytes)
+	result, err := c.tmrpc.BroadcastTxSync(ctx, signedTxBytes)
 	if err != nil {
 		return nil, fmt.Errorf("broadcasting tx synchronously from signer %s: %w", bech32Address, err)
 	}
@@ -774,45 +775,45 @@ func (client *CosmosBridgeClient) signAndSubmitMessages(ctx context.Context, msg
 	return result.Hash, nil
 }
 
-func (client *CosmosBridgeClient) getTxFee(gasLimit uint64) (sdk.Coin, error) {
-	if client.feeDenom == "" {
-		return sdk.Coin{}, fmt.Errorf("fee denom not set for chain %s", client.chainID)
+func (c *CosmosBridgeClient) getTxFee(gasLimit uint64) (sdk.Coin, error) {
+	if c.feeDenom == "" {
+		return sdk.Coin{}, fmt.Errorf("fee denom not set for chain %s", c.chainID)
 	}
-	if client.gasPrice > 0 && client.feeAmount > 0 {
-		return sdk.Coin{}, fmt.Errorf("gas price and fee amount cannot both be set for chain %s", client.chainID)
+	if c.gasPrice > 0 && c.feeAmount > 0 {
+		return sdk.Coin{}, fmt.Errorf("gas price and fee amount cannot both be set for chain %s", c.chainID)
 	}
 
-	if client.gasPrice > 0 {
-		feeAmount, _ := new(big.Float).Mul(big.NewFloat(client.gasPrice), new(big.Float).SetInt64(int64(gasLimit))).Int(nil)
+	if c.gasPrice > 0 {
+		feeAmount, _ := new(big.Float).Mul(big.NewFloat(c.gasPrice), new(big.Float).SetInt64(int64(gasLimit))).Int(nil) //nolint:gosec // G115 bounded conversion
 		feeAmount.Add(feeAmount, big.NewInt(1))
-		return sdk.NewCoin(client.feeDenom, sdk_math.NewIntFromBigInt(feeAmount)), nil
+		return sdk.NewCoin(c.feeDenom, sdkmath.NewIntFromBigInt(feeAmount)), nil
 	}
-	if client.feeAmount > 0 {
-		return sdk.NewCoin(client.feeDenom, sdk_math.NewIntFromUint64(client.feeAmount)), nil
+	if c.feeAmount > 0 {
+		return sdk.NewCoin(c.feeDenom, sdkmath.NewIntFromUint64(c.feeAmount)), nil
 	}
 
-	return sdk.NewCoin(client.feeDenom, sdk_math.NewIntFromUint64(0)), nil
+	return sdk.NewCoin(c.feeDenom, sdkmath.NewIntFromUint64(0)), nil
 }
 
-func (client *CosmosBridgeClient) getEstimatedGasLimit(ctx context.Context, txBuilder client.TxBuilder, accountInfo *auth_types.BaseAccount) (uint64, error) {
-	unsigedTx := signing.NewCosmosTransaction(txBuilder.GetTx(), accountInfo.GetAccountNumber(), accountInfo.GetSequence(), client.txConfig)
-	signedTx, err := client.signer.Sign(ctx, client.chainID, unsigedTx)
+func (c *CosmosBridgeClient) getEstimatedGasLimit(ctx context.Context, txBuilder client.TxBuilder, accountInfo *authtypes.BaseAccount) (uint64, error) {
+	unsigedTx := signing.NewCosmosTransaction(txBuilder.GetTx(), accountInfo.GetAccountNumber(), accountInfo.GetSequence(), c.txConfig)
+	signedTx, err := c.signer.Sign(ctx, c.chainID, unsigedTx)
 	if err != nil {
 		return 0, fmt.Errorf("signing tx: %w", err)
 	}
 
-	signedTxBytes, err := client.txConfig.TxEncoder()(signedTx.(*signing.CosmosTransaction).Tx)
+	signedTxBytes, err := c.txConfig.TxEncoder()(signedTx.(*signing.CosmosTransaction).Tx)
 	if err != nil {
 		return 0, fmt.Errorf("encoding signed tx: %w", err)
 	}
 
-	txService := txtypes.NewServiceClient(client.conn)
+	txService := txtypes.NewServiceClient(c.conn)
 	res, err := txService.Simulate(ctx, &txtypes.SimulateRequest{TxBytes: signedTxBytes})
 	if err != nil {
 		return 0, fmt.Errorf("simulating tx to get estimated gas usage: %w", err)
 	}
 	if res.GetGasInfo() == nil {
-		return 0, fmt.Errorf("got nil gas info after simulating tx")
+		return 0, errors.New("got nil gas info after simulating tx")
 	}
 
 	// multiply gas used by a multiplier to give us a buffer on the gas limit
@@ -820,60 +821,60 @@ func (client *CosmosBridgeClient) getEstimatedGasLimit(ctx context.Context, txBu
 	return uint64(math.Ceil(float64(res.GetGasInfo().GetGasUsed()) * gasMultiplier)), nil
 }
 
-func (client *CosmosBridgeClient) LatestOnChainTimestamp(ctx context.Context) (time.Time, error) {
-	return client.latestTimestampOnce.Do("key", func() (time.Time, error) {
-		header, err := client.tmRPC.Header(ctx, nil)
+func (c *CosmosBridgeClient) LatestOnChainTimestamp(ctx context.Context) (time.Time, error) {
+	return c.latestTimestampOnce.Do("key", func() (time.Time, error) {
+		header, err := c.tmrpc.Header(ctx, nil)
 		if err != nil {
 			return time.Time{}, fmt.Errorf("getting latest header: %w", err)
 		}
 		if header.Header == nil {
-			return time.Time{}, fmt.Errorf("got nil header when fetching latest header")
+			return time.Time{}, errors.New("got nil header when fetching latest header")
 		}
 		return header.Header.Time, nil
 	})
 }
 
-func (client *CosmosBridgeClient) SignerGasTokenBalance(ctx context.Context) (*big.Int, error) {
-	bech32Address, err := bech32.ConvertAndEncode(client.prefix, client.signer.Address(ctx))
+func (c *CosmosBridgeClient) SignerGasTokenBalance(ctx context.Context) (*big.Int, error) {
+	bech32Address, err := bech32.ConvertAndEncode(c.prefix, c.signer.Address(ctx))
 	if err != nil {
-		return nil, fmt.Errorf("converting and encoding signer address %s with prefix %s to bech32: %w", client.signer.Address(ctx), client.prefix, err)
+		return nil, fmt.Errorf("converting and encoding signer address %s with prefix %s to bech32: %w", c.signer.Address(ctx), c.prefix, err)
 	}
 
-	req := &bank_types.QueryBalanceRequest{Address: bech32Address, Denom: client.feeDenom}
-	resp, err := bank_types.NewQueryClient(client.conn).Balance(ctx, req)
+	req := &banktypes.QueryBalanceRequest{Address: bech32Address, Denom: c.feeDenom}
+	resp, err := banktypes.NewQueryClient(c.conn).Balance(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("getting %s balance for signer on chain %s: %w", client.feeDenom, client.chainID, err)
+		return nil, fmt.Errorf("getting %s balance for signer on chain %s: %w", c.feeDenom, c.chainID, err)
 	}
 	if resp.GetBalance() == nil {
-		return nil, fmt.Errorf("got nil %s balance for signer on chain %s: %w", client.feeDenom, client.chainID, err)
+		return nil, fmt.Errorf("got nil %s balance for signer on chain %s: %w", c.feeDenom, c.chainID, err)
 	}
 	return resp.GetBalance().Amount.BigInt(), nil
 }
 
-func (client *CosmosBridgeClient) TxFee(ctx context.Context, txHash string) (*big.Int, error) {
+func (c *CosmosBridgeClient) TxFee(ctx context.Context, txHash string) (*big.Int, error) {
 	hashBytes, err := hex.DecodeString(txHash)
 	if err != nil {
 		return nil, fmt.Errorf("hex decoding tx hash string %s: %w", txHash, err)
 	}
 
-	result, err := client.txOnce.Do(txHash, func() (*coretypes.ResultTx, error) {
-		return client.tmRPC.Tx(ctx, hashBytes, false)
+	result, err := c.txOnce.Do(txHash, func() (*coretypes.ResultTx, error) {
+		return c.tmrpc.Tx(ctx, hashBytes, false)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("getting results for tx hash %s: %w", txHash, err)
 	}
 
-	tx, err := client.txConfig.TxDecoder()(result.Tx)
+	decodedTx, err := c.txConfig.TxDecoder()(result.Tx)
 	if err != nil {
 		return nil, fmt.Errorf("decoding tx result: %w", err)
 	}
 
-	feeTx, ok := tx.(sdk.FeeTx)
+	feeTx, ok := decodedTx.(sdk.FeeTx)
 	if !ok {
-		return nil, fmt.Errorf("could not convert decoded tx to sdk.FeeTx")
+		return nil, errors.New("could not convert decoded tx to sdk.FeeTx")
 	}
 
-	fee := feeTx.GetFee().AmountOf(client.feeDenom)
+	fee := feeTx.GetFee().AmountOf(c.feeDenom)
 	if fee.IsNil() {
 		return big.NewInt(0), nil
 	}
@@ -881,14 +882,14 @@ func (client *CosmosBridgeClient) TxFee(ctx context.Context, txHash string) (*bi
 	return fee.BigInt(), nil
 }
 
-func (client *CosmosBridgeClient) TxExecutionStatus(ctx context.Context, txHash string) (TxExecutionStatus, error) {
+func (c *CosmosBridgeClient) TxExecutionStatus(ctx context.Context, txHash string) (TxExecutionStatus, error) {
 	hashBytes, err := hex.DecodeString(txHash)
 	if err != nil {
 		return TxExecutionStatus{}, fmt.Errorf("hex decoding tx hash string %s: %w", txHash, err)
 	}
 
-	result, err := client.txOnce.Do(txHash, func() (*coretypes.ResultTx, error) {
-		return client.tmRPC.Tx(ctx, hashBytes, false)
+	result, err := c.txOnce.Do(txHash, func() (*coretypes.ResultTx, error) {
+		return c.tmrpc.Tx(ctx, hashBytes, false)
 	})
 	if err != nil {
 		return TxExecutionStatus{}, fmt.Errorf("getting results for tx hash %s: %w", txHash, err)
@@ -904,28 +905,28 @@ func (client *CosmosBridgeClient) TxExecutionStatus(ctx context.Context, txHash 
 	}, nil
 }
 
-func (client *CosmosBridgeClient) txSigner(result *coretypes.ResultTx) (string, error) {
-	decoded, err := client.txConfig.TxDecoder()(result.Tx)
+func (c *CosmosBridgeClient) txSigner(result *coretypes.ResultTx) (string, error) {
+	decoded, err := c.txConfig.TxDecoder()(result.Tx)
 	if err != nil {
 		return "", fmt.Errorf("decoding tx result: %w", err)
 	}
 
 	for _, msg := range decoded.GetMsgs() {
 		switch t := msg.(type) {
-		case *ibc_channel_v2_types.MsgRecvPacket:
+		case *ibcchannelv2types.MsgRecvPacket:
 			return t.Signer, nil
-		case *ibc_channel_v2_types.MsgAcknowledgement:
+		case *ibcchannelv2types.MsgAcknowledgement:
 			return t.Signer, nil
-		case *ibc_channel_v2_types.MsgTimeout:
+		case *ibcchannelv2types.MsgTimeout:
 			return t.Signer, nil
 		default:
 			continue
 		}
 	}
-	return "", fmt.Errorf("expected recv packet, ack packet, or timeout packet msg but found none")
+	return "", errors.New("expected recv packet, ack packet, or timeout packet msg but found none")
 }
 
-func (client *CosmosBridgeClient) SendTransfer(
+func (*CosmosBridgeClient) SendTransfer(
 	ctx context.Context,
 	clientID string,
 	denom string,
@@ -936,9 +937,9 @@ func (client *CosmosBridgeClient) SendTransfer(
 	panic("unimplemented")
 }
 
-func (client *CosmosBridgeClient) TimestampAtHeight(ctx context.Context, height uint64) (time.Time, error) {
-	heightI := int64(height)
-	header, err := client.tmRPC.Header(ctx, &heightI)
+func (c *CosmosBridgeClient) TimestampAtHeight(ctx context.Context, height uint64) (time.Time, error) {
+	heightI := int64(height) //nolint:gosec // G115 bounded conversion
+	header, err := c.tmrpc.Header(ctx, &heightI)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("fetching block header at height %d: %w", height, err)
 	}
@@ -948,29 +949,29 @@ func (client *CosmosBridgeClient) TimestampAtHeight(ctx context.Context, height 
 	return header.Header.Time.UTC(), nil
 }
 
-func (client *CosmosBridgeClient) ClientState(ctx context.Context, clientID string) (ClientState, error) {
-	req := &ibc_client_v1_types.QueryClientStateRequest{ClientId: clientID}
-	state, err := ibc_client_v1_types.NewQueryClient(client.conn).ClientState(ctx, req)
+func (c *CosmosBridgeClient) ClientState(ctx context.Context, clientID string) (ClientState, error) {
+	req := &ibcclientv1types.QueryClientStateRequest{ClientId: clientID}
+	state, err := ibcclientv1types.NewQueryClient(c.conn).ClientState(ctx, req)
 	if err != nil {
 		return ClientState{}, fmt.Errorf("querying for state of client: %w", err)
 	}
 	if state.GetClientState() == nil {
-		return ClientState{}, fmt.Errorf("got nil client state")
+		return ClientState{}, errors.New("got nil client state")
 	}
 	if state.GetClientState().GetValue() == nil {
-		return ClientState{}, fmt.Errorf("got nil client state value")
+		return ClientState{}, errors.New("got nil client state value")
 	}
 
 	switch state.GetClientState().GetTypeUrl() {
 	case "/ibc.lightclients.wasm.v1.ClientState":
-		var fullstate wasm_v1_types.ClientState
+		var fullstate wasmv1types.ClientState
 		if err = proto.Unmarshal(state.GetClientState().GetValue(), &fullstate); err != nil {
 			return ClientState{}, fmt.Errorf("proto decoding full wasm client state (%s): %w", string(state.GetClientState().GetValue()), err)
 		}
 
 		var wasmClientState WasmClientState
 		if err = json.Unmarshal(fullstate.Data, &wasmClientState); err != nil {
-			return ClientState{}, fmt.Errorf("json decoding wasm client state data (%s): %w", string(string(fullstate.Data)), err)
+			return ClientState{}, fmt.Errorf("json decoding wasm client state data (%s): %w", string(fullstate.Data), err)
 		}
 
 		return ClientState{
@@ -981,7 +982,7 @@ func (client *CosmosBridgeClient) ClientState(ctx context.Context, clientID stri
 	}
 }
 
-func (client *CosmosBridgeClient) WaitForTx(ctx context.Context, hash string) error {
+func (c *CosmosBridgeClient) WaitForTx(ctx context.Context, hash string) error {
 	hashBytes, err := hex.DecodeString(hash)
 	if err != nil {
 		return fmt.Errorf("hex decoding tx hash string %s: %w", hash, err)
@@ -999,7 +1000,7 @@ func (client *CosmosBridgeClient) WaitForTx(ctx context.Context, hash string) er
 		case <-ticker.C:
 			ticker.Stop()
 
-			result, err := client.tmRPC.Tx(ctx, hashBytes, false)
+			result, err := c.tmrpc.Tx(ctx, hashBytes, false)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
 					ticker.Reset(tick)
@@ -1020,6 +1021,6 @@ func (client *CosmosBridgeClient) WaitForTx(ctx context.Context, hash string) er
 	}
 }
 
-func (client *CosmosBridgeClient) GetTransactionSender(ctx context.Context, hash string) (string, error) {
-	return "", fmt.Errorf("GetTransactionSender not implemented")
+func (*CosmosBridgeClient) GetTransactionSender(ctx context.Context, hash string) (string, error) {
+	return "", errors.New("GetTransactionSender not implemented")
 }

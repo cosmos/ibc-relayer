@@ -1,4 +1,4 @@
-package transferstats
+package transferstats //nolint:testpackage // tests reference unexported helpers
 
 import (
 	"context"
@@ -50,6 +50,7 @@ func (r *recordingMetrics) SetTransferCount(src, dst, srcName, dstName, env, sta
 	r.records = append(r.records, recordedSet{src, dst, srcName, dstName, env, state, count})
 }
 
+//nolint:unparam // src kept as parameter for test readability
 func (r *recordingMetrics) find(t *testing.T, src, dst, state string) recordedSet {
 	t.Helper()
 	r.mu.Lock()
@@ -88,9 +89,9 @@ func TestTick_EmitsZeroForAbsentStatuses(t *testing.T) {
 	New(storage).tick(ctx)
 
 	require.Len(t, rec.records, 3)
-	require.Equal(t, float64(0), rec.find(t, "chainA", "chainB", "PENDING").count)
-	require.Equal(t, float64(3), rec.find(t, "chainA", "chainB", "DELIVER_RECV_PACKET").count)
-	require.Equal(t, float64(5), rec.find(t, "chainA", "chainB", "COMPLETE_WITH_ACK").count)
+	require.InDelta(t, float64(0), rec.find(t, "chainA", "chainB", "PENDING").count, 0.001)
+	require.InDelta(t, float64(3), rec.find(t, "chainA", "chainB", "DELIVER_RECV_PACKET").count, 0.001)
+	require.InDelta(t, float64(5), rec.find(t, "chainA", "chainB", "COMPLETE_WITH_ACK").count, 0.001)
 }
 
 func TestTick_DrainedBacklogOnFreshMonitor(t *testing.T) {
@@ -106,9 +107,9 @@ func TestTick_DrainedBacklogOnFreshMonitor(t *testing.T) {
 	New(storage).tick(ctx)
 
 	require.Len(t, rec.records, 3)
-	require.Equal(t, float64(0), rec.find(t, "chainA", "chainB", "PENDING").count)
-	require.Equal(t, float64(0), rec.find(t, "chainA", "chainB", "DELIVER_RECV_PACKET").count)
-	require.Equal(t, float64(8), rec.find(t, "chainA", "chainB", "COMPLETE_WITH_ACK").count)
+	require.InDelta(t, float64(0), rec.find(t, "chainA", "chainB", "PENDING").count, 0.001)
+	require.InDelta(t, float64(0), rec.find(t, "chainA", "chainB", "DELIVER_RECV_PACKET").count, 0.001)
+	require.InDelta(t, float64(8), rec.find(t, "chainA", "chainB", "COMPLETE_WITH_ACK").count, 0.001)
 }
 
 func TestTick_ListStatusesErrorSkipsTick(t *testing.T) {

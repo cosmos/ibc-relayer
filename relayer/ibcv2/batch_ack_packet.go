@@ -3,6 +3,7 @@ package ibcv2
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -59,15 +60,15 @@ func NewBatchAckPacketProcessor(
 
 // Process uses the ibc ibcv2 proof relayer to get the tx bytes that should be
 // submitted on the source chain for the ack packet
-func (processor BatchAckPacketProcessor) Process(ctx context.Context, transfers []*IBCV2Transfer) ([]*IBCV2Transfer, error) {
+func (p BatchAckPacketProcessor) Process(ctx context.Context, transfers []*IBCV2Transfer) ([]*IBCV2Transfer, error) {
 	// get tx bytes and packet sequence number for all transfers in batch
-	var txIDs [][]byte
-	var sequences []uint64
+	txIDs := make([][]byte, 0, len(transfers))
+	sequences := make([]uint64, 0, len(transfers))
 	txSet := make(map[string]struct{})
 	for _, transfer := range transfers {
 		writeAckTxHash, ok := transfer.GetWriteAckTxHash()
 		if !ok {
-			transfer.ProcessingError = fmt.Errorf("trying to deliver ack packet, no write ack tx hash found")
+			transfer.ProcessingError = errors.New("trying to deliver ack packet, no write ack tx hash found")
 			continue
 		}
 		if _, ok := txSet[writeAckTxHash]; ok {
@@ -92,14 +93,14 @@ func (processor BatchAckPacketProcessor) Process(ctx context.Context, transfers 
 
 	relayByTxReqStartTs := time.Now()
 	req := &ibcv2relayer.RelayByTxRequest{
-		SrcChain:           processor.destinationChainID,
-		DstChain:           processor.sourceChainID,
+		SrcChain:           p.destinationChainID,
+		DstChain:           p.sourceChainID,
 		SourceTxIds:        txIDs,
-		DstClientId:        processor.sourceClientID,
-		SrcClientId:        processor.destinationClientID,
+		DstClientId:        p.sourceClientID,
+		SrcClientId:        p.destinationClientID,
 		DstPacketSequences: sequences,
 	}
-	resp, err := processor.relayService.RelayByTx(ctx, req)
+	resp, err := p.relayService.RelayByTx(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("getting ack tx bytes from relay service for batch of %d transfers: %w", len(sequences), err)
 	}
@@ -114,12 +115,12 @@ func (processor BatchAckPacketProcessor) Process(ctx context.Context, transfers 
 	ackTxBytes := resp.GetTx()
 	to := resp.GetAddress()
 
-	sourceChainClient, err := processor.bridgeClientManager.GetClient(ctx, processor.sourceChainID)
+	sourceChainClient, err := p.bridgeClientManager.GetClient(ctx, p.sourceChainID)
 	if err != nil {
-		return nil, fmt.Errorf("getting client for transfer source chain %s: %w", processor.sourceChainID, err)
+		return nil, fmt.Errorf("getting client for transfer source chain %s: %w", p.sourceChainID, err)
 	}
 
-	if sourceChainClient.ChainType() == config.ChainType_EVM {
+	if sourceChainClient.ChainType() == config.ChainTypeEVM {
 		// for evm chains, we must wait until the chain has caught up to the
 		// current time before estimating the gas of the tx during delivery or
 		// else it will revert
@@ -141,7 +142,7 @@ func (processor BatchAckPacketProcessor) Process(ctx context.Context, transfers 
 	logger.Info("delivered batch ack tx", zap.String("tx_hash", ackTx.Hash))
 
 	submittedTransferCount := 0
-	err = processor.transferAckTxWithTxStorage.ExecTx(ctx, func(q *db.Queries) error {
+	err = p.transferAckTxWithTxStorage.ExecTx(ctx, func(q *db.Queries) error {
 		for _, transfer := range transfers {
 			if transfer.ProcessingError != nil {
 				continue
@@ -154,7 +155,7 @@ func (processor BatchAckPacketProcessor) Process(ctx context.Context, transfers 
 				AckTxRelayerAddress:  pgtype.Text{Valid: true, String: ackTx.RelayerAddress},
 				SourceChainID:        transfer.GetSourceChainID(),
 				PacketSourceClientID: transfer.GetPacketSourceClientID(),
-				PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()),
+				PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 			}
 			if err = q.UpdateTransferAckTx(ctx, update); err != nil {
 				return fmt.Errorf(
@@ -166,7 +167,6 @@ func (processor BatchAckPacketProcessor) Process(ctx context.Context, transfers 
 					err,
 				)
 			}
-
 		}
 
 		if submittedTransferCount == 0 {
@@ -175,7 +175,7 @@ func (processor BatchAckPacketProcessor) Process(ctx context.Context, transfers 
 
 		insert := db.InsertIBCV2RelayerTxSubmissionParams{
 			TxHash:         ackTx.Hash,
-			ChainID:        processor.sourceChainID,
+			ChainID:        p.sourceChainID,
 			TxType:         db.Ibcv2RelayerTxSubmissionTypeACKPACKET,
 			RelayerAddress: ackTx.RelayerAddress,
 			SubmittedAt:    pgtype.Timestamptz{Valid: true, Time: ackTx.Timestamp},
@@ -206,7 +206,7 @@ func (processor BatchAckPacketProcessor) Process(ctx context.Context, transfers 
 	return transfers, nil
 }
 
-func (processor BatchAckPacketProcessor) Cancel(transfers []*IBCV2Transfer, err error) {
+func (BatchAckPacketProcessor) Cancel(transfers []*IBCV2Transfer, err error) {
 	// log error, mark packet as failed if fatal error and we cannot retry, if
 	// not fatal error, do nothing so it will be retried by this stage
 	for _, transfer := range transfers {
@@ -220,7 +220,7 @@ func (processor BatchAckPacketProcessor) Cancel(transfers []*IBCV2Transfer, err 
 }
 
 // ShouldProcess determines when this processor should be run.
-func (processor BatchAckPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
+func (p BatchAckPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
 	// the info we need in the transfer in order to run this step
 	_, hasWriteAckTxHash := transfer.GetWriteAckTxHash()
 	if !hasWriteAckTxHash {
@@ -237,7 +237,7 @@ func (processor BatchAckPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) 
 
 	isErrorAck := writeAckStatus == db.Ibcv2WriteAckStatusERROR || writeAckStatus == db.Ibcv2WriteAckStatusUNKNOWN
 	isSuccessAck := writeAckStatus == db.Ibcv2WriteAckStatusSUCCESS
-	if (isErrorAck && !processor.shouldRelayErrorAcks) || (isSuccessAck && !processor.shouldRelaySuccessAcks) {
+	if (isErrorAck && !p.shouldRelayErrorAcks) || (isSuccessAck && !p.shouldRelaySuccessAcks) {
 		return false
 	}
 
@@ -253,6 +253,6 @@ func (processor BatchAckPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) 
 	return !hasAckTxHash && !hasTimeoutTxHash
 }
 
-func (processor BatchAckPacketProcessor) State() db.Ibcv2RelayStatus {
+func (BatchAckPacketProcessor) State() db.Ibcv2RelayStatus {
 	return db.Ibcv2RelayStatusDELIVERACKPACKET
 }

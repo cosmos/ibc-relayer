@@ -27,8 +27,8 @@ func NewCheckRecvPacketDeliveryProcessor(bridgeClientManager BridgeClientManager
 	}
 }
 
-func (processor CheckRecvPacketDeliveryProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
-	destinationBridgeClient, err := processor.bridgeClientManager.GetClient(ctx, transfer.GetDestinationChainID())
+func (p CheckRecvPacketDeliveryProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
+	destinationBridgeClient, err := p.bridgeClientManager.GetClient(ctx, transfer.GetDestinationChainID())
 	if err != nil {
 		return nil, fmt.Errorf("getting bridge client for transfer destination chain %s: %w", transfer.GetDestinationChainID(), err)
 	}
@@ -87,9 +87,9 @@ func (processor CheckRecvPacketDeliveryProcessor) Process(ctx context.Context, t
 		RecvTxRelayerAddress: pgtype.Text{Valid: true, String: recvTx.RelayerAddress},
 		SourceChainID:        transfer.GetSourceChainID(),
 		PacketSourceClientID: transfer.GetPacketSourceClientID(),
-		PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()),
+		PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 	}
-	if err = processor.transferRecvTxStorage.UpdateTransferRecvTx(ctx, update); err != nil {
+	if err = p.transferRecvTxStorage.UpdateTransferRecvTx(ctx, update); err != nil {
 		return nil, fmt.Errorf("updating transfer recv tx with existing tx hash %s and timestamp %s: %w", recvTx.Hash, recvTx.Timestamp.Format(time.RFC3339), err)
 	}
 
@@ -102,7 +102,7 @@ func (processor CheckRecvPacketDeliveryProcessor) Process(ctx context.Context, t
 // Cancel should log error, mark packet as failed in the db if a fatal error
 // and we cannot retry, if not fatal error, do nothing so it will be retried by
 // this stage
-func (processor CheckRecvPacketDeliveryProcessor) Cancel(transfer *IBCV2Transfer, err error) {
+func (CheckRecvPacketDeliveryProcessor) Cancel(transfer *IBCV2Transfer, err error) {
 	// TODO: possibly some db updating for fatal errors (not being able to
 	// decode the source tx hash feels like a fatal error). for now we just
 	// always retry to make it simpler and will come back to impl this 'fatal
@@ -111,7 +111,7 @@ func (processor CheckRecvPacketDeliveryProcessor) Cancel(transfer *IBCV2Transfer
 }
 
 // ShouldProcess determines when this processor should be run.
-func (processor CheckRecvPacketDeliveryProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
+func (CheckRecvPacketDeliveryProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
 	// always expect transfers to have the necessary data (since it is required)
 
 	// the data we are going to populate with this processor, no need to run if
@@ -125,6 +125,6 @@ func (processor CheckRecvPacketDeliveryProcessor) ShouldProcess(transfer *IBCV2T
 	return !hasRecvTxHash && !hasAckTxHash && !hasTimeoutTxHash
 }
 
-func (processor CheckRecvPacketDeliveryProcessor) State() db.Ibcv2RelayStatus {
+func (CheckRecvPacketDeliveryProcessor) State() db.Ibcv2RelayStatus {
 	return db.Ibcv2RelayStatusCHECKRECVPACKETDELIVERY
 }

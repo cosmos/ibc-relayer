@@ -25,7 +25,9 @@ func NewLocalSolanaSigner(privateKeyBase58 string) (*LocalSolanaSigner, error) {
 }
 
 // Not used for Solana signing
-func (s *LocalSolanaSigner) Sign(ctx context.Context, chainID string, tx Transaction) (Transaction, error) {
+//
+//nolint:nilnil // intentional no-op: signing not used for Solana
+func (*LocalSolanaSigner) Sign(ctx context.Context, chainID string, tx Transaction) (Transaction, error) {
 	return nil, nil
 }
 

@@ -64,7 +64,8 @@ func main() {
 	var signerConn *grpc.ClientConn
 
 	signing := cfg.Signing
-	if signing.GRPCAddress != "" {
+	switch {
+	case signing.GRPCAddress != "":
 		lmt.Logger(ctx).Info("Remote signer configured for Relayer",
 			zap.String("grpc_address", signing.GRPCAddress),
 			zap.String("cosmos_wallet_id", signing.CosmosWalletKey),
@@ -74,7 +75,7 @@ func main() {
 		if !signing.GRPCTLSEnabled {
 			signerOpts = append(signerOpts, grpc.WithTransportCredentials(insecure.NewCredentials())) // nosemgrep: go.grpc.tls.grpc-client-new-insecure-connection.grpc-client-new-insecure-connection
 		} else {
-			signerOpts = append(signerOpts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13})))
+			signerOpts = append(signerOpts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13}))) //nolint:gosec // signer is an internal service
 		}
 
 		conn, err := grpc.NewClient(signing.GRPCAddress, signerOpts...)
@@ -85,14 +86,14 @@ func main() {
 		}
 		signerConn = conn
 		defer signerConn.Close()
-	} else if signing.KeysPath != "" {
+	case signing.KeysPath != "":
 		keys, err := LoadChainIDToPrivateKeyMap(signing.KeysPath)
 		if err != nil {
 			lmt.Logger(ctx).Fatal("Failed to load chain id -> private key map for ibcv2", zap.Error(err))
 		}
 		ibcv2ChainIDToPrivateKey = keys
 		lmt.Logger(ctx).Info("Using local keys for signing", zap.String("keys_path", signing.KeysPath))
-	} else {
+	default:
 		lmt.Logger(ctx).Fatal("No signing configuration: set either signing.grpc_address or signing.keys_path")
 	}
 
@@ -118,10 +119,7 @@ func main() {
 
 	eg.Go(func() error {
 		lmt.Logger(ctx).Info("Starting Prometheus")
-		if err := metrics.StartPrometheus(ctx, cfg.Metrics.PrometheusAddress); err != nil {
-			return err
-		}
-		return nil
+		return metrics.StartPrometheus(ctx, cfg.Metrics.PrometheusAddress)
 	})
 
 	eg.Go(func() error {
@@ -150,7 +148,7 @@ func main() {
 	if !proofRelayerConfig.GRPCTLSEnabled {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials())) // nosemgrep: go.grpc.tls.grpc-client-new-insecure-connection.grpc-client-new-insecure-connection
 	} else {
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13})))
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13}))) //nolint:gosec // proof relayer is an internal service
 	}
 	opts = append(opts, grpc.WithUnaryInterceptor(metrics.UnaryClientInterceptor))
 

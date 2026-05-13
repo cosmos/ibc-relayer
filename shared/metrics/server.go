@@ -22,12 +22,13 @@ func StartPrometheus(ctx context.Context, addr string) error {
 				prom.DefaultGatherer,
 				promhttp.HandlerOpts{},
 			)),
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	server.RegisterOnShutdown(func() {
 		lmt.Logger(ctx).Info(
 			"Shutting down Prometheus server",
-			zap.String("addr", fmt.Sprintf("http://%s", addr)),
+			zap.String("addr", fmt.Sprintf("http://%s", addr)), //nolint:revive // local prometheus listener for logging
 		)
 	})
 
@@ -40,17 +41,17 @@ func StartPrometheus(ctx context.Context, addr string) error {
 		if err := server.Shutdown(shutdownTimeoutCtx); err != nil {
 			lmt.Logger(ctx).Error(
 				"Failed to shutdown the Prometheus server",
-				zap.String("addr", fmt.Sprintf("http://%s", addr)),
+				zap.String("addr", fmt.Sprintf("http://%s", addr)), //nolint:revive // local prometheus listener for logging
 				zap.Error(err),
 			)
 		}
 	}()
 
-	lmt.Logger(ctx).Info("Starting Prometheus server", zap.String("addr", fmt.Sprintf("http://%s", addr)))
+	lmt.Logger(ctx).Info("Starting Prometheus server", zap.String("addr", fmt.Sprintf("http://%s", addr))) //nolint:revive // local prometheus listener for logging
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		lmt.Logger(ctx).Error(
 			"Prometheus server error",
-			zap.String("addr", fmt.Sprintf("http://%s", addr)),
+			zap.String("addr", fmt.Sprintf("http://%s", addr)), //nolint:revive // local prometheus listener for logging
 			zap.Error(err),
 		)
 		return err

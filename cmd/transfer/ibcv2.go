@@ -3,20 +3,22 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"math/big"
 	"slices"
 
 	"github.com/cosmos/cosmos-sdk/types/bech32"
-	"github.com/cosmos/ibc-relayer/proto/gen/relayerapi"
-	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
-	"github.com/cosmos/ibc-relayer/shared/config"
-	"github.com/cosmos/ibc-relayer/shared/lmt"
 	"github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
+	"github.com/cosmos/ibc-relayer/proto/gen/relayerapi"
+	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
+	"github.com/cosmos/ibc-relayer/shared/config"
+	"github.com/cosmos/ibc-relayer/shared/lmt"
 )
 
 var destChainID = flag.String(
@@ -103,30 +105,30 @@ func ibcv2Transfer(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("loading source chain config: %w", err)
 	}
-	if !slices.Contains(sourceChain.SupportedBridges, config.BridgeType_IBCV2) {
-		return fmt.Errorf("source chain does not support ibcv2")
+	if !slices.Contains(sourceChain.SupportedBridges, config.BridgeTypeIBCV2) {
+		return errors.New("source chain does not support ibcv2")
 	}
 	if sourceChain.EVM == nil {
-		return fmt.Errorf("only evm type source chains are supported")
+		return errors.New("only evm type source chains are supported")
 	}
 	// if sourceChain.ChainID != "1" {
-	//	return fmt.Errorf("only ethereum mainnet is supported as a source chain")
-	//}
+	//	return errors.New("only ethereum mainnet is supported as a source chain")
+	// }
 
 	// validate dest chain
 	destChain, err := config.GetConfigReader(ctx).GetChainConfig(*destChainID)
 	if err != nil {
 		return fmt.Errorf("loading dest chain config: %w", err)
 	}
-	if !slices.Contains(destChain.SupportedBridges, config.BridgeType_IBCV2) {
-		return fmt.Errorf("dest chain does not support ibcv2")
+	if !slices.Contains(destChain.SupportedBridges, config.BridgeTypeIBCV2) {
+		return errors.New("dest chain does not support ibcv2")
 	}
 	if destChain.Cosmos == nil {
-		return fmt.Errorf("only cosmos type dest chains are supported")
+		return errors.New("only cosmos type dest chains are supported")
 	}
 	// if destChain.ChainID != "cosmoshub-4" {
-	//	return fmt.Errorf("only cosmoshub is supported as a dest chain")
-	//}
+	//	return errors.New("only cosmoshub is supported as a dest chain")
+	// }
 
 	// validate receiver is bech32
 	if _, _, err = bech32.DecodeAndConvert(*receiver); err != nil {
@@ -157,8 +159,9 @@ func ibcv2Transfer(ctx context.Context) error {
 		return fmt.Errorf("source client (%s) counterparty chain id (%s) does not match the dest chain id (%s)", *sourceClientID, clientCounterpartyChainID, *destChainID)
 	}
 
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13})))
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13})), //nolint:gosec // CLI tool connects to internal services
+	}
 	conn, err := grpc.NewClient(*relayerGRPCURL, opts...)
 	if err != nil {
 		return fmt.Errorf("creating grpc connection to relayer at %s: %w", *relayerGRPCURL, err)

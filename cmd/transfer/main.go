@@ -26,11 +26,11 @@ func main() {
 	}
 	bridge := flag.Arg(0)
 	switch bridge {
-	case string(config.BridgeType_IBCV2):
+	case string(config.BridgeTypeIBCV2):
 		if err := ibcv2Transfer(ctx); err != nil {
 			lmt.Logger(ctx).Error("error sending ibcv2 transfer", zap.Error(err))
 		}
 	default:
-		lmt.Logger(ctx).Error("unexpected bridge type", zap.String("got", bridge), zap.Any("expected", []string{string(config.BridgeType_IBCV2)}))
+		lmt.Logger(ctx).Error("unexpected bridge type", zap.String("got", bridge), zap.Any("expected", []string{string(config.BridgeTypeIBCV2)}))
 	}
 }

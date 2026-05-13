@@ -4,15 +4,15 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	tmRPC "github.com/cometbft/cometbft/rpc/client"
+	tmrpc "github.com/cometbft/cometbft/rpc/client"
 	rpcclienthttp "github.com/cometbft/cometbft/rpc/client/http"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	signerservice "github.com/cosmos/ibc-relayer/proto/gen/signer"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	ethereumrpc "github.com/ethereum/go-ethereum/rpc"
@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
+	signerservice "github.com/cosmos/ibc-relayer/proto/gen/signer"
 	"github.com/cosmos/ibc-relayer/shared/bridges/ibcv2"
 	"github.com/cosmos/ibc-relayer/shared/config"
 	"github.com/cosmos/ibc-relayer/shared/lmt"
@@ -50,10 +51,12 @@ func NewClientManagerFromConfig(ctx context.Context, keys map[string]string, sig
 		hasEVMChains := false
 		for _, chain := range chains {
 			switch chain.Type {
-			case config.ChainType_COSMOS:
+			case config.ChainTypeCOSMOS:
 				hasCosmosChains = true
-			case config.ChainType_EVM:
+			case config.ChainTypeEVM:
 				hasEVMChains = true
+			default:
+				// no special handling for other chain types
 			}
 		}
 
@@ -93,7 +96,7 @@ func NewClientManagerFromConfig(ctx context.Context, keys map[string]string, sig
 		)
 
 		switch chain.Type {
-		case config.ChainType_EVM:
+		case config.ChainTypeEVM:
 			chainID = chain.ChainID
 
 			signer, err := createEthSigner(ctx, chainID, keys, signerManager, signerEVMWalletID)
@@ -119,7 +122,7 @@ func NewClientManagerFromConfig(ctx context.Context, keys map[string]string, sig
 			if err != nil {
 				return nil, fmt.Errorf("creating evm bridge client for chain %s: %w", chainID, err)
 			}
-		case config.ChainType_COSMOS:
+		case config.ChainTypeCOSMOS:
 			chainID = chain.ChainID
 			prefix := chain.Cosmos.AddressPrefix
 			gasPrice := chain.Cosmos.GasPrice
@@ -127,13 +130,13 @@ func NewClientManagerFromConfig(ctx context.Context, keys map[string]string, sig
 			feeAmount := chain.Cosmos.IBCV2TxFeeAmount
 
 			if (gasPrice > 0 || feeAmount > 0) && feeDenom == "" {
-				return nil, fmt.Errorf("ibcv2 gas price or ibcv2 fee amount cannot be specified without setting ibcv2 fee denom")
+				return nil, errors.New("ibcv2 gas price or ibcv2 fee amount cannot be specified without setting ibcv2 fee denom")
 			}
 			if feeDenom != "" && (gasPrice == 0 && feeAmount == 0) {
-				return nil, fmt.Errorf("ibcv2 gas price and ibcv2 fee amount cannot be unset when a ibcv2 fee denom is set")
+				return nil, errors.New("ibcv2 gas price and ibcv2 fee amount cannot be unset when a ibcv2 fee denom is set")
 			}
 			if gasPrice > 0 && feeAmount > 0 {
-				return nil, fmt.Errorf("ibcv2 fee denom and ibcv2 gas price cannot both be set")
+				return nil, errors.New("ibcv2 fee denom and ibcv2 gas price cannot both be set")
 			}
 
 			signer, err := createCosmosSigner(ctx, chainID, keys, signerManager, signerCosmosWalletID)
@@ -152,8 +155,6 @@ func NewClientManagerFromConfig(ctx context.Context, keys map[string]string, sig
 			}
 
 			bridge = ibcv2.NewCosmosBridgeClient(chainID, signer, prefix, gasPrice, feeDenom, feeAmount, conn, rpc)
-		case config.ChainType_SVM:
-			continue
 		default:
 			continue
 		}
@@ -167,8 +168,8 @@ func NewClientManager(clients map[string]ibcv2.BridgeClient) *ClientManager {
 	return &ClientManager{clients: clients}
 }
 
-func (manager *ClientManager) GetClient(ctx context.Context, chainID string) (ibcv2.BridgeClient, error) {
-	client, ok := manager.clients[chainID]
+func (m *ClientManager) GetClient(ctx context.Context, chainID string) (ibcv2.BridgeClient, error) {
+	client, ok := m.clients[chainID]
 	if !ok {
 		return nil, fmt.Errorf("no configured ibcv2 bridge client for chain ID %s", chainID)
 	}
@@ -213,7 +214,7 @@ func createEthSigner(ctx context.Context, chainID string, keys map[string]string
 	}
 	privateKeyStr = strings.TrimPrefix(privateKeyStr, "0x")
 
-	privateKey, err := crypto.HexToECDSA(string(privateKeyStr))
+	privateKey, err := crypto.HexToECDSA(privateKeyStr)
 	if err != nil {
 		return nil, fmt.Errorf("converting hex private key to ecdsa: %w", err)
 	}
@@ -221,7 +222,7 @@ func createEthSigner(ctx context.Context, chainID string, keys map[string]string
 	return signing.NewLocalEthereumSigner(privateKey), nil
 }
 
-func createCosmosRPC(ctx context.Context, chainID string) (tmRPC.Client, error) {
+func createCosmosRPC(ctx context.Context, chainID string) (tmrpc.Client, error) {
 	rpc, err := config.GetConfigReader(ctx).GetRPCEndpoint(chainID)
 	if err != nil {
 		return nil, fmt.Errorf("getting rpc endpoint for chain %s: %w", chainID, err)
@@ -257,7 +258,7 @@ func createCosmosGRPC(ctx context.Context, chainID string) (grpc.ClientConnInter
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials())) // nosemgrep: go.grpc.tls.grpc-client-new-insecure-connection.grpc-client-new-insecure-connection
 	} else {
 		// InsecureSkipVerify: external chain gRPC endpoints use Tailscale/internal networking where cert validation is not required.
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13})))
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13}))) //nolint:gosec // see comment above
 	}
 	opts = append(opts, grpc.WithUnaryInterceptor(metrics.UnaryClientInterceptor))
 
@@ -274,7 +275,6 @@ func createCosmosSigner(ctx context.Context, chainID string, keys map[string]str
 		lmt.Logger(ctx).Info("Using remote signer for Cosmos chain", zap.String("chain_id", chainID), zap.String("wallet_id", signerWalletID))
 		txConfig := utils.DefaultTxConfig()
 		return NewRemoteCosmosSigner(signerManager, signerWalletID, chainID, txConfig), nil
-
 	}
 	lmt.Logger(ctx).Info("Remote Signing not configured - using local signer for Cosmos chain", zap.String("chain_id", chainID))
 	privateKeyStr, ok := keys[chainID]

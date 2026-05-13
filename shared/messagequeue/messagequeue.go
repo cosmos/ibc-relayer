@@ -40,7 +40,7 @@ func NewMsgQueue(
 
 func (mq *MessageQueue) Push(
 	ctx context.Context,
-	values map[string]interface{},
+	values map[string]any,
 ) (string, error) {
 	id, err := mq.redis.XAdd(ctx, &redis.XAddArgs{Stream: mq.stream, Values: values}).Result()
 	if err != nil {

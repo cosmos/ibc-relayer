@@ -45,18 +45,18 @@ func NewCheckWriteAckFinalityProcessor(
 
 var ErrWriteAckNotFinalized = errors.New("write tx not finalized")
 
-func (processor CheckWriteAckFinalityProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
-	destinationChainClient, err := processor.bridgeClientManager.GetClient(ctx, transfer.GetDestinationChainID())
+func (p CheckWriteAckFinalityProcessor) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
+	destinationChainClient, err := p.bridgeClientManager.GetClient(ctx, transfer.GetDestinationChainID())
 	if err != nil {
 		return nil, fmt.Errorf("getting source bridge client for chain %s: %w", transfer.GetDestinationChainID(), err)
 	}
 
 	writeAckTxHash, ok := transfer.GetWriteAckTxHash()
 	if !ok {
-		return nil, fmt.Errorf("write ack tx hash not finalized, violates should process")
+		return nil, errors.New("write ack tx hash not finalized, violates should process")
 	}
 
-	finalized, err := destinationChainClient.IsTxFinalized(ctx, writeAckTxHash, processor.destinationFinalityOffset)
+	finalized, err := destinationChainClient.IsTxFinalized(ctx, writeAckTxHash, p.destinationFinalityOffset)
 	if err != nil {
 		return nil, fmt.Errorf("checking if tx %s is finalized on chain %s: %w", writeAckTxHash, transfer.GetDestinationChainID(), err)
 	}
@@ -67,7 +67,7 @@ func (processor CheckWriteAckFinalityProcessor) Process(ctx context.Context, tra
 	if _, writeAckTxFinalizedTimeSet := transfer.GetWriteAckTxFinalizedTime(); !writeAckTxFinalizedTimeSet {
 		finalizedTime := time.Now()
 
-		if err := processor.storage.UpdateTransferWriteAckTxFinalizedTime(ctx, db.UpdateTransferWriteAckTxFinalizedTimeParams{
+		if err := p.storage.UpdateTransferWriteAckTxFinalizedTime(ctx, db.UpdateTransferWriteAckTxFinalizedTimeParams{
 			WriteAckTxFinalizedTime: pgtype.Timestamp{Valid: true, Time: finalizedTime},
 		}); err != nil {
 			return nil, fmt.Errorf("updating write ack tx finalized time: %w", err)
@@ -79,7 +79,7 @@ func (processor CheckWriteAckFinalityProcessor) Process(ctx context.Context, tra
 	return transfer, nil
 }
 
-func (processor CheckWriteAckFinalityProcessor) Cancel(transfer *IBCV2Transfer, err error) {
+func (CheckWriteAckFinalityProcessor) Cancel(transfer *IBCV2Transfer, err error) {
 	// log error, mark packet as failed if fatal error and we cannot retry, if
 	// not fatal error, do nothing so it will be retried by this stage
 	if errors.Is(err, ErrWriteAckNotFinalized) {
@@ -105,7 +105,7 @@ func (processor CheckWriteAckFinalityProcessor) Cancel(transfer *IBCV2Transfer, 
 }
 
 // ShouldProcess determines when this processor should be run.
-func (processor CheckWriteAckFinalityProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
+func (p CheckWriteAckFinalityProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
 	_, hasWriteAckTxHash := transfer.GetWriteAckTxHash()
 	if !hasWriteAckTxHash {
 		// transfer does not have a valid write ack, so there is nothing to
@@ -126,9 +126,9 @@ func (processor CheckWriteAckFinalityProcessor) ShouldProcess(transfer *IBCV2Tra
 
 	isErrorAck := writeAckStatus == db.Ibcv2WriteAckStatusERROR || writeAckStatus == db.Ibcv2WriteAckStatusUNKNOWN
 	isSuccessAck := writeAckStatus == db.Ibcv2WriteAckStatusSUCCESS
-	return (isErrorAck && processor.shouldRelayErrorAcks) || (isSuccessAck && processor.shouldRelaySuccessAcks)
+	return (isErrorAck && p.shouldRelayErrorAcks) || (isSuccessAck && p.shouldRelaySuccessAcks)
 }
 
-func (processor CheckWriteAckFinalityProcessor) State() db.Ibcv2RelayStatus {
+func (CheckWriteAckFinalityProcessor) State() db.Ibcv2RelayStatus {
 	return db.Ibcv2RelayStatusAWAITINGWRITEACKFINALITY
 }

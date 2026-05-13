@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	signerservice "github.com/cosmos/ibc-relayer/proto/gen/signer"
-	"github.com/cosmos/ibc-relayer/shared/signing"
-	"github.com/cosmos/ibc-relayer/shared/signing/signer_service"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+
+	signerservice "github.com/cosmos/ibc-relayer/proto/gen/signer"
+	"github.com/cosmos/ibc-relayer/shared/signing"
+	"github.com/cosmos/ibc-relayer/shared/signing/signer_service"
 )
 
 type RemoteEVMSigner struct {

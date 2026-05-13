@@ -9,7 +9,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
-	authSigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
+	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -36,13 +36,13 @@ func NewSignerManager(sc SignerClient) SignerManager {
 }
 
 func (s *SignerManager) SignCosmosTransaction(ctx context.Context, txb client.TxBuilder, accountNumber, sequence uint64,
-	chainID string, signerWalletID string, config client.TxConfig,
+	chainID string, signerWalletID string, txConfig client.TxConfig,
 ) (sdk.Tx, error) {
 	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+serviceAccountToken))
 	tx := txb.GetTx()
 
-	handler := config.SignModeHandler()
-	signDocBz, err := authSigning.GetSignBytesAdapter(ctx, handler, signing.SignMode_SIGN_MODE_DIRECT, authSigning.SignerData{
+	handler := txConfig.SignModeHandler()
+	signDocBz, err := authsigning.GetSignBytesAdapter(ctx, handler, signing.SignMode_SIGN_MODE_DIRECT, authsigning.SignerData{
 		ChainID:       chainID,
 		AccountNumber: accountNumber,
 		Sequence:      sequence,

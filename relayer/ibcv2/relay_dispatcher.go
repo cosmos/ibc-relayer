@@ -118,7 +118,7 @@ func (r *RelayDispatcher) SubmitWaitingUnfinishedTransfers(ctx context.Context) 
 				Status:               db.Ibcv2RelayStatusFAILED,
 				SourceChainID:        t.GetSourceChainID(),
 				PacketSourceClientID: t.GetPacketSourceClientID(),
-				PacketSequenceNumber: int32(t.GetPacketSequenceNumber()),
+				PacketSequenceNumber: int32(t.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 			}
 			if err = r.storage.UpdateTransferState(ctx, update); err != nil {
 				lmt.Logger(ctx).Error(

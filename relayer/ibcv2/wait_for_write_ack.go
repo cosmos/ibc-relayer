@@ -38,15 +38,15 @@ func NewWaitFoWriteAckPacketProcessor(
 //
 // NOTE: this only supports synchronous acks where the write ack is in the same
 // tx as the recv tx hash
-func (processor WaitForWriteAckPacket) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
-	destinationChainClient, err := processor.bridgeClientManager.GetClient(ctx, transfer.GetDestinationChainID())
+func (p WaitForWriteAckPacket) Process(ctx context.Context, transfer *IBCV2Transfer) (*IBCV2Transfer, error) {
+	destinationChainClient, err := p.bridgeClientManager.GetClient(ctx, transfer.GetDestinationChainID())
 	if err != nil {
 		return nil, fmt.Errorf("getting client for transfer destination chain %s: %w", transfer.GetDestinationChainID(), err)
 	}
 
 	recvHash, ok := transfer.GetRecvTxHash()
 	if !ok {
-		return nil, fmt.Errorf("transfer does not have recv tx hash, violating ShouldProcess")
+		return nil, errors.New("transfer does not have recv tx hash, violating ShouldProcess")
 	}
 
 	status, err := destinationChainClient.PacketWriteAckStatus(
@@ -65,9 +65,9 @@ func (processor WaitForWriteAckPacket) Process(ctx context.Context, transfer *IB
 		update := db.ClearRecvTxParams{
 			SourceChainID:        transfer.GetSourceChainID(),
 			PacketSourceClientID: transfer.GetPacketSourceClientID(),
-			PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()),
+			PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 		}
-		if err = processor.transferWriteAckTxStorage.ClearRecvTx(ctx, update); err != nil {
+		if err = p.transferWriteAckTxStorage.ClearRecvTx(ctx, update); err != nil {
 			return nil, fmt.Errorf("clearing transfer recv tx hash %s: %w", recvHash, err)
 		}
 		return nil, fmt.Errorf("write ack for transfer not found in recv tx %s", recvHash)
@@ -110,9 +110,9 @@ func (processor WaitForWriteAckPacket) Process(ctx context.Context, transfer *IB
 		WriteAckStatus:       db.NullIbcv2WriteAckStatus{Valid: true, Ibcv2WriteAckStatus: status},
 		SourceChainID:        transfer.GetSourceChainID(),
 		PacketSourceClientID: transfer.GetPacketSourceClientID(),
-		PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()),
+		PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 	}
-	if err = processor.transferWriteAckTxStorage.UpdateTransferWriteAckTx(ctx, update); err != nil {
+	if err = p.transferWriteAckTxStorage.UpdateTransferWriteAckTx(ctx, update); err != nil {
 		return nil, fmt.Errorf("updating transfer with write ack tx hash %s, time %s, and status %s: %w", recvHash, recvTxTime, status, err)
 	}
 
@@ -122,7 +122,7 @@ func (processor WaitForWriteAckPacket) Process(ctx context.Context, transfer *IB
 	return transfer, nil
 }
 
-func (processor WaitForWriteAckPacket) Cancel(transfer *IBCV2Transfer, err error) {
+func (WaitForWriteAckPacket) Cancel(transfer *IBCV2Transfer, err error) {
 	// log error, mark packet as failed if fatal error and we cannot retry, if
 	// not fatal error, do nothing so it will be retried by this stage
 	if errors.Is(err, ibcv2.ErrTxNotFound) {
@@ -133,7 +133,7 @@ func (processor WaitForWriteAckPacket) Cancel(transfer *IBCV2Transfer, err error
 }
 
 // ShouldProcess determines when this processor should be run.
-func (processor WaitForWriteAckPacket) ShouldProcess(transfer *IBCV2Transfer) bool {
+func (WaitForWriteAckPacket) ShouldProcess(transfer *IBCV2Transfer) bool {
 	// the data we need to run this processor
 	_, hasRecvTxHash := transfer.GetRecvTxHash()
 
@@ -149,6 +149,6 @@ func (processor WaitForWriteAckPacket) ShouldProcess(transfer *IBCV2Transfer) bo
 	return (hasRecvTxHash && !hasWriteAckTxHash) && !hasTimeoutTxHash
 }
 
-func (processor WaitForWriteAckPacket) State() db.Ibcv2RelayStatus {
+func (WaitForWriteAckPacket) State() db.Ibcv2RelayStatus {
 	return db.Ibcv2RelayStatusWAITFORWRITEACK
 }

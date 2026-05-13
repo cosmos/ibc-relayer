@@ -51,10 +51,10 @@ func NewBatchRecvPacketProcessor(
 	}
 }
 
-func (processor BatchRecvPacketProcessor) Process(ctx context.Context, transfers []*IBCV2Transfer) ([]*IBCV2Transfer, error) {
+func (p BatchRecvPacketProcessor) Process(ctx context.Context, transfers []*IBCV2Transfer) ([]*IBCV2Transfer, error) {
 	// get tx bytes and packet sequence number for all transfers in batch
-	var txIDs [][]byte
-	var sequences []uint64
+	txIDs := make([][]byte, 0, len(transfers))
+	sequences := make([]uint64, 0, len(transfers))
 	txSet := make(map[string]struct{})
 	for _, transfer := range transfers {
 		if _, ok := txSet[transfer.GetSourceTxHash()]; ok {
@@ -82,14 +82,14 @@ func (processor BatchRecvPacketProcessor) Process(ctx context.Context, transfers
 	// destination client
 	relayByTxReqStartTs := time.Now()
 	req := &ibcv2relayer.RelayByTxRequest{
-		SrcChain:           processor.sourceChainID,
-		DstChain:           processor.destinationChainID,
+		SrcChain:           p.sourceChainID,
+		DstChain:           p.destinationChainID,
 		SourceTxIds:        txIDs,
-		SrcClientId:        processor.sourceClientID,
-		DstClientId:        processor.destinationClientID,
+		SrcClientId:        p.sourceClientID,
+		DstClientId:        p.destinationClientID,
 		SrcPacketSequences: sequences,
 	}
-	resp, err := processor.relayService.RelayByTx(ctx, req)
+	resp, err := p.relayService.RelayByTx(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("getting recv tx bytes from relay service for batch of %d transfers: %w", len(sequences), err)
 	}
@@ -104,12 +104,12 @@ func (processor BatchRecvPacketProcessor) Process(ctx context.Context, transfers
 	recvTxBytes := resp.GetTx()
 	to := resp.GetAddress()
 
-	destinationChainClient, err := processor.bridgeClientManager.GetClient(ctx, processor.destinationChainID)
+	destinationChainClient, err := p.bridgeClientManager.GetClient(ctx, p.destinationChainID)
 	if err != nil {
-		return nil, fmt.Errorf("getting client for transfer destination chain %s: %w", processor.destinationChainID, err)
+		return nil, fmt.Errorf("getting client for transfer destination chain %s: %w", p.destinationChainID, err)
 	}
 
-	if destinationChainClient.ChainType() == config.ChainType_EVM {
+	if destinationChainClient.ChainType() == config.ChainTypeEVM {
 		// for evm chains, we must wait until the chain has caught up to the
 		// current time before estimating the gas of the tx during delivery or
 		// else it will revert
@@ -131,7 +131,7 @@ func (processor BatchRecvPacketProcessor) Process(ctx context.Context, transfers
 	logger.Info("delivered batch recv tx", zap.String("tx_hash", recvTx.Hash))
 
 	submittedTransferCount := 0
-	err = processor.transferRecvTxWithTxStorage.ExecTx(ctx, func(q *db.Queries) error {
+	err = p.transferRecvTxWithTxStorage.ExecTx(ctx, func(q *db.Queries) error {
 		for _, transfer := range transfers {
 			if transfer.ProcessingError != nil {
 				continue
@@ -144,7 +144,7 @@ func (processor BatchRecvPacketProcessor) Process(ctx context.Context, transfers
 				RecvTxRelayerAddress: pgtype.Text{Valid: true, String: recvTx.RelayerAddress},
 				SourceChainID:        transfer.GetSourceChainID(),
 				PacketSourceClientID: transfer.GetPacketSourceClientID(),
-				PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()),
+				PacketSequenceNumber: int32(transfer.GetPacketSequenceNumber()), //nolint:gosec // G115 bounded conversion
 			}
 			if err = q.UpdateTransferRecvTx(ctx, update); err != nil {
 				return fmt.Errorf(
@@ -164,7 +164,7 @@ func (processor BatchRecvPacketProcessor) Process(ctx context.Context, transfers
 
 		insert := db.InsertIBCV2RelayerTxSubmissionParams{
 			TxHash:         recvTx.Hash,
-			ChainID:        processor.sourceChainID,
+			ChainID:        p.sourceChainID,
 			TxType:         db.Ibcv2RelayerTxSubmissionTypeRECVPACKET,
 			RelayerAddress: recvTx.RelayerAddress,
 			SubmittedAt:    pgtype.Timestamptz{Valid: true, Time: recvTx.Timestamp},
@@ -196,7 +196,7 @@ func (processor BatchRecvPacketProcessor) Process(ctx context.Context, transfers
 	return transfers, nil
 }
 
-func (processor BatchRecvPacketProcessor) Cancel(transfers []*IBCV2Transfer, err error) {
+func (BatchRecvPacketProcessor) Cancel(transfers []*IBCV2Transfer, err error) {
 	// log error, mark packet as failed if fatal error and we cannot retry, if
 	// not fatal error, do nothing so it will be retried by this stage
 	for _, transfer := range transfers {
@@ -205,13 +205,13 @@ func (processor BatchRecvPacketProcessor) Cancel(transfers []*IBCV2Transfer, err
 }
 
 // ShouldProcess determines when this processor should be run.
-func (processor BatchRecvPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
+func (BatchRecvPacketProcessor) ShouldProcess(transfer *IBCV2Transfer) bool {
 	// the data we are going to populate, no need to run if this is already
 	// present
 	_, hasRecvTxHash := transfer.GetRecvTxHash()
 	return !hasRecvTxHash && !transfer.IsTimedOut()
 }
 
-func (processor BatchRecvPacketProcessor) State() db.Ibcv2RelayStatus {
+func (BatchRecvPacketProcessor) State() db.Ibcv2RelayStatus {
 	return db.Ibcv2RelayStatusDELIVERRECVPACKET
 }

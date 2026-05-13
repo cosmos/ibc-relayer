@@ -11,10 +11,12 @@ import (
 	"github.com/cosmos/ibc-relayer/shared/config"
 )
 
+//nolint:revive // EVMRPCClientManager is the canonical name across the codebase
 type EVMRPCClientManager interface {
 	GetClient(ctx context.Context, chainID string) (EVMChainRPC, error)
 }
 
+//nolint:revive // EVMRPCClientManagerImpl is the canonical name across the codebase
 type EVMRPCClientManagerImpl struct {
 	clients map[string]EVMChainRPC
 	m       sync.Mutex

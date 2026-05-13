@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	sdk_math "cosmossdk.io/math"
+	sdkmath "cosmossdk.io/math"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -70,7 +70,7 @@ func (c *CachedPriceClient) GetCoinUsdValue(ctx context.Context, coingeckoID str
 		return pgtype.Numeric{}, fmt.Errorf("getting coingecko price of %s in usd: %w", coingeckoID, err)
 	}
 
-	amountFloat, err := sdk_math.LegacyNewDecFromInt(sdk_math.NewIntFromBigInt(amount)).Float64()
+	amountFloat, err := sdkmath.LegacyNewDecFromInt(sdkmath.NewIntFromBigInt(amount)).Float64()
 	if err != nil {
 		return pgtype.Numeric{}, fmt.Errorf("invalid amount (%s) to float64 conversion: %w", amount.String(), err)
 	}
@@ -90,10 +90,10 @@ func NewNoOpPriceClient() PriceClient {
 	return &NoOpPriceClient{}
 }
 
-func (m *NoOpPriceClient) GetSimplePrice(ctx context.Context, coingeckoID string, currency string) (float64, error) {
+func (*NoOpPriceClient) GetSimplePrice(ctx context.Context, coingeckoID string, currency string) (float64, error) {
 	return 0, nil
 }
 
-func (c *NoOpPriceClient) GetCoinUsdValue(ctx context.Context, coingeckoID string, decimals uint8, amount *big.Int) (pgtype.Numeric, error) {
+func (*NoOpPriceClient) GetCoinUsdValue(ctx context.Context, coingeckoID string, decimals uint8, amount *big.Int) (pgtype.Numeric, error) {
 	return pgtype.Numeric{}, nil
 }

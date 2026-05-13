@@ -9,15 +9,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/cosmos/ibc-relayer/db/gen/db"
-	mock_relay_service "github.com/cosmos/ibc-relayer/mocks/proto/gen/ibcv2relayer"
-	mock_ibcv2 "github.com/cosmos/ibc-relayer/mocks/relayer/ibcv2"
-	mock_ibcv2_bridge "github.com/cosmos/ibc-relayer/mocks/shared/bridges/ibcv2"
-	mock_config "github.com/cosmos/ibc-relayer/mocks/shared/config"
+	mockrelayservice "github.com/cosmos/ibc-relayer/mocks/proto/gen/ibcv2relayer"
+	mockibcv2 "github.com/cosmos/ibc-relayer/mocks/relayer/ibcv2"
+	mockibcv2bridge "github.com/cosmos/ibc-relayer/mocks/shared/bridges/ibcv2"
+	mockconfig "github.com/cosmos/ibc-relayer/mocks/shared/config"
 	"github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer"
 	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
-	ibcv2_bridge "github.com/cosmos/ibc-relayer/shared/bridges/ibcv2"
+	ibcv2bridge "github.com/cosmos/ibc-relayer/shared/bridges/ibcv2"
 	"github.com/cosmos/ibc-relayer/shared/config"
 )
 
@@ -37,13 +38,13 @@ func TestPipeline(t *testing.T) {
 	t.Run("single transfer through pipeline, no errors", func(t *testing.T) {
 		ctx := context.Background()
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
 		packetSequenceNumber := 10
 
-		mockStorage := mock_ibcv2.NewMockStorage(t)
+		mockStorage := mockibcv2.NewMockStorage(t)
 		// return a nil error anytime we try to update a transfer in storage
 		mockStorage.EXPECT().UpdateTransferState(mock.Anything, mock.Anything).Return(nil)
 		mockStorage.EXPECT().UpdateTransferWriteAckTx(mock.Anything, mock.Anything).Return(nil)
@@ -53,18 +54,18 @@ func TestPipeline(t *testing.T) {
 
 		mockSourceBridgeClient := &MockAcceptingBridgeClient{}
 		mockDestBridgeClient := &MockAcceptingBridgeClient{}
-		clients := map[string]ibcv2_bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
+		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mock_relay_service.NewMockRelayerServiceClient(t)
+		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
 
 		// mock request to get receive tx bytes from relayer service
-		sourceTxId, err := hex.DecodeString(mockTxHash)
-		assert.NoError(t, err)
+		sourceTxID, err := hex.DecodeString(mockTxHash)
+		require.NoError(t, err)
 		recvRequest := &ibcv2relayer.RelayByTxRequest{
 			SrcChain:           sourceChainID,
 			DstChain:           destChainID,
-			SourceTxIds:        [][]byte{sourceTxId},
+			SourceTxIds:        [][]byte{sourceTxID},
 			SrcClientId:        sourceClientID,
 			DstClientId:        destClientID,
 			SrcPacketSequences: []uint64{uint64(packetSequenceNumber)},
@@ -74,12 +75,12 @@ func TestPipeline(t *testing.T) {
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Once()
 
 		// mock request to get ack tx bytes from relayer service
-		recvTxId, err := hex.DecodeString(mockTxHash)
-		assert.NoError(t, err)
+		recvTxID, err := hex.DecodeString(mockTxHash)
+		require.NoError(t, err)
 		ackRequest := &ibcv2relayer.RelayByTxRequest{
 			SrcChain:           destChainID,
 			DstChain:           sourceChainID,
-			SourceTxIds:        [][]byte{recvTxId},
+			SourceTxIds:        [][]byte{recvTxID},
 			SrcClientId:        destClientID,
 			DstClientId:        sourceClientID,
 			DstPacketSequences: []uint64{uint64(packetSequenceNumber)},
@@ -88,7 +89,7 @@ func TestPipeline(t *testing.T) {
 		ackResponse := &ibcv2relayer.RelayByTxResponse{Tx: ackTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, ackRequest).Return(ackResponse, nil).Once()
 
-		priceClient := mock_ibcv2.NewMockPriceClient(t)
+		priceClient := mockibcv2.NewMockPriceClient(t)
 
 		opts := ibcv2.NewSmallPipelineOpts()
 		opts.ShouldRelaySuccessAcks = true
@@ -132,13 +133,13 @@ func TestPipeline(t *testing.T) {
 	t.Run("recv tx not found for two iterations, then is found", func(t *testing.T) {
 		ctx := context.Background()
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
 		packetSequenceNumber := 10
 
-		mockStorage := mock_ibcv2.NewMockStorage(t)
+		mockStorage := mockibcv2.NewMockStorage(t)
 		// return a nil error anytime we try to update a transfer in storage
 		mockStorage.EXPECT().UpdateTransferState(mock.Anything, mock.Anything).Return(nil)
 		mockStorage.EXPECT().UpdateTransferWriteAckTx(mock.Anything, mock.Anything).Return(nil)
@@ -147,22 +148,22 @@ func TestPipeline(t *testing.T) {
 		mockStorage.EXPECT().UpdateTransferWriteAckTxFinalizedTime(mock.Anything, mock.Anything).Return(nil)
 
 		mockSourceBridgeClient := &MockAcceptingBridgeClient{}
-		mockDestBridgeClient := mock_ibcv2_bridge.NewMockBridgeClient(t)
-		clients := map[string]ibcv2_bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
+		mockDestBridgeClient := mockibcv2bridge.NewMockBridgeClient(t)
+		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mock_relay_service.NewMockRelayerServiceClient(t)
+		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
 
 		// packet not yet received by dest
 		mockDestBridgeClient.EXPECT().IsPacketReceived(mock.Anything, destClientID, uint64(packetSequenceNumber)).Return(false, nil).Once()
 
 		// mock request to get receive tx bytes from relayer service
-		sourceTxId, err := hex.DecodeString(mockTxHash)
-		assert.NoError(t, err)
+		sourceTxID, err := hex.DecodeString(mockTxHash)
+		require.NoError(t, err)
 		recvRequest := &ibcv2relayer.RelayByTxRequest{
 			SrcChain:           sourceChainID,
 			DstChain:           destChainID,
-			SourceTxIds:        [][]byte{sourceTxId},
+			SourceTxIds:        [][]byte{sourceTxID},
 			SrcClientId:        sourceClientID,
 			DstClientId:        destClientID,
 			SrcPacketSequences: []uint64{uint64(packetSequenceNumber)},
@@ -171,25 +172,25 @@ func TestPipeline(t *testing.T) {
 		recvResponse := &ibcv2relayer.RelayByTxResponse{Tx: recvTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Once()
 
-		mockDestBridgeClient.EXPECT().DeliverTx(mock.Anything, recvResponse.GetTx(), recvResponse.GetAddress()).Return(&ibcv2_bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil).Once()
-		mockDestBridgeClient.EXPECT().ChainType().Return(config.ChainType_COSMOS).Once()
+		mockDestBridgeClient.EXPECT().DeliverTx(mock.Anything, recvResponse.GetTx(), recvResponse.GetAddress()).Return(&ibcv2bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil).Once()
+		mockDestBridgeClient.EXPECT().ChainType().Return(config.ChainTypeCOSMOS).Once()
 
 		// return once will cause the pipeline to error, then we check again
 		// and error the pipeline again, then we check a third time and the tx
 		// has then been found
-		mockDestBridgeClient.EXPECT().ShouldRetryTx(mock.Anything, mockTxHash, ibcv2.RetryRecvExpiry, mockTxTime).Return(false, ibcv2_bridge.ErrTxNotFound).Twice()
+		mockDestBridgeClient.EXPECT().ShouldRetryTx(mock.Anything, mockTxHash, ibcv2.RetryRecvExpiry, mockTxTime).Return(false, ibcv2bridge.ErrTxNotFound).Twice()
 		mockDestBridgeClient.EXPECT().ShouldRetryTx(mock.Anything, mockTxHash, ibcv2.RetryRecvExpiry, mockTxTime).Return(false, nil).Once()
 
 		mockDestBridgeClient.EXPECT().IsTxFinalized(mock.Anything, mockTxHash, mock.Anything).Return(true, nil)
 		mockDestBridgeClient.EXPECT().PacketWriteAckStatus(mock.Anything, mockTxHash, uint64(packetSequenceNumber), sourceClientID, destClientID).Return(db.Ibcv2WriteAckStatusSUCCESS, nil)
 
 		// mock request to get ack tx bytes from relayer service
-		recvTxId, err := hex.DecodeString(mockTxHash)
-		assert.NoError(t, err)
+		recvTxID, err := hex.DecodeString(mockTxHash)
+		require.NoError(t, err)
 		ackRequest := &ibcv2relayer.RelayByTxRequest{
 			SrcChain:           destChainID,
 			DstChain:           sourceChainID,
-			SourceTxIds:        [][]byte{recvTxId},
+			SourceTxIds:        [][]byte{recvTxID},
 			SrcClientId:        destClientID,
 			DstClientId:        sourceClientID,
 			DstPacketSequences: []uint64{uint64(packetSequenceNumber)},
@@ -198,7 +199,7 @@ func TestPipeline(t *testing.T) {
 		ackResponse := &ibcv2relayer.RelayByTxResponse{Tx: ackTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, ackRequest).Return(ackResponse, nil).Once()
 
-		priceClient := mock_ibcv2.NewMockPriceClient(t)
+		priceClient := mockibcv2.NewMockPriceClient(t)
 
 		opts := ibcv2.NewSmallPipelineOpts()
 		opts.ShouldRelaySuccessAcks = true
@@ -230,7 +231,7 @@ func TestPipeline(t *testing.T) {
 			PacketTimeoutTimestamp:    packetTimeoutTs,
 		}))
 		output, err := pipeline.Poll()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, db.Ibcv2RelayStatusDELIVERRECVPACKET, output.GetState())
 		assert.Equal(t, mockTxHash, *output.RecvTxHash)
 		assert.Equal(t, mockTxTime, *output.RecvTxTime)
@@ -242,7 +243,7 @@ func TestPipeline(t *testing.T) {
 		output.ProcessingError = nil
 		assert.True(t, pipeline.Push(ctx, output))
 		output, err = pipeline.Poll()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, db.Ibcv2RelayStatusDELIVERRECVPACKET, output.GetState())
 		assert.Equal(t, mockTxHash, *output.RecvTxHash)
 		assert.Equal(t, mockTxTime, *output.RecvTxTime)
@@ -254,7 +255,7 @@ func TestPipeline(t *testing.T) {
 		output.ProcessingError = nil
 		assert.True(t, pipeline.Push(ctx, output))
 		output, err = pipeline.Poll()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, db.Ibcv2RelayStatusCOMPLETEWITHACK, output.GetState())
 		assert.Equal(t, mockTxHash, *output.RecvTxHash)
 		assert.Equal(t, mockTxTime, *output.RecvTxTime)
@@ -267,13 +268,13 @@ func TestPipeline(t *testing.T) {
 	t.Run("recv tx not found, then times out and is retried", func(t *testing.T) {
 		ctx := context.Background()
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
 		packetSequenceNumber := 10
 
-		mockStorage := mock_ibcv2.NewMockStorage(t)
+		mockStorage := mockibcv2.NewMockStorage(t)
 		// return a nil error anytime we try to update a transfer in storage
 		mockStorage.EXPECT().UpdateTransferState(mock.Anything, mock.Anything).Return(nil)
 		mockStorage.EXPECT().UpdateTransferWriteAckTx(mock.Anything, mock.Anything).Return(nil)
@@ -283,22 +284,22 @@ func TestPipeline(t *testing.T) {
 		mockStorage.EXPECT().UpdateTransferWriteAckTxFinalizedTime(mock.Anything, mock.Anything).Return(nil)
 
 		mockSourceBridgeClient := &MockAcceptingBridgeClient{}
-		mockDestBridgeClient := mock_ibcv2_bridge.NewMockBridgeClient(t)
-		clients := map[string]ibcv2_bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
+		mockDestBridgeClient := mockibcv2bridge.NewMockBridgeClient(t)
+		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mock_relay_service.NewMockRelayerServiceClient(t)
+		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
 
 		// packet not yet received by dest
 		mockDestBridgeClient.EXPECT().IsPacketReceived(mock.Anything, destClientID, uint64(packetSequenceNumber)).Return(false, nil).Once()
 
 		// mock request to get receive tx bytes from relayer service
-		sourceTxId, err := hex.DecodeString(mockTxHash)
-		assert.NoError(t, err)
+		sourceTxID, err := hex.DecodeString(mockTxHash)
+		require.NoError(t, err)
 		recvRequest := &ibcv2relayer.RelayByTxRequest{
 			SrcChain:           sourceChainID,
 			DstChain:           destChainID,
-			SourceTxIds:        [][]byte{sourceTxId},
+			SourceTxIds:        [][]byte{sourceTxID},
 			SrcClientId:        sourceClientID,
 			DstClientId:        destClientID,
 			SrcPacketSequences: []uint64{uint64(packetSequenceNumber)},
@@ -307,13 +308,13 @@ func TestPipeline(t *testing.T) {
 		recvResponse := &ibcv2relayer.RelayByTxResponse{Tx: recvTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Once()
 
-		mockDestBridgeClient.EXPECT().DeliverTx(mock.Anything, recvResponse.GetTx(), recvResponse.GetAddress()).Return(&ibcv2_bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil).Once()
-		mockDestBridgeClient.EXPECT().ChainType().Return(config.ChainType_COSMOS).Once()
+		mockDestBridgeClient.EXPECT().DeliverTx(mock.Anything, recvResponse.GetTx(), recvResponse.GetAddress()).Return(&ibcv2bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil).Once()
+		mockDestBridgeClient.EXPECT().ChainType().Return(config.ChainTypeCOSMOS).Once()
 
 		// return once will cause the pipeline to error, then we check again
 		// and error the pipeline again, then we check a third time and the tx
 		// has timed out and should be retried
-		mockDestBridgeClient.EXPECT().ShouldRetryTx(mock.Anything, mockTxHash, ibcv2.RetryRecvExpiry, mockTxTime).Return(false, ibcv2_bridge.ErrTxNotFound).Once()
+		mockDestBridgeClient.EXPECT().ShouldRetryTx(mock.Anything, mockTxHash, ibcv2.RetryRecvExpiry, mockTxTime).Return(false, ibcv2bridge.ErrTxNotFound).Once()
 		mockDestBridgeClient.EXPECT().ShouldRetryTx(mock.Anything, mockTxHash, ibcv2.RetryRecvExpiry, mockTxTime).Return(true, nil).Once()
 
 		// expect to do the beginning of the pipeline again
@@ -324,8 +325,8 @@ func TestPipeline(t *testing.T) {
 		// mock request to get receive tx bytes from relayer service
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Once()
 
-		mockDestBridgeClient.EXPECT().DeliverTx(mock.Anything, recvResponse.GetTx(), recvResponse.GetAddress()).Return(&ibcv2_bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil).Once()
-		mockDestBridgeClient.EXPECT().ChainType().Return(config.ChainType_COSMOS).Once()
+		mockDestBridgeClient.EXPECT().DeliverTx(mock.Anything, recvResponse.GetTx(), recvResponse.GetAddress()).Return(&ibcv2bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil).Once()
+		mockDestBridgeClient.EXPECT().ChainType().Return(config.ChainTypeCOSMOS).Once()
 
 		// this time, the tx is found immediately and does not need to be retried
 		mockDestBridgeClient.EXPECT().ShouldRetryTx(mock.Anything, mockTxHash, ibcv2.RetryRecvExpiry, mockTxTime).Return(false, nil).Once()
@@ -334,12 +335,12 @@ func TestPipeline(t *testing.T) {
 		mockDestBridgeClient.EXPECT().PacketWriteAckStatus(mock.Anything, mockTxHash, uint64(packetSequenceNumber), sourceClientID, destClientID).Return(db.Ibcv2WriteAckStatusSUCCESS, nil)
 
 		// mock request to get ack tx bytes from relayer service
-		recvTxId, err := hex.DecodeString(mockTxHash)
-		assert.NoError(t, err)
+		recvTxID, err := hex.DecodeString(mockTxHash)
+		require.NoError(t, err)
 		ackRequest := &ibcv2relayer.RelayByTxRequest{
 			SrcChain:           destChainID,
 			DstChain:           sourceChainID,
-			SourceTxIds:        [][]byte{recvTxId},
+			SourceTxIds:        [][]byte{recvTxID},
 			SrcClientId:        destClientID,
 			DstClientId:        sourceClientID,
 			DstPacketSequences: []uint64{uint64(packetSequenceNumber)},
@@ -348,7 +349,7 @@ func TestPipeline(t *testing.T) {
 		ackResponse := &ibcv2relayer.RelayByTxResponse{Tx: ackTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, ackRequest).Return(ackResponse, nil).Once()
 
-		priceClient := mock_ibcv2.NewMockPriceClient(t)
+		priceClient := mockibcv2.NewMockPriceClient(t)
 
 		opts := ibcv2.NewSmallPipelineOpts()
 		opts.ShouldRelaySuccessAcks = true
@@ -380,7 +381,7 @@ func TestPipeline(t *testing.T) {
 			PacketTimeoutTimestamp:    packetTimeoutTs,
 		}))
 		output, err := pipeline.Poll()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, db.Ibcv2RelayStatusDELIVERRECVPACKET, output.GetState())
 		assert.Equal(t, mockTxHash, *output.RecvTxHash)
 		assert.Equal(t, mockTxTime, *output.RecvTxTime)
@@ -392,7 +393,7 @@ func TestPipeline(t *testing.T) {
 		output.ProcessingError = nil
 		assert.True(t, pipeline.Push(ctx, output))
 		output, err = pipeline.Poll()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, db.Ibcv2RelayStatusDELIVERRECVPACKET, output.GetState())
 		assert.Equal(t, mockTxHash, *output.RecvTxHash)
 		assert.Equal(t, mockTxTime, *output.RecvTxTime)
@@ -406,7 +407,7 @@ func TestPipeline(t *testing.T) {
 		output.ProcessingError = nil
 		assert.True(t, pipeline.Push(ctx, output))
 		output, err = pipeline.Poll()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, db.Ibcv2RelayStatusCOMPLETEWITHACK, output.GetState())
 		assert.Equal(t, mockTxHash, *output.RecvTxHash)
 		assert.Equal(t, mockTxTime, *output.RecvTxTime)
@@ -419,13 +420,13 @@ func TestPipeline(t *testing.T) {
 	t.Run("success ack transfer, pipeline does not relay success acks", func(t *testing.T) {
 		ctx := context.Background()
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
 		packetSequenceNumber := 10
 
-		mockStorage := mock_ibcv2.NewMockStorage(t)
+		mockStorage := mockibcv2.NewMockStorage(t)
 		// return a nil error anytime we try to update a transfer in storage
 		mockStorage.EXPECT().UpdateTransferState(mock.Anything, mock.Anything).Return(nil)
 		mockStorage.EXPECT().UpdateTransferWriteAckTx(mock.Anything, mock.Anything).Return(nil)
@@ -433,19 +434,19 @@ func TestPipeline(t *testing.T) {
 		mockStorage.EXPECT().UpdateTransferSourceTxFinalizedTime(mock.Anything, mock.Anything).Return(nil)
 
 		mockSourceBridgeClient := &MockAcceptingBridgeClient{}
-		mockDestBridgeClient := mock_ibcv2_bridge.NewMockBridgeClient(t)
-		clients := map[string]ibcv2_bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
+		mockDestBridgeClient := mockibcv2bridge.NewMockBridgeClient(t)
+		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mock_relay_service.NewMockRelayerServiceClient(t)
+		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
 
 		// mock request to get receive tx bytes from relayer service
-		sourceTxId, err := hex.DecodeString(mockTxHash)
-		assert.NoError(t, err)
+		sourceTxID, err := hex.DecodeString(mockTxHash)
+		require.NoError(t, err)
 		recvRequest := &ibcv2relayer.RelayByTxRequest{
 			SrcChain:           sourceChainID,
 			DstChain:           destChainID,
-			SourceTxIds:        [][]byte{sourceTxId},
+			SourceTxIds:        [][]byte{sourceTxID},
 			SrcClientId:        sourceClientID,
 			DstClientId:        destClientID,
 			SrcPacketSequences: []uint64{uint64(packetSequenceNumber)},
@@ -455,12 +456,12 @@ func TestPipeline(t *testing.T) {
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Once()
 
 		mockDestBridgeClient.EXPECT().IsPacketReceived(mock.Anything, destClientID, uint64(packetSequenceNumber)).Return(false, nil)
-		mockDestBridgeClient.EXPECT().DeliverTx(mock.Anything, recvResponse.GetTx(), recvResponse.GetAddress()).Return(&ibcv2_bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil)
-		mockDestBridgeClient.EXPECT().ChainType().Return(config.ChainType_COSMOS)
+		mockDestBridgeClient.EXPECT().DeliverTx(mock.Anything, recvResponse.GetTx(), recvResponse.GetAddress()).Return(&ibcv2bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil)
+		mockDestBridgeClient.EXPECT().ChainType().Return(config.ChainTypeCOSMOS)
 		mockDestBridgeClient.EXPECT().ShouldRetryTx(mock.Anything, mockTxHash, ibcv2.RetryRecvExpiry, mockTxTime).Return(false, nil)
 		mockDestBridgeClient.EXPECT().PacketWriteAckStatus(mock.Anything, mockTxHash, uint64(packetSequenceNumber), sourceClientID, destClientID).Return(db.Ibcv2WriteAckStatusSUCCESS, nil)
 
-		priceClient := mock_ibcv2.NewMockPriceClient(t)
+		priceClient := mockibcv2.NewMockPriceClient(t)
 
 		opts := ibcv2.NewSmallPipelineOpts()
 		opts.ShouldRelaySuccessAcks = false
@@ -494,7 +495,7 @@ func TestPipeline(t *testing.T) {
 		})
 
 		output, err := pipeline.Poll()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, db.Ibcv2RelayStatusCOMPLETEWITHWRITEACKSUCCESS, output.GetState())
 		assert.Equal(t, mockTxHash, *output.RecvTxHash)
 		assert.Equal(t, mockTxTime, *output.RecvTxTime)
@@ -508,13 +509,13 @@ func TestPipeline(t *testing.T) {
 	t.Run("timed out transfer cosmos destination chain", func(t *testing.T) {
 		ctx := context.Background()
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
 		packetSequenceNumber := 10
 
-		mockStorage := mock_ibcv2.NewMockStorage(t)
+		mockStorage := mockibcv2.NewMockStorage(t)
 		// return a nil error anytime we try to update a transfer in storage
 		mockStorage.EXPECT().UpdateTransferState(mock.Anything, mock.Anything).Return(nil)
 		mockStorage.EXPECT().ExecTx(mock.Anything, mock.Anything).Return(nil).Once()
@@ -522,18 +523,18 @@ func TestPipeline(t *testing.T) {
 
 		mockSourceBridgeClient := &MockAcceptingBridgeClient{}
 		mockDestBridgeClient := &MockAcceptingBridgeClient{}
-		clients := map[string]ibcv2_bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
+		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mock_relay_service.NewMockRelayerServiceClient(t)
+		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
 
 		// mock request to get timeout tx bytes from relayer service
-		sourceTxId, err := hex.DecodeString(mockTxHash)
-		assert.NoError(t, err)
+		sourceTxID, err := hex.DecodeString(mockTxHash)
+		require.NoError(t, err)
 		recvRequest := &ibcv2relayer.RelayByTxRequest{
 			SrcChain:           destChainID,
 			DstChain:           sourceChainID,
-			TimeoutTxIds:       [][]byte{sourceTxId},
+			TimeoutTxIds:       [][]byte{sourceTxID},
 			SrcClientId:        destClientID,
 			DstClientId:        sourceClientID,
 			DstPacketSequences: []uint64{uint64(packetSequenceNumber)},
@@ -542,7 +543,7 @@ func TestPipeline(t *testing.T) {
 		timeoutResponse := &ibcv2relayer.RelayByTxResponse{Tx: timeoutTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(timeoutResponse, nil).Once()
 
-		priceClient := mock_ibcv2.NewMockPriceClient(t)
+		priceClient := mockibcv2.NewMockPriceClient(t)
 
 		pipeline := ibcv2.NewPipeline(
 			ctx,
@@ -586,22 +587,22 @@ func TestPipeline(t *testing.T) {
 	t.Run("timed out transfer evm destination chain", func(t *testing.T) {
 		ctx := context.Background()
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
 		packetSequenceNumber := 10
 		packetTimeoutTs := time.Now()
 
-		mockStorage := mock_ibcv2.NewMockStorage(t)
+		mockStorage := mockibcv2.NewMockStorage(t)
 		// return a nil error anytime we try to update a transfer in storage
 		mockStorage.EXPECT().UpdateTransferState(mock.Anything, mock.Anything).Return(nil)
 		mockStorage.EXPECT().ExecTx(mock.Anything, mock.Anything).Return(nil).Once()
 		mockStorage.EXPECT().UpdateTransferSourceTxFinalizedTime(mock.Anything, mock.Anything).Return(nil)
 
 		mockSourceBridgeClient := &MockAcceptingBridgeClient{}
-		mockDestBridgeClient := mock_ibcv2_bridge.NewMockBridgeClient(t)
-		clients := map[string]ibcv2_bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
+		mockDestBridgeClient := mockibcv2bridge.NewMockBridgeClient(t)
+		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
 		mockDestBridgeClient.EXPECT().IsPacketReceived(mock.Anything, destClientID, uint64(packetSequenceNumber)).Return(false, nil)
@@ -615,15 +616,15 @@ func TestPipeline(t *testing.T) {
 		mockDestBridgeClient.EXPECT().IsTimestampFinalized(mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once()
 		// now the timeout is considered finalized
 
-		mockRelayService := mock_relay_service.NewMockRelayerServiceClient(t)
+		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
 
 		// mock request to get timeout tx bytes from relayer service
-		sourceTxId, err := hex.DecodeString(mockTxHash)
-		assert.NoError(t, err)
+		sourceTxID, err := hex.DecodeString(mockTxHash)
+		require.NoError(t, err)
 		recvRequest := &ibcv2relayer.RelayByTxRequest{
 			SrcChain:           destChainID,
 			DstChain:           sourceChainID,
-			TimeoutTxIds:       [][]byte{sourceTxId},
+			TimeoutTxIds:       [][]byte{sourceTxID},
 			SrcClientId:        destClientID,
 			DstClientId:        sourceClientID,
 			DstPacketSequences: []uint64{uint64(packetSequenceNumber)},
@@ -632,7 +633,7 @@ func TestPipeline(t *testing.T) {
 		timeoutResponse := &ibcv2relayer.RelayByTxResponse{Tx: timeoutTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(timeoutResponse, nil).Once()
 
-		priceClient := mock_ibcv2.NewMockPriceClient(t)
+		priceClient := mockibcv2.NewMockPriceClient(t)
 
 		pipeline := ibcv2.NewPipeline(
 			ctx,
@@ -696,13 +697,13 @@ func TestPipeline(t *testing.T) {
 	t.Run("two sequential transfers through pipeline, no errors", func(t *testing.T) {
 		ctx := context.Background()
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
 		packetSequenceNumber := 10
 
-		mockStorage := mock_ibcv2.NewMockStorage(t)
+		mockStorage := mockibcv2.NewMockStorage(t)
 		// return a nil error anytime we try to update a transfer in storage
 		mockStorage.EXPECT().UpdateTransferState(mock.Anything, mock.Anything).Return(nil)
 		mockStorage.EXPECT().UpdateTransferWriteAckTx(mock.Anything, mock.Anything).Return(nil)
@@ -712,18 +713,18 @@ func TestPipeline(t *testing.T) {
 
 		mockSourceBridgeClient := &MockAcceptingBridgeClient{}
 		mockDestBridgeClient := &MockAcceptingBridgeClient{}
-		clients := map[string]ibcv2_bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
+		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mock_relay_service.NewMockRelayerServiceClient(t)
+		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
 
 		// mock request to get receive tx bytes from relayer service
-		sourceTxId, err := hex.DecodeString(mockTxHash)
-		assert.NoError(t, err)
+		sourceTxID, err := hex.DecodeString(mockTxHash)
+		require.NoError(t, err)
 		recvRequest := &ibcv2relayer.RelayByTxRequest{
 			SrcChain:           sourceChainID,
 			DstChain:           destChainID,
-			SourceTxIds:        [][]byte{sourceTxId},
+			SourceTxIds:        [][]byte{sourceTxID},
 			SrcClientId:        sourceClientID,
 			DstClientId:        destClientID,
 			SrcPacketSequences: []uint64{uint64(packetSequenceNumber)},
@@ -733,12 +734,12 @@ func TestPipeline(t *testing.T) {
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Twice()
 
 		// mock request to get ack tx bytes from relayer service
-		recvTxId, err := hex.DecodeString(mockTxHash)
-		assert.NoError(t, err)
+		recvTxID, err := hex.DecodeString(mockTxHash)
+		require.NoError(t, err)
 		ackRequest := &ibcv2relayer.RelayByTxRequest{
 			SrcChain:           destChainID,
 			DstChain:           sourceChainID,
-			SourceTxIds:        [][]byte{recvTxId},
+			SourceTxIds:        [][]byte{recvTxID},
 			SrcClientId:        destClientID,
 			DstClientId:        sourceClientID,
 			DstPacketSequences: []uint64{uint64(packetSequenceNumber)},
@@ -747,7 +748,7 @@ func TestPipeline(t *testing.T) {
 		ackResponse := &ibcv2relayer.RelayByTxResponse{Tx: ackTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, ackRequest).Return(ackResponse, nil).Twice()
 
-		priceClient := mock_ibcv2.NewMockPriceClient(t)
+		priceClient := mockibcv2.NewMockPriceClient(t)
 
 		opts := ibcv2.NewSmallPipelineOpts()
 		opts.ShouldRelaySuccessAcks = true
@@ -812,13 +813,13 @@ func TestPipeline(t *testing.T) {
 	t.Run("error ack transfer, pipeline does not relay error acks", func(t *testing.T) {
 		ctx := context.Background()
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
 		packetSequenceNumber := 10
 
-		mockStorage := mock_ibcv2.NewMockStorage(t)
+		mockStorage := mockibcv2.NewMockStorage(t)
 		// return a nil error anytime we try to update a transfer in storage
 		mockStorage.EXPECT().UpdateTransferState(mock.Anything, mock.Anything).Return(nil)
 		mockStorage.EXPECT().UpdateTransferWriteAckTx(mock.Anything, mock.Anything).Return(nil)
@@ -826,19 +827,19 @@ func TestPipeline(t *testing.T) {
 		mockStorage.EXPECT().UpdateTransferSourceTxFinalizedTime(mock.Anything, mock.Anything).Return(nil)
 
 		mockSourceBridgeClient := &MockAcceptingBridgeClient{}
-		mockDestBridgeClient := mock_ibcv2_bridge.NewMockBridgeClient(t)
-		clients := map[string]ibcv2_bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
+		mockDestBridgeClient := mockibcv2bridge.NewMockBridgeClient(t)
+		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mock_relay_service.NewMockRelayerServiceClient(t)
+		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
 
 		// mock request to get receive tx bytes from relayer service
-		sourceTxId, err := hex.DecodeString(mockTxHash)
-		assert.NoError(t, err)
+		sourceTxID, err := hex.DecodeString(mockTxHash)
+		require.NoError(t, err)
 		recvRequest := &ibcv2relayer.RelayByTxRequest{
 			SrcChain:           sourceChainID,
 			DstChain:           destChainID,
-			SourceTxIds:        [][]byte{sourceTxId},
+			SourceTxIds:        [][]byte{sourceTxID},
 			SrcClientId:        sourceClientID,
 			DstClientId:        destClientID,
 			SrcPacketSequences: []uint64{uint64(packetSequenceNumber)},
@@ -848,12 +849,12 @@ func TestPipeline(t *testing.T) {
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Once()
 
 		mockDestBridgeClient.EXPECT().IsPacketReceived(mock.Anything, destClientID, uint64(packetSequenceNumber)).Return(false, nil)
-		mockDestBridgeClient.EXPECT().DeliverTx(mock.Anything, recvResponse.GetTx(), recvResponse.GetAddress()).Return(&ibcv2_bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil)
-		mockDestBridgeClient.EXPECT().ChainType().Return(config.ChainType_COSMOS)
+		mockDestBridgeClient.EXPECT().DeliverTx(mock.Anything, recvResponse.GetTx(), recvResponse.GetAddress()).Return(&ibcv2bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil)
+		mockDestBridgeClient.EXPECT().ChainType().Return(config.ChainTypeCOSMOS)
 		mockDestBridgeClient.EXPECT().ShouldRetryTx(mock.Anything, mockTxHash, ibcv2.RetryRecvExpiry, mockTxTime).Return(false, nil)
 		mockDestBridgeClient.EXPECT().PacketWriteAckStatus(mock.Anything, mockTxHash, uint64(packetSequenceNumber), sourceClientID, destClientID).Return(db.Ibcv2WriteAckStatusERROR, nil)
 
-		priceClient := mock_ibcv2.NewMockPriceClient(t)
+		priceClient := mockibcv2.NewMockPriceClient(t)
 
 		opts := ibcv2.NewSmallPipelineOpts()
 		opts.ShouldRelaySuccessAcks = true
@@ -887,7 +888,7 @@ func TestPipeline(t *testing.T) {
 		})
 
 		output, err := pipeline.Poll()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, db.Ibcv2RelayStatusCOMPLETEWITHWRITEACKERROR, output.GetState())
 		assert.Equal(t, mockTxHash, *output.RecvTxHash)
 		assert.Equal(t, mockTxTime, *output.RecvTxTime)
@@ -901,13 +902,13 @@ func TestPipeline(t *testing.T) {
 	t.Run("unknown ack status transfer, pipeline does not relay error acks", func(t *testing.T) {
 		ctx := context.Background()
 
-		configReader := mock_config.NewMockConfigReader(t)
+		configReader := mockconfig.NewMockConfigReader(t)
 		configReader.EXPECT().GetChainConfig(mock.Anything).Return(config.ChainConfig{}, nil).Maybe()
 		ctx = config.ConfigReaderContext(ctx, configReader)
 
 		packetSequenceNumber := 10
 
-		mockStorage := mock_ibcv2.NewMockStorage(t)
+		mockStorage := mockibcv2.NewMockStorage(t)
 		// return a nil error anytime we try to update a transfer in storage
 		mockStorage.EXPECT().UpdateTransferState(mock.Anything, mock.Anything).Return(nil)
 		mockStorage.EXPECT().UpdateTransferWriteAckTx(mock.Anything, mock.Anything).Return(nil)
@@ -915,19 +916,19 @@ func TestPipeline(t *testing.T) {
 		mockStorage.EXPECT().UpdateTransferSourceTxFinalizedTime(mock.Anything, mock.Anything).Return(nil)
 
 		mockSourceBridgeClient := &MockAcceptingBridgeClient{}
-		mockDestBridgeClient := mock_ibcv2_bridge.NewMockBridgeClient(t)
-		clients := map[string]ibcv2_bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
+		mockDestBridgeClient := mockibcv2bridge.NewMockBridgeClient(t)
+		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mock_relay_service.NewMockRelayerServiceClient(t)
+		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
 
 		// mock request to get receive tx bytes from relayer service
-		sourceTxId, err := hex.DecodeString(mockTxHash)
-		assert.NoError(t, err)
+		sourceTxID, err := hex.DecodeString(mockTxHash)
+		require.NoError(t, err)
 		recvRequest := &ibcv2relayer.RelayByTxRequest{
 			SrcChain:           sourceChainID,
 			DstChain:           destChainID,
-			SourceTxIds:        [][]byte{sourceTxId},
+			SourceTxIds:        [][]byte{sourceTxID},
 			SrcClientId:        sourceClientID,
 			DstClientId:        destClientID,
 			SrcPacketSequences: []uint64{uint64(packetSequenceNumber)},
@@ -937,12 +938,12 @@ func TestPipeline(t *testing.T) {
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Once()
 
 		mockDestBridgeClient.EXPECT().IsPacketReceived(mock.Anything, destClientID, uint64(packetSequenceNumber)).Return(false, nil)
-		mockDestBridgeClient.EXPECT().DeliverTx(mock.Anything, recvResponse.GetTx(), recvResponse.GetAddress()).Return(&ibcv2_bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil)
-		mockDestBridgeClient.EXPECT().ChainType().Return(config.ChainType_COSMOS)
+		mockDestBridgeClient.EXPECT().DeliverTx(mock.Anything, recvResponse.GetTx(), recvResponse.GetAddress()).Return(&ibcv2bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil)
+		mockDestBridgeClient.EXPECT().ChainType().Return(config.ChainTypeCOSMOS)
 		mockDestBridgeClient.EXPECT().ShouldRetryTx(mock.Anything, mockTxHash, ibcv2.RetryRecvExpiry, mockTxTime).Return(false, nil)
 		mockDestBridgeClient.EXPECT().PacketWriteAckStatus(mock.Anything, mockTxHash, uint64(packetSequenceNumber), sourceClientID, destClientID).Return(db.Ibcv2WriteAckStatusUNKNOWN, nil)
 
-		priceClient := mock_ibcv2.NewMockPriceClient(t)
+		priceClient := mockibcv2.NewMockPriceClient(t)
 
 		opts := ibcv2.NewSmallPipelineOpts()
 		opts.ShouldRelaySuccessAcks = true
@@ -976,7 +977,7 @@ func TestPipeline(t *testing.T) {
 		})
 
 		output, err := pipeline.Poll()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, db.Ibcv2RelayStatusCOMPLETEWITHWRITEACKERROR, output.GetState())
 		assert.Equal(t, mockTxHash, *output.RecvTxHash)
 		assert.Equal(t, mockTxTime, *output.RecvTxTime)
@@ -1036,91 +1037,93 @@ func TestPipelineDeduper(t *testing.T) {
 
 type MockAcceptingBridgeClient struct{}
 
-func (mock *MockAcceptingBridgeClient) IsPacketReceived(ctx context.Context, clientID string, sequence uint64) (bool, error) {
+func (*MockAcceptingBridgeClient) IsPacketReceived(ctx context.Context, clientID string, sequence uint64) (bool, error) {
 	return false, nil
 }
 
-func (mock *MockAcceptingBridgeClient) IsPacketCommitted(ctx context.Context, clientID string, sequence uint64) (bool, error) {
+func (*MockAcceptingBridgeClient) IsPacketCommitted(ctx context.Context, clientID string, sequence uint64) (bool, error) {
 	return true, nil
 }
 
-func (mock *MockAcceptingBridgeClient) FindRecvTx(ctx context.Context, sourceClientID string, destClientID string, sequence uint64, timeoutTimestamp time.Time) (*ibcv2_bridge.BridgeTx, error) {
+func (*MockAcceptingBridgeClient) FindRecvTx(ctx context.Context, sourceClientID string, destClientID string, sequence uint64, timeoutTimestamp time.Time) (*ibcv2bridge.BridgeTx, error) {
 	panic("unimplemented")
 }
 
-func (mock *MockAcceptingBridgeClient) FindAckTx(ctx context.Context, sourceClientID string, destClientID string, sequence uint64) (*ibcv2_bridge.BridgeTx, error) {
+func (*MockAcceptingBridgeClient) FindAckTx(ctx context.Context, sourceClientID string, destClientID string, sequence uint64) (*ibcv2bridge.BridgeTx, error) {
 	panic("unimplemented")
 }
 
-func (mock *MockAcceptingBridgeClient) FindTimeoutTx(ctx context.Context, sourceClientID string, destClientID string, sequence uint64) (*ibcv2_bridge.BridgeTx, error) {
+func (*MockAcceptingBridgeClient) FindTimeoutTx(ctx context.Context, sourceClientID string, destClientID string, sequence uint64) (*ibcv2bridge.BridgeTx, error) {
 	panic("unimplemented")
 }
 
-func (mock *MockAcceptingBridgeClient) DeliverTx(ctx context.Context, tx []byte, address string) (*ibcv2_bridge.BridgeTx, error) {
-	return &ibcv2_bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil
+func (*MockAcceptingBridgeClient) DeliverTx(ctx context.Context, tx []byte, address string) (*ibcv2bridge.BridgeTx, error) {
+	return &ibcv2bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil
 }
 
-func (mock *MockAcceptingBridgeClient) PacketWriteAckStatus(ctx context.Context, hash string, sequence uint64, sourceClientID string, destClientID string) (db.Ibcv2WriteAckStatus, error) {
+func (*MockAcceptingBridgeClient) PacketWriteAckStatus(ctx context.Context, hash string, sequence uint64, sourceClientID string, destClientID string) (db.Ibcv2WriteAckStatus, error) {
 	return db.Ibcv2WriteAckStatusSUCCESS, nil
 }
 
-func (mock *MockAcceptingBridgeClient) SendPacketsFromTx(ctx context.Context, sourceChainID string, txHash string) ([]*ibcv2_bridge.PacketInfo, error) {
+func (*MockAcceptingBridgeClient) SendPacketsFromTx(ctx context.Context, sourceChainID string, txHash string) ([]*ibcv2bridge.PacketInfo, error) {
 	return nil, nil
 }
 
-func (mock *MockAcceptingBridgeClient) ShouldRetryTx(ctx context.Context, txHash string, expiry time.Duration, sentAtTx time.Time) (bool, error) {
+func (*MockAcceptingBridgeClient) ShouldRetryTx(ctx context.Context, txHash string, expiry time.Duration, sentAtTx time.Time) (bool, error) {
 	return false, nil
 }
 
-func (mock *MockAcceptingBridgeClient) IsTxFinalized(ctx context.Context, txHash string, offset *uint64) (bool, error) {
+func (*MockAcceptingBridgeClient) IsTxFinalized(ctx context.Context, txHash string, offset *uint64) (bool, error) {
 	return true, nil
 }
 
-func (mock *MockAcceptingBridgeClient) IsTimestampFinalized(ctx context.Context, timestamp time.Time, offset *uint64) (bool, error) {
+func (*MockAcceptingBridgeClient) IsTimestampFinalized(ctx context.Context, timestamp time.Time, offset *uint64) (bool, error) {
 	return true, nil
 }
 
-func (mock *MockAcceptingBridgeClient) WaitForChain(ctx context.Context) error {
+func (*MockAcceptingBridgeClient) WaitForChain(ctx context.Context) error {
 	return nil
 }
 
-func (mock *MockAcceptingBridgeClient) LatestOnChainTimestamp(ctx context.Context) (time.Time, error) {
+func (*MockAcceptingBridgeClient) LatestOnChainTimestamp(ctx context.Context) (time.Time, error) {
 	return time.Time{}, nil
 }
 
-func (mock *MockAcceptingBridgeClient) ChainType() config.ChainType {
-	return config.ChainType_COSMOS
+func (*MockAcceptingBridgeClient) ChainType() config.ChainType {
+	return config.ChainTypeCOSMOS
 }
 
-func (mock *MockAcceptingBridgeClient) SignerGasTokenBalance(ctx context.Context) (*big.Int, error) {
+//nolint:nilnil // mock returns zero values to satisfy interface
+func (*MockAcceptingBridgeClient) SignerGasTokenBalance(ctx context.Context) (*big.Int, error) {
 	return nil, nil
 }
 
-func (mock *MockAcceptingBridgeClient) TxFee(ctx context.Context, txHash string) (*big.Int, error) {
+//nolint:nilnil // mock returns zero values to satisfy interface
+func (*MockAcceptingBridgeClient) TxFee(ctx context.Context, txHash string) (*big.Int, error) {
 	return nil, nil
 }
 
-func (mock *MockAcceptingBridgeClient) TxExecutionStatus(ctx context.Context, txHash string) (ibcv2_bridge.TxExecutionStatus, error) {
-	return ibcv2_bridge.TxExecutionStatus{Status: "SUCCESS"}, nil
+func (*MockAcceptingBridgeClient) TxExecutionStatus(ctx context.Context, txHash string) (ibcv2bridge.TxExecutionStatus, error) {
+	return ibcv2bridge.TxExecutionStatus{Status: "SUCCESS"}, nil
 }
 
-func (mock *MockAcceptingBridgeClient) SendTransfer(ctx context.Context, clientID string, denom string, receiver string, amount *big.Int, memo string) (string, error) {
+func (*MockAcceptingBridgeClient) SendTransfer(ctx context.Context, clientID string, denom string, receiver string, amount *big.Int, memo string) (string, error) {
 	return "", nil
 }
 
-func (mock *MockAcceptingBridgeClient) ClientState(ctx context.Context, clientID string) (ibcv2_bridge.ClientState, error) {
-	return ibcv2_bridge.ClientState{}, nil
+func (*MockAcceptingBridgeClient) ClientState(ctx context.Context, clientID string) (ibcv2bridge.ClientState, error) {
+	return ibcv2bridge.ClientState{}, nil
 }
 
-func (mock *MockAcceptingBridgeClient) TimestampAtHeight(ctx context.Context, height uint64) (time.Time, error) {
+func (*MockAcceptingBridgeClient) TimestampAtHeight(ctx context.Context, height uint64) (time.Time, error) {
 	return time.Now(), nil
 }
 
-func (mock *MockAcceptingBridgeClient) WaitForTx(ctx context.Context, hash string) error {
+func (*MockAcceptingBridgeClient) WaitForTx(ctx context.Context, hash string) error {
 	return nil
 }
 
-func (mock *MockAcceptingBridgeClient) GetTransactionSender(ctx context.Context, hash string) (string, error) {
+func (*MockAcceptingBridgeClient) GetTransactionSender(ctx context.Context, hash string) (string, error) {
 	// Return a non-blacklisted address by default
 	return "0x0000000000000000000000000000000000000000", nil
 }

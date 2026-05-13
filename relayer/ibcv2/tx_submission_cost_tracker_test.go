@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosmos/ibc-relayer/db/gen/db"
-	mock_ibcv2 "github.com/cosmos/ibc-relayer/mocks/relayer/ibcv2"
-	mock_bridge "github.com/cosmos/ibc-relayer/mocks/shared/bridges/ibcv2"
+	mockibcv2 "github.com/cosmos/ibc-relayer/mocks/relayer/ibcv2"
+	mockbridge "github.com/cosmos/ibc-relayer/mocks/shared/bridges/ibcv2"
 	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
 	bridge "github.com/cosmos/ibc-relayer/shared/bridges/ibcv2"
 	"github.com/cosmos/ibc-relayer/shared/config"
@@ -73,6 +73,7 @@ func (m *metricsStub) AddTransactionGasCost(chainID, chainName, chainEnvironment
 	})
 }
 
+//nolint:unparam // id kept as parameter for test readability
 func unresolvedSubmission(id int32, txHash, chainID, destinationChainID string, txType db.Ibcv2RelayerTxSubmissionType, submittedAt time.Time) db.GetUnresolvedIBCV2RelayerTxSubmissionsRow {
 	return db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
 		ID:                 id,
@@ -111,12 +112,12 @@ func TestSubmittedTxCostTrackerTrackResolvesNativeAndUSDGasCosts(t *testing.T) {
 		},
 	}
 
-	manager := mock_ibcv2.NewMockBridgeClientManager(t)
-	client := mock_bridge.NewMockBridgeClient(t)
-	priceClient := mock_ibcv2.NewMockPriceClient(t)
+	manager := mockibcv2.NewMockBridgeClientManager(t)
+	client := mockbridge.NewMockBridgeClient(t)
+	priceClient := mockibcv2.NewMockPriceClient(t)
 
 	manager.EXPECT().GetClient(ctx, "chain-a").Return(client, nil).Once()
-	client.EXPECT().TxExecutionStatus(ctx, "0xabc").Return(mock_bridge_status("SUCCESS", ""), nil).Once()
+	client.EXPECT().TxExecutionStatus(ctx, "0xabc").Return(mockBridgeStatus("SUCCESS", ""), nil).Once()
 	client.EXPECT().TxFee(ctx, "0xabc").Return(big.NewInt(42), nil).Once()
 
 	usd := numericValue(t, "12.34")
@@ -158,11 +159,11 @@ func TestSubmittedTxCostTrackerTrackResolvesNativeCostWithoutUSD(t *testing.T) {
 		},
 	}
 
-	manager := mock_ibcv2.NewMockBridgeClientManager(t)
-	client := mock_bridge.NewMockBridgeClient(t)
+	manager := mockibcv2.NewMockBridgeClientManager(t)
+	client := mockbridge.NewMockBridgeClient(t)
 
 	manager.EXPECT().GetClient(ctx, "source-chain").Return(client, nil).Once()
-	client.EXPECT().TxExecutionStatus(ctx, "0xabc").Return(mock_bridge_status("FAILED", "out of gas"), nil).Once()
+	client.EXPECT().TxExecutionStatus(ctx, "0xabc").Return(mockBridgeStatus("FAILED", "out of gas"), nil).Once()
 	client.EXPECT().TxFee(ctx, "0xabc").Return(big.NewInt(42), nil).Once()
 
 	tracker := ibcv2.NewSubmittedTxCostTracker(storage, manager, nil, 0, 10, time.Hour)
@@ -202,12 +203,12 @@ func TestSubmittedTxCostTrackerTrackResolvesStatusWhenUSDEnrichmentFails(t *test
 		},
 	}
 
-	manager := mock_ibcv2.NewMockBridgeClientManager(t)
-	client := mock_bridge.NewMockBridgeClient(t)
-	priceClient := mock_ibcv2.NewMockPriceClient(t)
+	manager := mockibcv2.NewMockBridgeClientManager(t)
+	client := mockbridge.NewMockBridgeClient(t)
+	priceClient := mockibcv2.NewMockPriceClient(t)
 
 	manager.EXPECT().GetClient(ctx, "chain-a").Return(client, nil).Once()
-	client.EXPECT().TxExecutionStatus(ctx, "0xabc").Return(mock_bridge_status("SUCCESS", ""), nil).Once()
+	client.EXPECT().TxExecutionStatus(ctx, "0xabc").Return(mockBridgeStatus("SUCCESS", ""), nil).Once()
 	client.EXPECT().TxFee(ctx, "0xabc").Return(big.NewInt(42), nil).Once()
 	priceClient.EXPECT().GetCoinUsdValue(ctx, "osmosis", uint8(6), big.NewInt(42)).Return(pgtype.Numeric{}, assertiveErr("price unavailable")).Once()
 
@@ -239,8 +240,8 @@ func TestSubmittedTxCostTrackerTrackContinuesWhenStatusNotReady(t *testing.T) {
 		},
 	}
 
-	manager := mock_ibcv2.NewMockBridgeClientManager(t)
-	client := mock_bridge.NewMockBridgeClient(t)
+	manager := mockibcv2.NewMockBridgeClientManager(t)
+	client := mockbridge.NewMockBridgeClient(t)
 
 	manager.EXPECT().GetClient(ctx, "chain-a").Return(client, nil).Once()
 	client.EXPECT().TxExecutionStatus(ctx, "0xabc").Return(bridge.TxExecutionStatus{}, assertiveErr("not found")).Once()
@@ -274,11 +275,11 @@ func TestSubmittedTxCostTrackerTrackContinuesWhenFeeLookupFails(t *testing.T) {
 		},
 	}
 
-	manager := mock_ibcv2.NewMockBridgeClientManager(t)
-	client := mock_bridge.NewMockBridgeClient(t)
+	manager := mockibcv2.NewMockBridgeClientManager(t)
+	client := mockbridge.NewMockBridgeClient(t)
 
 	manager.EXPECT().GetClient(ctx, "chain-a").Return(client, nil).Once()
-	client.EXPECT().TxExecutionStatus(ctx, "0xabc").Return(mock_bridge_status("SUCCESS", ""), nil).Once()
+	client.EXPECT().TxExecutionStatus(ctx, "0xabc").Return(mockBridgeStatus("SUCCESS", ""), nil).Once()
 	client.EXPECT().TxFee(ctx, "0xabc").Return(nil, assertiveErr("decode failed")).Once()
 
 	tracker := ibcv2.NewSubmittedTxCostTracker(storage, manager, nil, 0, 10, time.Hour)
@@ -312,11 +313,11 @@ func TestSubmittedTxCostTrackerTrackCoalescesNilFeeToZero(t *testing.T) {
 		},
 	}
 
-	manager := mock_ibcv2.NewMockBridgeClientManager(t)
-	client := mock_bridge.NewMockBridgeClient(t)
+	manager := mockibcv2.NewMockBridgeClientManager(t)
+	client := mockbridge.NewMockBridgeClient(t)
 
 	manager.EXPECT().GetClient(ctx, "chain-a").Return(client, nil).Once()
-	client.EXPECT().TxExecutionStatus(ctx, "0xabc").Return(mock_bridge_status("SUCCESS", ""), nil).Once()
+	client.EXPECT().TxExecutionStatus(ctx, "0xabc").Return(mockBridgeStatus("SUCCESS", ""), nil).Once()
 	client.EXPECT().TxFee(ctx, "0xabc").Return(nil, nil).Once()
 
 	tracker := ibcv2.NewSubmittedTxCostTracker(storage, manager, nil, 0, 10, time.Hour)
@@ -352,7 +353,7 @@ func TestSubmittedTxCostTrackerTrackExpiresOldAttemptedSubmission(t *testing.T) 
 		},
 	}
 
-	manager := mock_ibcv2.NewMockBridgeClientManager(t)
+	manager := mockibcv2.NewMockBridgeClientManager(t)
 
 	tracker := ibcv2.NewSubmittedTxCostTracker(storage, manager, nil, 0, 10, 6*time.Hour)
 	require.NoError(t, tracker.Track(ctx))
@@ -388,7 +389,7 @@ func strPtr(v string) *string {
 	return &v
 }
 
-func mock_bridge_status(status string, errorMessage string) bridge.TxExecutionStatus {
+func mockBridgeStatus(status string, errorMessage string) bridge.TxExecutionStatus {
 	return bridge.TxExecutionStatus{
 		Status:       status,
 		ErrorMessage: errorMessage,
