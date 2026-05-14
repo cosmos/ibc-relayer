@@ -118,6 +118,7 @@ func NewClientManagerFromConfig(ctx context.Context, keys map[string]string, sig
 				signer,
 				chain.EVM.GasFeeCapMultiplier,
 				chain.EVM.GasTipCapMultiplier,
+				chain.EVM.TxSubmissionDelay,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("creating evm bridge client for chain %s: %w", chainID, err)
@@ -154,7 +155,7 @@ func NewClientManagerFromConfig(ctx context.Context, keys map[string]string, sig
 				return nil, fmt.Errorf("creating cosmos grpc connection for chain %s: %w", chainID, err)
 			}
 
-			bridge = ibcv2.NewCosmosBridgeClient(chainID, signer, prefix, gasPrice, feeDenom, feeAmount, conn, rpc)
+			bridge = ibcv2.NewCosmosBridgeClient(chainID, signer, prefix, gasPrice, feeDenom, feeAmount, conn, rpc, chain.Cosmos.TxSubmissionDelay)
 		default:
 			continue
 		}

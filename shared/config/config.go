@@ -195,6 +195,12 @@ type CosmosConfig struct {
 	GRPC            string `yaml:"grpc"`
 	GRPCTLSEnabled  bool   `yaml:"grpc_tls_enabled"`
 	AddressPrefix   string `yaml:"address_prefix"`
+
+	// TxSubmissionDelay is the minimum interval between consecutive tx
+	// submissions to this chain. The bridge client serializes submissions via
+	// a mutex; this delay is enforced after the mutex is acquired and before
+	// the next submission. Defaults to 0.
+	TxSubmissionDelay time.Duration `yaml:"tx_submission_delay,omitempty"`
 }
 
 type EVMConfig struct {
@@ -203,6 +209,12 @@ type EVMConfig struct {
 	Contracts           EVMContractConfig `yaml:"contracts"`
 	GasFeeCapMultiplier *float64          `yaml:"gas_fee_cap_multiplier"`
 	GasTipCapMultiplier *float64          `yaml:"gas_tip_cap_multiplier"`
+
+	// TxSubmissionDelay is the minimum interval between consecutive tx
+	// submissions to this chain. The bridge client serializes submissions via
+	// a mutex; this delay is enforced after the mutex is acquired and before
+	// the next submission. Defaults to 0.
+	TxSubmissionDelay time.Duration `yaml:"tx_submission_delay,omitempty"`
 }
 
 type EVMContractConfig struct {
