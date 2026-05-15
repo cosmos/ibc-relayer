@@ -1,4 +1,6 @@
-version: v1
+version: v2
+modules:
+  - path: .
 deps:
   - buf.build/cosmos/cosmos-sdk:aa25660f4ff746388669ce36b3778442
   - buf.build/cosmos/cosmos-proto:1935555c206d4afb9e94615dfd0fad31

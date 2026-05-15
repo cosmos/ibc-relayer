@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/cosmos/ibc-relayer/db/gen/db"
-	"github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer"
+	"github.com/cosmos/ibc-relayer/proto/gen/proofapi"
 	"github.com/cosmos/ibc-relayer/shared/config"
 	"github.com/cosmos/ibc-relayer/shared/lmt"
 	"github.com/cosmos/ibc-relayer/shared/metrics"
@@ -25,7 +25,7 @@ type TransferRecvTxWithTxStorage interface {
 type BatchRecvPacketProcessor struct {
 	bridgeClientManager         BridgeClientManager
 	transferRecvTxWithTxStorage TransferRecvTxWithTxStorage
-	relayService                ibcv2relayer.RelayerServiceClient
+	relayService                proofapi.ProofApiServiceClient
 	sourceChainID               string
 	sourceClientID              string
 	destinationChainID          string
@@ -35,7 +35,7 @@ type BatchRecvPacketProcessor struct {
 func NewBatchRecvPacketProcessor(
 	bridgeClientmanager BridgeClientManager,
 	transferRecvTxWithTxStorage TransferRecvTxWithTxStorage,
-	relayService ibcv2relayer.RelayerServiceClient,
+	relayService proofapi.ProofApiServiceClient,
 	sourceChainID string,
 	sourceClientID string,
 	destinationChainID string,
@@ -82,7 +82,7 @@ func (p BatchRecvPacketProcessor) Process(ctx context.Context, transfers []*IBCV
 	// numbers in the batch from the processors source client to the processors
 	// destination client
 	relayByTxReqStartTs := time.Now()
-	req := &ibcv2relayer.RelayByTxRequest{
+	req := &proofapi.RelayByTxRequest{
 		SrcChain:           p.sourceChainID,
 		DstChain:           p.destinationChainID,
 		SourceTxIds:        txIDs,

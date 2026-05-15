@@ -20,7 +20,7 @@ import (
 	"github.com/cosmos/ibc-relayer/db/gen/db"
 	"github.com/cosmos/ibc-relayer/db/tx"
 	"github.com/cosmos/ibc-relayer/gasmonitor"
-	"github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer"
+	"github.com/cosmos/ibc-relayer/proto/gen/proofapi"
 	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
 	"github.com/cosmos/ibc-relayer/relayerapi/server"
 	"github.com/cosmos/ibc-relayer/shared/clients/coingecko"
@@ -163,7 +163,7 @@ func main() {
 		)
 	}
 
-	relayer := ibcv2relayer.NewRelayerServiceClient(conn)
+	relayer := proofapi.NewProofApiServiceClient(conn)
 	defer conn.Close()
 
 	// create storage for ibcv2 transactions

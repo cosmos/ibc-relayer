@@ -1,14 +1,29 @@
-version: v1
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/cosmos/ibc-relayer/proto/gen
 plugins:
-  - name: go
+  - remote: buf.build/protocolbuffers/go
     out: ./gen
     opt: paths=source_relative
-  - name: go-grpc
+  - remote: buf.build/grpc/go
     out: ./gen
     opt: paths=source_relative
-  - name: grpc-gateway
+  - remote: buf.build/grpc-ecosystem/gateway
     out: ./gen
     opt: paths=source_relative
-  - name: go-grpc-mock
+  - local: protoc-gen-go-grpc-mock
     out: ./gen
     opt: paths=source_relative
+inputs:
+  - directory: .
+    paths:
+      - relayerapi
+      - signer
+  - git_repo: https://github.com/cosmos/solidity-ibc-eureka.git
+    ref: cff76667bb5f430f06d5666cd96735c71127aa25
+    subdir: proto
+    paths:
+      - proofapi
