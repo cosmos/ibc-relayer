@@ -96,19 +96,6 @@ func (e *IBCV2Transfer) RecordTransactionRetried(ctx context.Context, relayType 
 	)
 }
 
-func (e *IBCV2Transfer) RecordTransactionSubmitted(ctx context.Context, success bool) {
-	sourceConfig, destConfig := chainConfigs(ctx, e.GetSourceChainID(), e.GetDestinationChainID())
-
-	metrics.FromContext(ctx).AddTransactionSubmitted(
-		success,
-		e.GetSourceChainID(),
-		e.GetDestinationChainID(),
-		sourceConfig.ChainName,
-		destConfig.ChainName,
-		string(sourceConfig.Environment),
-	)
-}
-
 func (e *IBCV2Transfer) RecordTransferState(ctx context.Context, state string) {
 	sourceConfig, destConfig := chainConfigs(ctx, e.GetSourceChainID(), e.GetDestinationChainID())
 

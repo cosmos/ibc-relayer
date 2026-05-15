@@ -15,6 +15,7 @@ import (
 	"github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer"
 	"github.com/cosmos/ibc-relayer/shared/config"
 	"github.com/cosmos/ibc-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/metrics"
 )
 
 type TransferAckTxWithTxStorage interface {
@@ -134,10 +135,10 @@ func (p BatchAckPacketProcessor) Process(ctx context.Context, transfers []*IBCV2
 	// submit the ack on the source chain
 	ackTx, err := sourceChainClient.DeliverTx(ctx, ackTxBytes, to)
 	if err != nil {
-		transfers[0].RecordTransactionSubmitted(ctx, false)
+		metrics.RecordTransactionSubmitted(ctx, false, p.sourceChainID)
 		return nil, fmt.Errorf("signing and submitting ack tx bytes for batch of %d transfers: %w", len(sequences), err)
 	}
-	transfers[0].RecordTransactionSubmitted(ctx, true)
+	metrics.RecordTransactionSubmitted(ctx, true, p.sourceChainID)
 
 	logger.Info("delivered batch ack tx", zap.String("tx_hash", ackTx.Hash))
 

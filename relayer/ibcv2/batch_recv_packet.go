@@ -14,6 +14,7 @@ import (
 	"github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer"
 	"github.com/cosmos/ibc-relayer/shared/config"
 	"github.com/cosmos/ibc-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/metrics"
 )
 
 type TransferRecvTxWithTxStorage interface {
@@ -123,10 +124,10 @@ func (p BatchRecvPacketProcessor) Process(ctx context.Context, transfers []*IBCV
 	// submit the recv on the destination chain
 	recvTx, err := destinationChainClient.DeliverTx(ctx, recvTxBytes, to)
 	if err != nil {
-		transfers[0].RecordTransactionSubmitted(ctx, false)
+		metrics.RecordTransactionSubmitted(ctx, false, p.destinationChainID)
 		return nil, fmt.Errorf("signing and submitting recv tx bytes for batch of %d transfers: %w", len(sequences), err)
 	}
-	transfers[0].RecordTransactionSubmitted(ctx, true)
+	metrics.RecordTransactionSubmitted(ctx, true, p.destinationChainID)
 
 	logger.Info("delivered batch recv tx", zap.String("tx_hash", recvTx.Hash))
 
