@@ -14,6 +14,7 @@ SELECT
     s.id,
     s.tx_hash,
     s.chain_id,
+    COALESCE(MIN(t.source_chain_id), ''::text)::text AS source_chain_id,
     COALESCE(MIN(t.destination_chain_id), ''::text)::text AS destination_chain_id,
     s.tx_type,
     s.relayer_address,

@@ -124,20 +124,19 @@ func (t *SubmittedTxCostTracker) trackSubmission(ctx context.Context, submission
 		return nil
 	}
 
-	executionChainID := submissionExecutionChainID(submission)
-	client, err := t.bridgeClientManager.GetClient(ctx, executionChainID)
+	client, err := t.bridgeClientManager.GetClient(ctx, submission.ChainID)
 	if err != nil {
-		return fmt.Errorf("getting bridge client for chain %s: %w", executionChainID, err)
+		return fmt.Errorf("getting bridge client for chain %s: %w", submission.ChainID, err)
 	}
 
 	executionStatus, err := client.TxExecutionStatus(ctx, submission.TxHash)
 	if err != nil {
-		return fmt.Errorf("getting execution status for tx %s on chain %s: %w", submission.TxHash, executionChainID, err)
+		return fmt.Errorf("getting execution status for tx %s on chain %s: %w", submission.TxHash, submission.ChainID, err)
 	}
 
 	gasCostAmount, gasCostUSD, err := t.resolveGasCosts(ctx, submission, client)
 	if err != nil {
-		return fmt.Errorf("resolving gas costs for tx %s on chain %s: %w", submission.TxHash, executionChainID, err)
+		return fmt.Errorf("resolving gas costs for tx %s on chain %s: %w", submission.TxHash, submission.ChainID, err)
 	}
 
 	var gasCostNumeric pgtype.Numeric
@@ -195,12 +194,11 @@ func (t *SubmittedTxCostTracker) resolveGasCosts(
 		gasCostAmount = big.NewInt(0)
 	}
 
-	executionChainID := submissionExecutionChainID(submission)
-	gasCostUSD, err := t.getGasCostUSD(ctx, executionChainID, gasCostAmount)
+	gasCostUSD, err := t.getGasCostUSD(ctx, submission.ChainID, gasCostAmount)
 	if err != nil {
 		lmt.Logger(ctx).Warn("unable to get usd gas cost, continuing without",
 			zap.Error(err),
-			zap.String("execution_chain_id", executionChainID),
+			zap.String("execution_chain_id", submission.ChainID),
 			zap.String("tx_hash", submission.TxHash),
 		)
 		return gasCostAmount, pgtype.Numeric{}, nil
@@ -209,20 +207,12 @@ func (t *SubmittedTxCostTracker) resolveGasCosts(
 	return gasCostAmount, gasCostUSD, nil
 }
 
-func submissionExecutionChainID(submission db.GetUnresolvedIBCV2RelayerTxSubmissionsRow) string {
-	if submission.TxType == db.Ibcv2RelayerTxSubmissionTypeRECVPACKET {
-		return submission.DestinationChainID
-	}
-
-	return submission.ChainID
-}
-
 func (*SubmittedTxCostTracker) recordResolvedSubmissionMetrics(ctx context.Context, submission db.GetUnresolvedIBCV2RelayerTxSubmissionsRow, executionStatus string, gasCostAmount *big.Int) {
-	sourceConfig, destConfig := chainConfigs(ctx, submission.ChainID, submission.DestinationChainID)
+	sourceConfig, destConfig := chainConfigs(ctx, submission.SourceChainID, submission.DestinationChainID)
 
 	metrics.FromContext(ctx).AddTransactionConfirmed(
 		executionStatus == "SUCCESS",
-		submission.ChainID,
+		submission.SourceChainID,
 		submission.DestinationChainID,
 		sourceConfig.ChainName,
 		destConfig.ChainName,
@@ -239,7 +229,7 @@ func (*SubmittedTxCostTracker) recordResolvedSubmissionMetrics(ctx context.Conte
 	}
 
 	metrics.FromContext(ctx).AddTransactionGasCost(
-		submissionExecutionChainID(submission),
+		submission.ChainID,
 		execConfig.ChainName,
 		string(execConfig.Environment),
 		*gasCostAmount,
