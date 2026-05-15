@@ -199,8 +199,9 @@ type CosmosConfig struct {
 	// TxSubmissionDelay is the minimum interval between consecutive tx
 	// submissions to this chain. The bridge client serializes submissions via
 	// a mutex; this delay is enforced after the mutex is acquired and before
-	// the next submission. Defaults to 0.
-	TxSubmissionDelay time.Duration `yaml:"tx_submission_delay,omitempty"`
+	// the next submission. When unset, defaults to 2s; set explicitly to 0
+	// to disable the delay.
+	TxSubmissionDelay *time.Duration `yaml:"tx_submission_delay,omitempty"`
 }
 
 type EVMConfig struct {
@@ -213,8 +214,9 @@ type EVMConfig struct {
 	// TxSubmissionDelay is the minimum interval between consecutive tx
 	// submissions to this chain. The bridge client serializes submissions via
 	// a mutex; this delay is enforced after the mutex is acquired and before
-	// the next submission. Defaults to 0.
-	TxSubmissionDelay time.Duration `yaml:"tx_submission_delay,omitempty"`
+	// the next submission. When unset, defaults to 2s; set explicitly to 0
+	// to disable the delay.
+	TxSubmissionDelay *time.Duration `yaml:"tx_submission_delay,omitempty"`
 }
 
 type EVMContractConfig struct {

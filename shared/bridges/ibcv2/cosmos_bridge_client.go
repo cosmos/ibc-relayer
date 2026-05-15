@@ -123,8 +123,13 @@ func NewCosmosBridgeClient(
 	feeAmount uint64,
 	conn grpc.ClientConnInterface,
 	rpcClient tmrpc.Client,
-	txSubmissionDelay time.Duration,
+	txSubmissionDelay *time.Duration,
 ) *CosmosBridgeClient {
+	delay := 2 * time.Second
+	if txSubmissionDelay != nil {
+		delay = *txSubmissionDelay
+	}
+
 	reg := newInterfaceRegistry()
 	cdc := codec.NewProtoCodec(reg)
 
@@ -142,7 +147,7 @@ func NewCosmosBridgeClient(
 		reg:                 reg,
 		txOnce:              NewOnceWithKey[*coretypes.ResultTx](time.Minute, 5*time.Second),
 		txSubmissionLock:    new(sync.Mutex),
-		txSubmissionDelay:   txSubmissionDelay,
+		txSubmissionDelay:   delay,
 		latestTimestampOnce: NewOnceWithKey[time.Time](6*time.Second, 200*time.Millisecond),
 	}
 }
