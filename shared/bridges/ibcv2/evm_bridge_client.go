@@ -75,8 +75,13 @@ func NewEVMBridgeClient(
 	signer signing.Signer,
 	gasFeeCapMultiplier *float64,
 	gasTipCapMultiplier *float64,
-	txSubmissionDelay time.Duration,
+	txSubmissionDelay *time.Duration,
 ) (*EVMBridgeClient, error) {
+	delay := 2 * time.Second
+	if txSubmissionDelay != nil {
+		delay = *txSubmissionDelay
+	}
+
 	routerAddress := common.HexToAddress(ics26RouterContractAddress)
 	ics26Router, err := ics26_router.NewContract(routerAddress, client)
 	if err != nil {
@@ -104,7 +109,7 @@ func NewEVMBridgeClient(
 		signer:              signer,
 		signerAddress:       common.Address(signerAddressBytes),
 		txSubmissionLock:    new(sync.Mutex),
-		txSubmissionDelay:   txSubmissionDelay,
+		txSubmissionDelay:   delay,
 		txOnce:              NewOnceWithKey[*types.Receipt](time.Minute, 5*time.Second),
 		latestTimestampOnce: NewOnceWithKey[time.Time](12*time.Second, 200*time.Millisecond),
 		gasFeeCapMultiplier: gasFeeCapMultiplier,
