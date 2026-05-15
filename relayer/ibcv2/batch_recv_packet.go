@@ -164,7 +164,7 @@ func (p BatchRecvPacketProcessor) Process(ctx context.Context, transfers []*IBCV
 
 		insert := db.InsertIBCV2RelayerTxSubmissionParams{
 			TxHash:         recvTx.Hash,
-			ChainID:        p.sourceChainID,
+			ChainID:        p.destinationChainID,
 			TxType:         db.Ibcv2RelayerTxSubmissionTypeRECVPACKET,
 			RelayerAddress: recvTx.RelayerAddress,
 			SubmittedAt:    pgtype.Timestamptz{Valid: true, Time: recvTx.Timestamp},

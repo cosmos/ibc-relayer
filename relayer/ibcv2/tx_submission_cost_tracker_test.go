@@ -74,11 +74,12 @@ func (m *metricsStub) AddTransactionGasCost(chainID, chainName, chainEnvironment
 }
 
 //nolint:unparam // id kept as parameter for test readability
-func unresolvedSubmission(id int32, txHash, chainID, destinationChainID string, txType db.Ibcv2RelayerTxSubmissionType, submittedAt time.Time) db.GetUnresolvedIBCV2RelayerTxSubmissionsRow {
+func unresolvedSubmission(id int32, txHash, chainID, sourceChainID, destinationChainID string, txType db.Ibcv2RelayerTxSubmissionType, submittedAt time.Time) db.GetUnresolvedIBCV2RelayerTxSubmissionsRow {
 	return db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
 		ID:                 id,
 		TxHash:             txHash,
 		ChainID:            chainID,
+		SourceChainID:      sourceChainID,
 		DestinationChainID: destinationChainID,
 		TxType:             txType,
 		Status:             db.Ibcv2RelayerTxSubmissionStatusPENDING,
@@ -108,7 +109,7 @@ func TestSubmittedTxCostTrackerTrackResolvesNativeAndUSDGasCosts(t *testing.T) {
 
 	storage := &submittedTxCostStorageStub{
 		submissions: []db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
-			unresolvedSubmission(1, "0xabc", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
+			unresolvedSubmission(1, "0xabc", "chain-a", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
 		},
 	}
 
@@ -155,7 +156,7 @@ func TestSubmittedTxCostTrackerTrackResolvesNativeCostWithoutUSD(t *testing.T) {
 
 	storage := &submittedTxCostStorageStub{
 		submissions: []db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
-			unresolvedSubmission(1, "0xabc", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeACKPACKET, time.Now()),
+			unresolvedSubmission(1, "0xabc", "source-chain", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeACKPACKET, time.Now()),
 		},
 	}
 
@@ -199,7 +200,7 @@ func TestSubmittedTxCostTrackerTrackResolvesStatusWhenUSDEnrichmentFails(t *test
 
 	storage := &submittedTxCostStorageStub{
 		submissions: []db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
-			unresolvedSubmission(1, "0xabc", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
+			unresolvedSubmission(1, "0xabc", "chain-a", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
 		},
 	}
 
@@ -236,7 +237,7 @@ func TestSubmittedTxCostTrackerTrackContinuesWhenStatusNotReady(t *testing.T) {
 
 	storage := &submittedTxCostStorageStub{
 		submissions: []db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
-			unresolvedSubmission(1, "0xabc", "chain-a", "dest-chain", db.Ibcv2RelayerTxSubmissionTypeACKPACKET, time.Now()),
+			unresolvedSubmission(1, "0xabc", "chain-a", "chain-a", "dest-chain", db.Ibcv2RelayerTxSubmissionTypeACKPACKET, time.Now()),
 		},
 	}
 
@@ -271,7 +272,7 @@ func TestSubmittedTxCostTrackerTrackContinuesWhenFeeLookupFails(t *testing.T) {
 
 	storage := &submittedTxCostStorageStub{
 		submissions: []db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
-			unresolvedSubmission(1, "0xabc", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
+			unresolvedSubmission(1, "0xabc", "chain-a", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
 		},
 	}
 
@@ -309,7 +310,7 @@ func TestSubmittedTxCostTrackerTrackCoalescesNilFeeToZero(t *testing.T) {
 
 	storage := &submittedTxCostStorageStub{
 		submissions: []db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
-			unresolvedSubmission(1, "0xabc", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
+			unresolvedSubmission(1, "0xabc", "chain-a", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
 		},
 	}
 
@@ -345,6 +346,7 @@ func TestSubmittedTxCostTrackerTrackExpiresOldAttemptedSubmission(t *testing.T) 
 				ID:                 1,
 				TxHash:             "0xabc",
 				ChainID:            "chain-a",
+				SourceChainID:      "chain-a",
 				DestinationChainID: "dest-chain",
 				TxType:             db.Ibcv2RelayerTxSubmissionTypeACKPACKET,
 				Status:             db.Ibcv2RelayerTxSubmissionStatusPENDING,

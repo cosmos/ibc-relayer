@@ -31,6 +31,7 @@ SELECT
     s.id,
     s.tx_hash,
     s.chain_id,
+    COALESCE(MIN(t.source_chain_id), ''::text)::text AS source_chain_id,
     COALESCE(MIN(t.destination_chain_id), ''::text)::text AS destination_chain_id,
     s.tx_type,
     s.relayer_address,
@@ -66,6 +67,7 @@ type GetUnresolvedIBCV2RelayerTxSubmissionsRow struct {
 	ID                 int32
 	TxHash             string
 	ChainID            string
+	SourceChainID      string
 	DestinationChainID string
 	TxType             Ibcv2RelayerTxSubmissionType
 	RelayerAddress     string
@@ -77,6 +79,9 @@ type GetUnresolvedIBCV2RelayerTxSubmissionsRow struct {
 	ExecutionError     pgtype.Text
 }
 
+// chain_id is the chain the tx was broadcast on (execution chain).
+// source_chain_id and destination_chain_id are derived from the linked
+// transfers so consumers don't have to re-join to label metrics by direction.
 func (q *Queries) GetUnresolvedIBCV2RelayerTxSubmissions(ctx context.Context, limit int32) ([]GetUnresolvedIBCV2RelayerTxSubmissionsRow, error) {
 	rows, err := q.db.Query(ctx, getUnresolvedIBCV2RelayerTxSubmissions, limit)
 	if err != nil {
@@ -90,6 +95,7 @@ func (q *Queries) GetUnresolvedIBCV2RelayerTxSubmissions(ctx context.Context, li
 			&i.ID,
 			&i.TxHash,
 			&i.ChainID,
+			&i.SourceChainID,
 			&i.DestinationChainID,
 			&i.TxType,
 			&i.RelayerAddress,
