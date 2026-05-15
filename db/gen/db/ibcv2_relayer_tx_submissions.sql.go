@@ -28,75 +28,36 @@ func (q *Queries) ExpirePendingIBCV2RelayerTxSubmission(ctx context.Context, id 
 
 const getUnresolvedIBCV2RelayerTxSubmissions = `-- name: GetUnresolvedIBCV2RelayerTxSubmissions :many
 SELECT
-    s.id,
-    s.tx_hash,
-    s.chain_id,
-    COALESCE(MIN(t.source_chain_id), ''::text)::text AS source_chain_id,
-    COALESCE(MIN(t.destination_chain_id), ''::text)::text AS destination_chain_id,
-    s.tx_type,
-    s.relayer_address,
-    s.submitted_at,
-    s.resolved_at,
-    s.gas_cost_amount,
-    s.gas_cost_usd,
-    s.status,
-    s.execution_error
-FROM ibcv2_relayer_tx_submissions s
-JOIN ibcv2_transfer_tx_submissions tts
-  ON tts.submission_id = s.id
-JOIN ibcv2_transfers t
-  ON t.id = tts.transfer_id
-WHERE s.status = 'PENDING'
-GROUP BY
-    s.id,
-    s.tx_hash,
-    s.chain_id,
-    s.tx_type,
-    s.relayer_address,
-    s.submitted_at,
-    s.resolved_at,
-    s.gas_cost_amount,
-    s.gas_cost_usd,
-    s.status,
-    s.execution_error
-ORDER BY s.submitted_at ASC
+    id,
+    tx_hash,
+    chain_id,
+    tx_type,
+    relayer_address,
+    submitted_at,
+    resolved_at,
+    gas_cost_amount,
+    gas_cost_usd,
+    status,
+    execution_error
+FROM ibcv2_relayer_tx_submissions
+WHERE status = 'PENDING'
+ORDER BY submitted_at ASC
 LIMIT $1
 `
 
-type GetUnresolvedIBCV2RelayerTxSubmissionsRow struct {
-	ID                 int32
-	TxHash             string
-	ChainID            string
-	SourceChainID      string
-	DestinationChainID string
-	TxType             Ibcv2RelayerTxSubmissionType
-	RelayerAddress     string
-	SubmittedAt        pgtype.Timestamptz
-	ResolvedAt         pgtype.Timestamptz
-	GasCostAmount      pgtype.Numeric
-	GasCostUsd         pgtype.Numeric
-	Status             Ibcv2RelayerTxSubmissionStatus
-	ExecutionError     pgtype.Text
-}
-
-// chain_id is the chain the tx was broadcast on (execution chain).
-// source_chain_id and destination_chain_id are derived from the linked
-// transfers so consumers don't have to re-join to label metrics by direction.
-func (q *Queries) GetUnresolvedIBCV2RelayerTxSubmissions(ctx context.Context, limit int32) ([]GetUnresolvedIBCV2RelayerTxSubmissionsRow, error) {
+func (q *Queries) GetUnresolvedIBCV2RelayerTxSubmissions(ctx context.Context, limit int32) ([]Ibcv2RelayerTxSubmission, error) {
 	rows, err := q.db.Query(ctx, getUnresolvedIBCV2RelayerTxSubmissions, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetUnresolvedIBCV2RelayerTxSubmissionsRow
+	var items []Ibcv2RelayerTxSubmission
 	for rows.Next() {
-		var i GetUnresolvedIBCV2RelayerTxSubmissionsRow
+		var i Ibcv2RelayerTxSubmission
 		if err := rows.Scan(
 			&i.ID,
 			&i.TxHash,
 			&i.ChainID,
-			&i.SourceChainID,
-			&i.DestinationChainID,
 			&i.TxType,
 			&i.RelayerAddress,
 			&i.SubmittedAt,

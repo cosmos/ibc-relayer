@@ -12,6 +12,8 @@ import (
 	stdprom "github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
+
+	"github.com/cosmos/ibc-relayer/shared/config"
 )
 
 type (
@@ -56,10 +58,10 @@ type Metrics interface {
 	AddRelayerAPIRequestLatency(string, time.Duration)
 	SetGasBalance(string, string, string, string, big.Int, big.Int, big.Int, uint8, BridgeType)
 
-	AddTransactionSubmitted(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string)
+	AddTransactionSubmitted(success bool, chainID, chainName, chainEnvironment string)
 	AddTransactionRetryAttempt(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType)
 	AddTransactionNonceReplaced(chainID string)
-	AddTransactionConfirmed(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string)
+	AddTransactionConfirmed(success bool, chainID, chainName, chainEnvironment string)
 	AddTransactionGasCost(chainID, chainName, chainEnvironment string, gasCost big.Int, gasTokenDecimals uint8)
 	AddTransfer(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string)
 	SetTransferCount(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string, count float64)
@@ -116,6 +118,19 @@ func FromContext(ctx context.Context) Metrics {
 		return NewNoOpMetrics()
 	}
 	return metricsFromContext.(Metrics) //nolint:revive // panic is desired if value type is wrong
+}
+
+// RecordTransactionSubmitted resolves the chain's name and environment from
+// config and increments the submitted-tx counter. If the chain is not
+// configured the chain ID is used as the chain name and environment is empty.
+func RecordTransactionSubmitted(ctx context.Context, success bool, executionChainID string) {
+	chainName := executionChainID
+	var chainEnvironment string
+	if chainConfig, err := config.GetConfigReader(ctx).GetChainConfig(executionChainID); err == nil {
+		chainName = chainConfig.ChainName
+		chainEnvironment = string(chainConfig.Environment)
+	}
+	FromContext(ctx).AddTransactionSubmitted(success, executionChainID, chainName, chainEnvironment)
 }
 
 func SourceChainIDFromContext(ctx context.Context) string {
@@ -272,8 +287,8 @@ func NewPromMetrics() Metrics {
 		totalTransactionSubmitted: prom.NewCounterFrom(stdprom.CounterOpts{
 			Namespace: "relayerapi",
 			Name:      "total_transactions_submitted_counter",
-			Help:      "number of transactions submitted, paginated by success status and source and destination chain id",
-		}, []string{successLabel, sourceChainIDLabel, destinationChainIDLabel, sourceChainNameLabel, destinationChainNameLabel, chainEnvironmentLabel}),
+			Help:      "number of transactions submitted, paginated by success status and chain id",
+		}, []string{successLabel, chainIDLabel, chainNameLabel, chainEnvironmentLabel}),
 		totalTransactionRetryAttempts: prom.NewCounterFrom(stdprom.CounterOpts{
 			Namespace: "relayerapi",
 			Name:      "total_transaction_retry_attempts_counter",
@@ -287,8 +302,8 @@ func NewPromMetrics() Metrics {
 		totalTransactionsConfirmed: prom.NewCounterFrom(stdprom.CounterOpts{
 			Namespace: "relayerapi",
 			Name:      "total_transactions_confirmed_counter",
-			Help:      "number of transactions confirmed, paginated by success status and source and destination chain id",
-		}, []string{successLabel, sourceChainIDLabel, destinationChainIDLabel, sourceChainNameLabel, destinationChainNameLabel, chainEnvironmentLabel}),
+			Help:      "number of transactions confirmed, paginated by success status and chain id",
+		}, []string{successLabel, chainIDLabel, chainNameLabel, chainEnvironmentLabel}),
 		totalTransfers: prom.NewCounterFrom(stdprom.CounterOpts{
 			Namespace: "relayerapi",
 			Name:      "total_transfers_counter",
@@ -418,8 +433,8 @@ func (m *PromMetrics) ExternalRequestLatency(ctx context.Context, method, provid
 	).Observe(float64(latency.Milliseconds()))
 }
 
-func (m *PromMetrics) AddTransactionSubmitted(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string) {
-	m.totalTransactionSubmitted.With(successLabel, fmt.Sprint(success), sourceChainIDLabel, sourceChainID, destinationChainIDLabel, destinationChainID, sourceChainNameLabel, sourceChainName, destinationChainNameLabel, destinationChainName, chainEnvironmentLabel, chainEnvironment).Add(1)
+func (m *PromMetrics) AddTransactionSubmitted(success bool, chainID, chainName, chainEnvironment string) {
+	m.totalTransactionSubmitted.With(successLabel, fmt.Sprint(success), chainIDLabel, chainID, chainNameLabel, chainName, chainEnvironmentLabel, chainEnvironment).Add(1)
 }
 
 func (m *PromMetrics) AddTransactionRetryAttempt(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType) {
@@ -437,8 +452,8 @@ func (m *PromMetrics) AddTransactionNonceReplaced(chainID string) {
 	m.totalTransactionNonceReplaced.With(chainIDLabel, chainID).Add(1)
 }
 
-func (m *PromMetrics) AddTransactionConfirmed(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string) {
-	m.totalTransactionsConfirmed.With(successLabel, fmt.Sprint(success), sourceChainIDLabel, sourceChainID, destinationChainIDLabel, destinationChainID, sourceChainNameLabel, sourceChainName, destinationChainNameLabel, destinationChainName, chainEnvironmentLabel, chainEnvironment).Add(1)
+func (m *PromMetrics) AddTransactionConfirmed(success bool, chainID, chainName, chainEnvironment string) {
+	m.totalTransactionsConfirmed.With(successLabel, fmt.Sprint(success), chainIDLabel, chainID, chainNameLabel, chainName, chainEnvironmentLabel, chainEnvironment).Add(1)
 }
 
 func (m *PromMetrics) AddTransfer(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string) {
@@ -517,7 +532,7 @@ func (*NoOpMetrics) AddAttestationAPIRequest(u uint32)           {}
 func (*NoOpMetrics) AttestationConfirmationLatency(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, latency time.Duration) {
 }
 
-func (*NoOpMetrics) AddTransactionSubmitted(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string) {
+func (*NoOpMetrics) AddTransactionSubmitted(success bool, chainID, chainName, chainEnvironment string) {
 }
 
 func (*NoOpMetrics) AddTransactionRetryAttempt(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string, relayType RelayType) {
@@ -525,7 +540,7 @@ func (*NoOpMetrics) AddTransactionRetryAttempt(sourceChainID, destinationChainID
 
 func (*NoOpMetrics) AddTransactionNonceReplaced(chainID string) {}
 
-func (*NoOpMetrics) AddTransactionConfirmed(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string) {
+func (*NoOpMetrics) AddTransactionConfirmed(success bool, chainID, chainName, chainEnvironment string) {
 }
 
 func (*NoOpMetrics) AddTransfer(sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment, state string) {

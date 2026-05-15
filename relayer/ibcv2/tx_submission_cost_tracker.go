@@ -17,7 +17,7 @@ import (
 )
 
 type SubmittedTxCostStorage interface {
-	GetUnresolvedIBCV2RelayerTxSubmissions(ctx context.Context, limit int32) ([]db.GetUnresolvedIBCV2RelayerTxSubmissionsRow, error)
+	GetUnresolvedIBCV2RelayerTxSubmissions(ctx context.Context, limit int32) ([]db.Ibcv2RelayerTxSubmission, error)
 	UpdateIBCV2RelayerTxSubmissionTracking(ctx context.Context, arg db.UpdateIBCV2RelayerTxSubmissionTrackingParams) error
 	ExpirePendingIBCV2RelayerTxSubmission(ctx context.Context, id int32) error
 }
@@ -90,7 +90,6 @@ func (t *SubmittedTxCostTracker) Track(ctx context.Context) error {
 				zap.Int32("submission_id", submission.ID),
 				zap.String("tx_hash", submission.TxHash),
 				zap.String("chain_id", submission.ChainID),
-				zap.String("destination_chain_id", submission.DestinationChainID),
 			)
 		}
 	}
@@ -115,7 +114,7 @@ func (t *SubmittedTxCostTracker) Track(ctx context.Context) error {
 // resolveGasCosts, so the DB row always receives a valid numeric. When
 // gasCostAmount is non-nil but bigIntToNumeric fails the submission is left
 // unresolved for the next cycle rather than writing a partial update.
-func (t *SubmittedTxCostTracker) trackSubmission(ctx context.Context, submission db.GetUnresolvedIBCV2RelayerTxSubmissionsRow) error {
+func (t *SubmittedTxCostTracker) trackSubmission(ctx context.Context, submission db.Ibcv2RelayerTxSubmission) error {
 	isExpired := submission.Status == db.Ibcv2RelayerTxSubmissionStatusPENDING && submission.SubmittedAt.Valid && submission.SubmittedAt.Time.Add(t.attemptExpiry).Before(time.Now().UTC())
 	if isExpired {
 		if err := t.storage.ExpirePendingIBCV2RelayerTxSubmission(ctx, submission.ID); err != nil {
@@ -183,7 +182,7 @@ func (t *SubmittedTxCostTracker) trackSubmission(ctx context.Context, submission
 // when CoinGecko is down or a gas token has no configured coingecko ID.
 func (t *SubmittedTxCostTracker) resolveGasCosts(
 	ctx context.Context,
-	submission db.GetUnresolvedIBCV2RelayerTxSubmissionsRow,
+	submission db.Ibcv2RelayerTxSubmission,
 	client bridge.BridgeClient,
 ) (*big.Int, pgtype.Numeric, error) {
 	gasCostAmount, err := client.TxFee(ctx, submission.TxHash)
@@ -207,33 +206,26 @@ func (t *SubmittedTxCostTracker) resolveGasCosts(
 	return gasCostAmount, gasCostUSD, nil
 }
 
-func (*SubmittedTxCostTracker) recordResolvedSubmissionMetrics(ctx context.Context, submission db.GetUnresolvedIBCV2RelayerTxSubmissionsRow, executionStatus string, gasCostAmount *big.Int) {
-	sourceConfig, destConfig := chainConfigs(ctx, submission.SourceChainID, submission.DestinationChainID)
+func (*SubmittedTxCostTracker) recordResolvedSubmissionMetrics(ctx context.Context, submission db.Ibcv2RelayerTxSubmission, executionStatus string, gasCostAmount *big.Int) {
+	chainConfig, _ := chainConfigOrFallback(ctx, submission.ChainID)
 
 	metrics.FromContext(ctx).AddTransactionConfirmed(
 		executionStatus == "SUCCESS",
-		submission.SourceChainID,
-		submission.DestinationChainID,
-		sourceConfig.ChainName,
-		destConfig.ChainName,
-		string(sourceConfig.Environment),
+		submission.ChainID,
+		chainConfig.ChainName,
+		string(chainConfig.Environment),
 	)
 
 	if gasCostAmount == nil {
 		return
 	}
 
-	execConfig := sourceConfig
-	if submission.TxType == db.Ibcv2RelayerTxSubmissionTypeRECVPACKET {
-		execConfig = destConfig
-	}
-
 	metrics.FromContext(ctx).AddTransactionGasCost(
 		submission.ChainID,
-		execConfig.ChainName,
-		string(execConfig.Environment),
+		chainConfig.ChainName,
+		string(chainConfig.Environment),
 		*gasCostAmount,
-		execConfig.GasTokenDecimals,
+		chainConfig.GasTokenDecimals,
 	)
 }
 

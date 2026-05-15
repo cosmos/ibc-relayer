@@ -14,6 +14,7 @@ import (
 	"github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer"
 	"github.com/cosmos/ibc-relayer/shared/config"
 	"github.com/cosmos/ibc-relayer/shared/lmt"
+	"github.com/cosmos/ibc-relayer/shared/metrics"
 )
 
 type TransferTimeoutTxWithTxStorage interface {
@@ -122,10 +123,10 @@ func (p BatchTimeoutPacketProcessor) Process(ctx context.Context, transfers []*I
 	// submit the timeout on the source chain
 	timeoutTx, err := sourceChainClient.DeliverTx(ctx, timeoutTxBytes, to)
 	if err != nil {
-		transfers[0].RecordTransactionSubmitted(ctx, false)
+		metrics.RecordTransactionSubmitted(ctx, false, p.sourceChainID)
 		return nil, fmt.Errorf("submitting batch timeout tx: %w", err)
 	}
-	transfers[0].RecordTransactionSubmitted(ctx, true)
+	metrics.RecordTransactionSubmitted(ctx, true, p.sourceChainID)
 
 	logger.Info("delivered batch timeout tx", zap.String("tx_hash", timeoutTx.Hash))
 

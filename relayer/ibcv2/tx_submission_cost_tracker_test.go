@@ -20,7 +20,7 @@ import (
 )
 
 type submittedTxCostStorageStub struct {
-	submissions []db.GetUnresolvedIBCV2RelayerTxSubmissionsRow
+	submissions []db.Ibcv2RelayerTxSubmission
 	updated     []db.UpdateIBCV2RelayerTxSubmissionTrackingParams
 	expired     []int32
 }
@@ -32,9 +32,8 @@ type metricsStub struct {
 }
 
 type confirmedCall struct {
-	success            bool
-	sourceChainID      string
-	destinationChainID string
+	success bool
+	chainID string
 }
 
 type gasCostCall struct {
@@ -43,7 +42,7 @@ type gasCostCall struct {
 	decimals uint8
 }
 
-func (s *submittedTxCostStorageStub) GetUnresolvedIBCV2RelayerTxSubmissions(_ context.Context, _ int32) ([]db.GetUnresolvedIBCV2RelayerTxSubmissionsRow, error) {
+func (s *submittedTxCostStorageStub) GetUnresolvedIBCV2RelayerTxSubmissions(_ context.Context, _ int32) ([]db.Ibcv2RelayerTxSubmission, error) {
 	return s.submissions, nil
 }
 
@@ -57,11 +56,10 @@ func (s *submittedTxCostStorageStub) ExpirePendingIBCV2RelayerTxSubmission(_ con
 	return nil
 }
 
-func (m *metricsStub) AddTransactionConfirmed(success bool, sourceChainID, destinationChainID, sourceChainName, destinationChainName, chainEnvironment string) {
+func (m *metricsStub) AddTransactionConfirmed(success bool, chainID, chainName, chainEnvironment string) {
 	m.confirmed = append(m.confirmed, confirmedCall{
-		success:            success,
-		sourceChainID:      sourceChainID,
-		destinationChainID: destinationChainID,
+		success: success,
+		chainID: chainID,
 	})
 }
 
@@ -74,16 +72,14 @@ func (m *metricsStub) AddTransactionGasCost(chainID, chainName, chainEnvironment
 }
 
 //nolint:unparam // id kept as parameter for test readability
-func unresolvedSubmission(id int32, txHash, chainID, sourceChainID, destinationChainID string, txType db.Ibcv2RelayerTxSubmissionType, submittedAt time.Time) db.GetUnresolvedIBCV2RelayerTxSubmissionsRow {
-	return db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
-		ID:                 id,
-		TxHash:             txHash,
-		ChainID:            chainID,
-		SourceChainID:      sourceChainID,
-		DestinationChainID: destinationChainID,
-		TxType:             txType,
-		Status:             db.Ibcv2RelayerTxSubmissionStatusPENDING,
-		SubmittedAt:        pgtype.Timestamptz{Valid: true, Time: submittedAt},
+func unresolvedSubmission(id int32, txHash, chainID string, txType db.Ibcv2RelayerTxSubmissionType, submittedAt time.Time) db.Ibcv2RelayerTxSubmission {
+	return db.Ibcv2RelayerTxSubmission{
+		ID:          id,
+		TxHash:      txHash,
+		ChainID:     chainID,
+		TxType:      txType,
+		Status:      db.Ibcv2RelayerTxSubmissionStatusPENDING,
+		SubmittedAt: pgtype.Timestamptz{Valid: true, Time: submittedAt},
 	}
 }
 
@@ -92,13 +88,9 @@ func TestSubmittedTxCostTrackerTrackResolvesNativeAndUSDGasCosts(t *testing.T) {
 
 	ctx := config.ConfigReaderContext(context.Background(), config.NewConfigReader(config.Config{
 		Chains: map[string]config.ChainConfig{
-			"source-chain": {
-				ChainID:   "source-chain",
-				ChainName: "Source",
-			},
 			"chain-a": {
 				ChainID:             "chain-a",
-				ChainName:           "Destination",
+				ChainName:           "ChainA",
 				GasTokenCoingeckoID: strPtr("ethereum"),
 				GasTokenDecimals:    18,
 			},
@@ -108,8 +100,8 @@ func TestSubmittedTxCostTrackerTrackResolvesNativeAndUSDGasCosts(t *testing.T) {
 	ctx = metrics.ContextWithMetrics(ctx, metricsRecorder)
 
 	storage := &submittedTxCostStorageStub{
-		submissions: []db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
-			unresolvedSubmission(1, "0xabc", "chain-a", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
+		submissions: []db.Ibcv2RelayerTxSubmission{
+			unresolvedSubmission(1, "0xabc", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
 		},
 	}
 
@@ -132,7 +124,7 @@ func TestSubmittedTxCostTrackerTrackResolvesNativeAndUSDGasCosts(t *testing.T) {
 	require.Equal(t, "42", numericString(t, storage.updated[0].GasCostAmount))
 	require.Equal(t, db.Ibcv2RelayerTxSubmissionStatusSUCCESS, storage.updated[0].Status)
 	require.False(t, storage.updated[0].ExecutionError.Valid)
-	require.Equal(t, []confirmedCall{{success: true, sourceChainID: "source-chain", destinationChainID: "chain-a"}}, metricsRecorder.confirmed)
+	require.Equal(t, []confirmedCall{{success: true, chainID: "chain-a"}}, metricsRecorder.confirmed)
 	require.Equal(t, []gasCostCall{{chainID: "chain-a", gasCost: "42", decimals: 18}}, metricsRecorder.gasCosts)
 }
 
@@ -141,13 +133,9 @@ func TestSubmittedTxCostTrackerTrackResolvesNativeCostWithoutUSD(t *testing.T) {
 
 	ctx := config.ConfigReaderContext(context.Background(), config.NewConfigReader(config.Config{
 		Chains: map[string]config.ChainConfig{
-			"source-chain": {
-				ChainID:   "source-chain",
-				ChainName: "Source",
-			},
 			"chain-a": {
 				ChainID:   "chain-a",
-				ChainName: "Destination",
+				ChainName: "ChainA",
 			},
 		},
 	}))
@@ -155,15 +143,15 @@ func TestSubmittedTxCostTrackerTrackResolvesNativeCostWithoutUSD(t *testing.T) {
 	ctx = metrics.ContextWithMetrics(ctx, metricsRecorder)
 
 	storage := &submittedTxCostStorageStub{
-		submissions: []db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
-			unresolvedSubmission(1, "0xabc", "source-chain", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeACKPACKET, time.Now()),
+		submissions: []db.Ibcv2RelayerTxSubmission{
+			unresolvedSubmission(1, "0xabc", "chain-a", db.Ibcv2RelayerTxSubmissionTypeACKPACKET, time.Now()),
 		},
 	}
 
 	manager := mockibcv2.NewMockBridgeClientManager(t)
 	client := mockbridge.NewMockBridgeClient(t)
 
-	manager.EXPECT().GetClient(ctx, "source-chain").Return(client, nil).Once()
+	manager.EXPECT().GetClient(ctx, "chain-a").Return(client, nil).Once()
 	client.EXPECT().TxExecutionStatus(ctx, "0xabc").Return(mockBridgeStatus("FAILED", "out of gas"), nil).Once()
 	client.EXPECT().TxFee(ctx, "0xabc").Return(big.NewInt(42), nil).Once()
 
@@ -174,8 +162,8 @@ func TestSubmittedTxCostTrackerTrackResolvesNativeCostWithoutUSD(t *testing.T) {
 	require.False(t, storage.updated[0].GasCostUsd.Valid)
 	require.Equal(t, db.Ibcv2RelayerTxSubmissionStatusFAILED, storage.updated[0].Status)
 	require.Equal(t, "out of gas", storage.updated[0].ExecutionError.String)
-	require.Equal(t, []confirmedCall{{success: false, sourceChainID: "source-chain", destinationChainID: "chain-a"}}, metricsRecorder.confirmed)
-	require.Equal(t, []gasCostCall{{chainID: "source-chain", gasCost: "42", decimals: 0}}, metricsRecorder.gasCosts)
+	require.Equal(t, []confirmedCall{{success: false, chainID: "chain-a"}}, metricsRecorder.confirmed)
+	require.Equal(t, []gasCostCall{{chainID: "chain-a", gasCost: "42", decimals: 0}}, metricsRecorder.gasCosts)
 }
 
 func TestSubmittedTxCostTrackerTrackResolvesStatusWhenUSDEnrichmentFails(t *testing.T) {
@@ -183,13 +171,9 @@ func TestSubmittedTxCostTrackerTrackResolvesStatusWhenUSDEnrichmentFails(t *test
 
 	ctx := config.ConfigReaderContext(context.Background(), config.NewConfigReader(config.Config{
 		Chains: map[string]config.ChainConfig{
-			"source-chain": {
-				ChainID:   "source-chain",
-				ChainName: "Source",
-			},
 			"chain-a": {
 				ChainID:             "chain-a",
-				ChainName:           "Destination",
+				ChainName:           "ChainA",
 				GasTokenCoingeckoID: strPtr("osmosis"),
 				GasTokenDecimals:    6,
 			},
@@ -199,8 +183,8 @@ func TestSubmittedTxCostTrackerTrackResolvesStatusWhenUSDEnrichmentFails(t *test
 	ctx = metrics.ContextWithMetrics(ctx, metricsRecorder)
 
 	storage := &submittedTxCostStorageStub{
-		submissions: []db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
-			unresolvedSubmission(1, "0xabc", "chain-a", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
+		submissions: []db.Ibcv2RelayerTxSubmission{
+			unresolvedSubmission(1, "0xabc", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
 		},
 	}
 
@@ -220,7 +204,7 @@ func TestSubmittedTxCostTrackerTrackResolvesStatusWhenUSDEnrichmentFails(t *test
 	require.False(t, storage.updated[0].GasCostUsd.Valid)
 	require.Equal(t, db.Ibcv2RelayerTxSubmissionStatusSUCCESS, storage.updated[0].Status)
 	require.False(t, storage.updated[0].ExecutionError.Valid)
-	require.Equal(t, []confirmedCall{{success: true, sourceChainID: "source-chain", destinationChainID: "chain-a"}}, metricsRecorder.confirmed)
+	require.Equal(t, []confirmedCall{{success: true, chainID: "chain-a"}}, metricsRecorder.confirmed)
 	require.Equal(t, []gasCostCall{{chainID: "chain-a", gasCost: "42", decimals: 6}}, metricsRecorder.gasCosts)
 }
 
@@ -236,8 +220,8 @@ func TestSubmittedTxCostTrackerTrackContinuesWhenStatusNotReady(t *testing.T) {
 	}))
 
 	storage := &submittedTxCostStorageStub{
-		submissions: []db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
-			unresolvedSubmission(1, "0xabc", "chain-a", "chain-a", "dest-chain", db.Ibcv2RelayerTxSubmissionTypeACKPACKET, time.Now()),
+		submissions: []db.Ibcv2RelayerTxSubmission{
+			unresolvedSubmission(1, "0xabc", "chain-a", db.Ibcv2RelayerTxSubmissionTypeACKPACKET, time.Now()),
 		},
 	}
 
@@ -257,13 +241,9 @@ func TestSubmittedTxCostTrackerTrackContinuesWhenFeeLookupFails(t *testing.T) {
 
 	ctx := config.ConfigReaderContext(context.Background(), config.NewConfigReader(config.Config{
 		Chains: map[string]config.ChainConfig{
-			"source-chain": {
-				ChainID:   "source-chain",
-				ChainName: "Source",
-			},
 			"chain-a": {
 				ChainID:   "chain-a",
-				ChainName: "Destination",
+				ChainName: "ChainA",
 			},
 		},
 	}))
@@ -271,8 +251,8 @@ func TestSubmittedTxCostTrackerTrackContinuesWhenFeeLookupFails(t *testing.T) {
 	ctx = metrics.ContextWithMetrics(ctx, metricsRecorder)
 
 	storage := &submittedTxCostStorageStub{
-		submissions: []db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
-			unresolvedSubmission(1, "0xabc", "chain-a", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
+		submissions: []db.Ibcv2RelayerTxSubmission{
+			unresolvedSubmission(1, "0xabc", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
 		},
 	}
 
@@ -295,13 +275,9 @@ func TestSubmittedTxCostTrackerTrackCoalescesNilFeeToZero(t *testing.T) {
 
 	ctx := config.ConfigReaderContext(context.Background(), config.NewConfigReader(config.Config{
 		Chains: map[string]config.ChainConfig{
-			"source-chain": {
-				ChainID:   "source-chain",
-				ChainName: "Source",
-			},
 			"chain-a": {
 				ChainID:   "chain-a",
-				ChainName: "Destination",
+				ChainName: "ChainA",
 			},
 		},
 	}))
@@ -309,8 +285,8 @@ func TestSubmittedTxCostTrackerTrackCoalescesNilFeeToZero(t *testing.T) {
 	ctx = metrics.ContextWithMetrics(ctx, metricsRecorder)
 
 	storage := &submittedTxCostStorageStub{
-		submissions: []db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
-			unresolvedSubmission(1, "0xabc", "chain-a", "source-chain", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
+		submissions: []db.Ibcv2RelayerTxSubmission{
+			unresolvedSubmission(1, "0xabc", "chain-a", db.Ibcv2RelayerTxSubmissionTypeRECVPACKET, time.Now()),
 		},
 	}
 
@@ -341,16 +317,14 @@ func TestSubmittedTxCostTrackerTrackExpiresOldAttemptedSubmission(t *testing.T) 
 	}))
 
 	storage := &submittedTxCostStorageStub{
-		submissions: []db.GetUnresolvedIBCV2RelayerTxSubmissionsRow{
+		submissions: []db.Ibcv2RelayerTxSubmission{
 			{
-				ID:                 1,
-				TxHash:             "0xabc",
-				ChainID:            "chain-a",
-				SourceChainID:      "chain-a",
-				DestinationChainID: "dest-chain",
-				TxType:             db.Ibcv2RelayerTxSubmissionTypeACKPACKET,
-				Status:             db.Ibcv2RelayerTxSubmissionStatusPENDING,
-				SubmittedAt:        pgtype.Timestamptz{Valid: true, Time: time.Now().Add(-7 * time.Hour)},
+				ID:          1,
+				TxHash:      "0xabc",
+				ChainID:     "chain-a",
+				TxType:      db.Ibcv2RelayerTxSubmissionTypeACKPACKET,
+				Status:      db.Ibcv2RelayerTxSubmissionStatusPENDING,
+				SubmittedAt: pgtype.Timestamptz{Valid: true, Time: time.Now().Add(-7 * time.Hour)},
 			},
 		},
 	}
