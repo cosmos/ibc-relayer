@@ -1,5 +1,5 @@
-version: v1
+version: v2
 plugins:
-  - name: gocosmos
+  - local: protoc-gen-gocosmos
     out: ./gen
     opt: paths=source_relative,plugins=grpc,Mgoogle/protobuf/any.proto=github.com/cosmos/cosmos-sdk/codec/types

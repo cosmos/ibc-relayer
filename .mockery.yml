@@ -47,9 +47,9 @@ packages:
       BridgeClientManager:
       PipelineManager:
       PriceClient:
-  github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer:
+  github.com/cosmos/ibc-relayer/proto/gen/proofapi:
     interfaces:
-      RelayerServiceClient:
+      ProofApiServiceClient:
 
   # External Packages
   github.com/ethereum/go-ethereum/accounts/abi/bind:

@@ -1184,7 +1184,8 @@ const file_signer_signerservice_proto_rawDesc = "" +
 	"\tGetWallet\x12\x1f.signerservice.GetWalletRequest\x1a .signerservice.GetWalletResponse\"\x00\x12S\n" +
 	"\n" +
 	"GetWallets\x12 .signerservice.GetWalletsRequest\x1a!.signerservice.GetWalletsResponse\"\x00\x12A\n" +
-	"\x04Sign\x12\x1a.signerservice.SignRequest\x1a\x1b.signerservice.SignResponse\"\x00B0Z.github.com/cosmos/ibc-relayer/proto/gen/signerb\x06proto3"
+	"\x04Sign\x12\x1a.signerservice.SignRequest\x1a\x1b.signerservice.SignResponse\"\x00B\xab\x01\n" +
+	"\x11com.signerserviceB\x12SignerserviceProtoP\x01Z.github.com/cosmos/ibc-relayer/proto/gen/signer\xa2\x02\x03SXX\xaa\x02\rSignerservice\xca\x02\rSignerservice\xe2\x02\x19Signerservice\\GPBMetadata\xea\x02\rSignerserviceb\x06proto3"
 
 var (
 	file_signer_signerservice_proto_rawDescOnce sync.Once

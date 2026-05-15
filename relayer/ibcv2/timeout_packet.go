@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/cosmos/ibc-relayer/db/gen/db"
-	"github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer"
+	"github.com/cosmos/ibc-relayer/proto/gen/proofapi"
 	"github.com/cosmos/ibc-relayer/shared/config"
 	"github.com/cosmos/ibc-relayer/shared/lmt"
 	"github.com/cosmos/ibc-relayer/shared/metrics"
@@ -25,7 +25,7 @@ type TransferTimeoutTxWithTxStorage interface {
 type BatchTimeoutPacketProcessor struct {
 	bridgeClientManager            BridgeClientManager
 	transferTimeoutTxWithTxStorage TransferTimeoutTxWithTxStorage
-	relayService                   ibcv2relayer.RelayerServiceClient
+	relayService                   proofapi.ProofApiServiceClient
 	sourceChainID                  string
 	sourceClientID                 string
 	destinationChainID             string
@@ -35,7 +35,7 @@ type BatchTimeoutPacketProcessor struct {
 func NewBatchTimeoutPacketProcessor(
 	bridgeClientmanager BridgeClientManager,
 	transferTimeoutTxWithTxStorage TransferTimeoutTxWithTxStorage,
-	relayService ibcv2relayer.RelayerServiceClient,
+	relayService proofapi.ProofApiServiceClient,
 	sourceChainID string,
 	sourceClientID string,
 	destinationChainID string,
@@ -81,7 +81,7 @@ func (p BatchTimeoutPacketProcessor) Process(ctx context.Context, transfers []*I
 	logger.Info("processing batch timeout submission")
 
 	relayByTxReqStartTs := time.Now()
-	req := &ibcv2relayer.RelayByTxRequest{
+	req := &proofapi.RelayByTxRequest{
 		SrcChain:           p.destinationChainID,
 		DstChain:           p.sourceChainID,
 		TimeoutTxIds:       txIDs,

@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 
-	"github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer"
+	"github.com/cosmos/ibc-relayer/proto/gen/proofapi"
 	"github.com/cosmos/ibc-relayer/shared/clients/coingecko"
 	"github.com/cosmos/ibc-relayer/shared/lmt"
 	"github.com/cosmos/ibc-relayer/shared/metrics"
@@ -81,7 +81,7 @@ func NewPipeline(
 	ctx context.Context,
 	storage Storage,
 	bridgeClientManager BridgeClientManager,
-	relayService ibcv2relayer.RelayerServiceClient,
+	relayService proofapi.ProofApiServiceClient,
 	priceClient PriceClient,
 	sourceChainID string,
 	sourceClientID string,
@@ -237,7 +237,7 @@ func (p Pipeline[Input, Output]) Close() {
 type IBCV2PipelineManager struct {
 	storage             Storage
 	bridgeClientManager BridgeClientManager
-	relayService        ibcv2relayer.RelayerServiceClient
+	relayService        proofapi.ProofApiServiceClient
 	priceClient         PriceClient
 	pipelines           map[pipelineKey]IBCV2Pipeline
 }
@@ -245,7 +245,7 @@ type IBCV2PipelineManager struct {
 func NewIBCV2PipelineManager(
 	storage Storage,
 	bridgeClientManager BridgeClientManager,
-	relayService ibcv2relayer.RelayerServiceClient,
+	relayService proofapi.ProofApiServiceClient,
 	priceClient PriceClient,
 ) *IBCV2PipelineManager {
 	return &IBCV2PipelineManager{

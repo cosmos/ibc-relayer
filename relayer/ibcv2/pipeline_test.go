@@ -12,11 +12,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosmos/ibc-relayer/db/gen/db"
-	mockrelayservice "github.com/cosmos/ibc-relayer/mocks/proto/gen/ibcv2relayer"
+	mockproofapi "github.com/cosmos/ibc-relayer/mocks/proto/gen/proofapi"
 	mockibcv2 "github.com/cosmos/ibc-relayer/mocks/relayer/ibcv2"
 	mockibcv2bridge "github.com/cosmos/ibc-relayer/mocks/shared/bridges/ibcv2"
 	mockconfig "github.com/cosmos/ibc-relayer/mocks/shared/config"
-	"github.com/cosmos/ibc-relayer/proto/gen/ibcv2relayer"
+	"github.com/cosmos/ibc-relayer/proto/gen/proofapi"
 	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
 	ibcv2bridge "github.com/cosmos/ibc-relayer/shared/bridges/ibcv2"
 	"github.com/cosmos/ibc-relayer/shared/config"
@@ -57,12 +57,12 @@ func TestPipeline(t *testing.T) {
 		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
+		mockRelayService := mockproofapi.NewMockProofApiServiceClient(t)
 
 		// mock request to get receive tx bytes from relayer service
 		sourceTxID, err := hex.DecodeString(mockTxHash)
 		require.NoError(t, err)
-		recvRequest := &ibcv2relayer.RelayByTxRequest{
+		recvRequest := &proofapi.RelayByTxRequest{
 			SrcChain:           sourceChainID,
 			DstChain:           destChainID,
 			SourceTxIds:        [][]byte{sourceTxID},
@@ -71,13 +71,13 @@ func TestPipeline(t *testing.T) {
 			SrcPacketSequences: []uint64{uint64(packetSequenceNumber)},
 		}
 		recvTxBytes := []byte("123456")
-		recvResponse := &ibcv2relayer.RelayByTxResponse{Tx: recvTxBytes}
+		recvResponse := &proofapi.RelayByTxResponse{Tx: recvTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Once()
 
 		// mock request to get ack tx bytes from relayer service
 		recvTxID, err := hex.DecodeString(mockTxHash)
 		require.NoError(t, err)
-		ackRequest := &ibcv2relayer.RelayByTxRequest{
+		ackRequest := &proofapi.RelayByTxRequest{
 			SrcChain:           destChainID,
 			DstChain:           sourceChainID,
 			SourceTxIds:        [][]byte{recvTxID},
@@ -86,7 +86,7 @@ func TestPipeline(t *testing.T) {
 			DstPacketSequences: []uint64{uint64(packetSequenceNumber)},
 		}
 		ackTxBytes := []byte("123456")
-		ackResponse := &ibcv2relayer.RelayByTxResponse{Tx: ackTxBytes}
+		ackResponse := &proofapi.RelayByTxResponse{Tx: ackTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, ackRequest).Return(ackResponse, nil).Once()
 
 		priceClient := mockibcv2.NewMockPriceClient(t)
@@ -152,7 +152,7 @@ func TestPipeline(t *testing.T) {
 		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
+		mockRelayService := mockproofapi.NewMockProofApiServiceClient(t)
 
 		// packet not yet received by dest
 		mockDestBridgeClient.EXPECT().IsPacketReceived(mock.Anything, destClientID, uint64(packetSequenceNumber)).Return(false, nil).Once()
@@ -160,7 +160,7 @@ func TestPipeline(t *testing.T) {
 		// mock request to get receive tx bytes from relayer service
 		sourceTxID, err := hex.DecodeString(mockTxHash)
 		require.NoError(t, err)
-		recvRequest := &ibcv2relayer.RelayByTxRequest{
+		recvRequest := &proofapi.RelayByTxRequest{
 			SrcChain:           sourceChainID,
 			DstChain:           destChainID,
 			SourceTxIds:        [][]byte{sourceTxID},
@@ -169,7 +169,7 @@ func TestPipeline(t *testing.T) {
 			SrcPacketSequences: []uint64{uint64(packetSequenceNumber)},
 		}
 		recvTxBytes := []byte("123456")
-		recvResponse := &ibcv2relayer.RelayByTxResponse{Tx: recvTxBytes}
+		recvResponse := &proofapi.RelayByTxResponse{Tx: recvTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Once()
 
 		mockDestBridgeClient.EXPECT().DeliverTx(mock.Anything, recvResponse.GetTx(), recvResponse.GetAddress()).Return(&ibcv2bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil).Once()
@@ -187,7 +187,7 @@ func TestPipeline(t *testing.T) {
 		// mock request to get ack tx bytes from relayer service
 		recvTxID, err := hex.DecodeString(mockTxHash)
 		require.NoError(t, err)
-		ackRequest := &ibcv2relayer.RelayByTxRequest{
+		ackRequest := &proofapi.RelayByTxRequest{
 			SrcChain:           destChainID,
 			DstChain:           sourceChainID,
 			SourceTxIds:        [][]byte{recvTxID},
@@ -196,7 +196,7 @@ func TestPipeline(t *testing.T) {
 			DstPacketSequences: []uint64{uint64(packetSequenceNumber)},
 		}
 		ackTxBytes := []byte("123456")
-		ackResponse := &ibcv2relayer.RelayByTxResponse{Tx: ackTxBytes}
+		ackResponse := &proofapi.RelayByTxResponse{Tx: ackTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, ackRequest).Return(ackResponse, nil).Once()
 
 		priceClient := mockibcv2.NewMockPriceClient(t)
@@ -288,7 +288,7 @@ func TestPipeline(t *testing.T) {
 		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
+		mockRelayService := mockproofapi.NewMockProofApiServiceClient(t)
 
 		// packet not yet received by dest
 		mockDestBridgeClient.EXPECT().IsPacketReceived(mock.Anything, destClientID, uint64(packetSequenceNumber)).Return(false, nil).Once()
@@ -296,7 +296,7 @@ func TestPipeline(t *testing.T) {
 		// mock request to get receive tx bytes from relayer service
 		sourceTxID, err := hex.DecodeString(mockTxHash)
 		require.NoError(t, err)
-		recvRequest := &ibcv2relayer.RelayByTxRequest{
+		recvRequest := &proofapi.RelayByTxRequest{
 			SrcChain:           sourceChainID,
 			DstChain:           destChainID,
 			SourceTxIds:        [][]byte{sourceTxID},
@@ -305,7 +305,7 @@ func TestPipeline(t *testing.T) {
 			SrcPacketSequences: []uint64{uint64(packetSequenceNumber)},
 		}
 		recvTxBytes := []byte("123456")
-		recvResponse := &ibcv2relayer.RelayByTxResponse{Tx: recvTxBytes}
+		recvResponse := &proofapi.RelayByTxResponse{Tx: recvTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Once()
 
 		mockDestBridgeClient.EXPECT().DeliverTx(mock.Anything, recvResponse.GetTx(), recvResponse.GetAddress()).Return(&ibcv2bridge.BridgeTx{Hash: mockTxHash, Timestamp: mockTxTime}, nil).Once()
@@ -337,7 +337,7 @@ func TestPipeline(t *testing.T) {
 		// mock request to get ack tx bytes from relayer service
 		recvTxID, err := hex.DecodeString(mockTxHash)
 		require.NoError(t, err)
-		ackRequest := &ibcv2relayer.RelayByTxRequest{
+		ackRequest := &proofapi.RelayByTxRequest{
 			SrcChain:           destChainID,
 			DstChain:           sourceChainID,
 			SourceTxIds:        [][]byte{recvTxID},
@@ -346,7 +346,7 @@ func TestPipeline(t *testing.T) {
 			DstPacketSequences: []uint64{uint64(packetSequenceNumber)},
 		}
 		ackTxBytes := []byte("123456")
-		ackResponse := &ibcv2relayer.RelayByTxResponse{Tx: ackTxBytes}
+		ackResponse := &proofapi.RelayByTxResponse{Tx: ackTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, ackRequest).Return(ackResponse, nil).Once()
 
 		priceClient := mockibcv2.NewMockPriceClient(t)
@@ -438,12 +438,12 @@ func TestPipeline(t *testing.T) {
 		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
+		mockRelayService := mockproofapi.NewMockProofApiServiceClient(t)
 
 		// mock request to get receive tx bytes from relayer service
 		sourceTxID, err := hex.DecodeString(mockTxHash)
 		require.NoError(t, err)
-		recvRequest := &ibcv2relayer.RelayByTxRequest{
+		recvRequest := &proofapi.RelayByTxRequest{
 			SrcChain:           sourceChainID,
 			DstChain:           destChainID,
 			SourceTxIds:        [][]byte{sourceTxID},
@@ -452,7 +452,7 @@ func TestPipeline(t *testing.T) {
 			SrcPacketSequences: []uint64{uint64(packetSequenceNumber)},
 		}
 		recvTxBytes := []byte("123456")
-		recvResponse := &ibcv2relayer.RelayByTxResponse{Tx: recvTxBytes}
+		recvResponse := &proofapi.RelayByTxResponse{Tx: recvTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Once()
 
 		mockDestBridgeClient.EXPECT().IsPacketReceived(mock.Anything, destClientID, uint64(packetSequenceNumber)).Return(false, nil)
@@ -526,12 +526,12 @@ func TestPipeline(t *testing.T) {
 		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
+		mockRelayService := mockproofapi.NewMockProofApiServiceClient(t)
 
 		// mock request to get timeout tx bytes from relayer service
 		sourceTxID, err := hex.DecodeString(mockTxHash)
 		require.NoError(t, err)
-		recvRequest := &ibcv2relayer.RelayByTxRequest{
+		recvRequest := &proofapi.RelayByTxRequest{
 			SrcChain:           destChainID,
 			DstChain:           sourceChainID,
 			TimeoutTxIds:       [][]byte{sourceTxID},
@@ -540,7 +540,7 @@ func TestPipeline(t *testing.T) {
 			DstPacketSequences: []uint64{uint64(packetSequenceNumber)},
 		}
 		timeoutTxBytes := []byte("123456")
-		timeoutResponse := &ibcv2relayer.RelayByTxResponse{Tx: timeoutTxBytes}
+		timeoutResponse := &proofapi.RelayByTxResponse{Tx: timeoutTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(timeoutResponse, nil).Once()
 
 		priceClient := mockibcv2.NewMockPriceClient(t)
@@ -616,12 +616,12 @@ func TestPipeline(t *testing.T) {
 		mockDestBridgeClient.EXPECT().IsTimestampFinalized(mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once()
 		// now the timeout is considered finalized
 
-		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
+		mockRelayService := mockproofapi.NewMockProofApiServiceClient(t)
 
 		// mock request to get timeout tx bytes from relayer service
 		sourceTxID, err := hex.DecodeString(mockTxHash)
 		require.NoError(t, err)
-		recvRequest := &ibcv2relayer.RelayByTxRequest{
+		recvRequest := &proofapi.RelayByTxRequest{
 			SrcChain:           destChainID,
 			DstChain:           sourceChainID,
 			TimeoutTxIds:       [][]byte{sourceTxID},
@@ -630,7 +630,7 @@ func TestPipeline(t *testing.T) {
 			DstPacketSequences: []uint64{uint64(packetSequenceNumber)},
 		}
 		timeoutTxBytes := []byte("123456")
-		timeoutResponse := &ibcv2relayer.RelayByTxResponse{Tx: timeoutTxBytes}
+		timeoutResponse := &proofapi.RelayByTxResponse{Tx: timeoutTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(timeoutResponse, nil).Once()
 
 		priceClient := mockibcv2.NewMockPriceClient(t)
@@ -716,12 +716,12 @@ func TestPipeline(t *testing.T) {
 		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
+		mockRelayService := mockproofapi.NewMockProofApiServiceClient(t)
 
 		// mock request to get receive tx bytes from relayer service
 		sourceTxID, err := hex.DecodeString(mockTxHash)
 		require.NoError(t, err)
-		recvRequest := &ibcv2relayer.RelayByTxRequest{
+		recvRequest := &proofapi.RelayByTxRequest{
 			SrcChain:           sourceChainID,
 			DstChain:           destChainID,
 			SourceTxIds:        [][]byte{sourceTxID},
@@ -730,13 +730,13 @@ func TestPipeline(t *testing.T) {
 			SrcPacketSequences: []uint64{uint64(packetSequenceNumber)},
 		}
 		recvTxBytes := []byte("123456")
-		recvResponse := &ibcv2relayer.RelayByTxResponse{Tx: recvTxBytes}
+		recvResponse := &proofapi.RelayByTxResponse{Tx: recvTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Twice()
 
 		// mock request to get ack tx bytes from relayer service
 		recvTxID, err := hex.DecodeString(mockTxHash)
 		require.NoError(t, err)
-		ackRequest := &ibcv2relayer.RelayByTxRequest{
+		ackRequest := &proofapi.RelayByTxRequest{
 			SrcChain:           destChainID,
 			DstChain:           sourceChainID,
 			SourceTxIds:        [][]byte{recvTxID},
@@ -745,7 +745,7 @@ func TestPipeline(t *testing.T) {
 			DstPacketSequences: []uint64{uint64(packetSequenceNumber)},
 		}
 		ackTxBytes := []byte("123456")
-		ackResponse := &ibcv2relayer.RelayByTxResponse{Tx: ackTxBytes}
+		ackResponse := &proofapi.RelayByTxResponse{Tx: ackTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, ackRequest).Return(ackResponse, nil).Twice()
 
 		priceClient := mockibcv2.NewMockPriceClient(t)
@@ -831,12 +831,12 @@ func TestPipeline(t *testing.T) {
 		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
+		mockRelayService := mockproofapi.NewMockProofApiServiceClient(t)
 
 		// mock request to get receive tx bytes from relayer service
 		sourceTxID, err := hex.DecodeString(mockTxHash)
 		require.NoError(t, err)
-		recvRequest := &ibcv2relayer.RelayByTxRequest{
+		recvRequest := &proofapi.RelayByTxRequest{
 			SrcChain:           sourceChainID,
 			DstChain:           destChainID,
 			SourceTxIds:        [][]byte{sourceTxID},
@@ -845,7 +845,7 @@ func TestPipeline(t *testing.T) {
 			SrcPacketSequences: []uint64{uint64(packetSequenceNumber)},
 		}
 		recvTxBytes := []byte("123456")
-		recvResponse := &ibcv2relayer.RelayByTxResponse{Tx: recvTxBytes}
+		recvResponse := &proofapi.RelayByTxResponse{Tx: recvTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Once()
 
 		mockDestBridgeClient.EXPECT().IsPacketReceived(mock.Anything, destClientID, uint64(packetSequenceNumber)).Return(false, nil)
@@ -920,12 +920,12 @@ func TestPipeline(t *testing.T) {
 		clients := map[string]ibcv2bridge.BridgeClient{sourceChainID: mockSourceBridgeClient, destChainID: mockDestBridgeClient}
 		bridgeClientManager := ibcv2.NewClientManager(clients)
 
-		mockRelayService := mockrelayservice.NewMockRelayerServiceClient(t)
+		mockRelayService := mockproofapi.NewMockProofApiServiceClient(t)
 
 		// mock request to get receive tx bytes from relayer service
 		sourceTxID, err := hex.DecodeString(mockTxHash)
 		require.NoError(t, err)
-		recvRequest := &ibcv2relayer.RelayByTxRequest{
+		recvRequest := &proofapi.RelayByTxRequest{
 			SrcChain:           sourceChainID,
 			DstChain:           destChainID,
 			SourceTxIds:        [][]byte{sourceTxID},
@@ -934,7 +934,7 @@ func TestPipeline(t *testing.T) {
 			SrcPacketSequences: []uint64{uint64(packetSequenceNumber)},
 		}
 		recvTxBytes := []byte("123456")
-		recvResponse := &ibcv2relayer.RelayByTxResponse{Tx: recvTxBytes}
+		recvResponse := &proofapi.RelayByTxResponse{Tx: recvTxBytes}
 		mockRelayService.EXPECT().RelayByTx(mock.Anything, recvRequest).Return(recvResponse, nil).Once()
 
 		mockDestBridgeClient.EXPECT().IsPacketReceived(mock.Anything, destClientID, uint64(packetSequenceNumber)).Return(false, nil)
