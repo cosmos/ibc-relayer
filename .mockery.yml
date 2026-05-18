@@ -7,20 +7,6 @@ packages:
   github.com/cosmos/ibc-relayer/relayerapi/services/relayerapi:
     interfaces:
       RelayerAPIQueries:
-  github.com/cosmos/ibc-relayer/shared/evmrpc:
-    interfaces:
-      EVMRPCClientManager:
-      EVMChainRPC:
-  github.com/cosmos/ibc-relayer/shared/http:
-    interfaces:
-      Client:
-  github.com/cosmos/ibc-relayer/shared/messagequeue/transactionqueue:
-    interfaces:
-      ProducerTransactionQueue:
-  github.com/cosmos/ibc-relayer/shared/tmrpc:
-    interfaces:
-      TendermintRPCClientManager:
-      TendermintRPCQuerier:
   github.com/cosmos/ibc-relayer/shared/signing:
     interfaces:
       Signer:
