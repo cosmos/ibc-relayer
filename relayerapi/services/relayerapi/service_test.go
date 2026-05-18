@@ -73,7 +73,7 @@ func (s *RelayerAPIServiceSuite) TestRelay_RejectsBlacklistedOFACAddress() {
 	mockBridgeClientManager := ibcv2mocks.NewMockBridgeClientManager(s.T())
 	mockBridgeClient := bridgemocks.NewMockBridgeClient(s.T())
 
-	mockDB.EXPECT().InsertRelaySubmission(s.Ctx, mock.Anything).Return(nil)
+	mockDB.EXPECT().InsertRelayRequest(s.Ctx, mock.Anything).Return(nil)
 	mockBridgeClientManager.EXPECT().GetClient(s.Ctx, "evmChainID").Return(mockBridgeClient, nil)
 	mockBridgeClient.EXPECT().ChainType().Return(config.ChainTypeEVM)
 	mockBridgeClient.EXPECT().GetTransactionSender(s.Ctx, txHash).Return(blacklistedAddress, nil)
@@ -101,7 +101,7 @@ func (s *RelayerAPIServiceSuite) TestRelay_SucceedsOnValidTxHash() {
 	mockClientManager := ibcv2mocks.NewMockBridgeClientManager(s.T())
 	mockBridgeClient := bridgemocks.NewMockBridgeClient(s.T())
 
-	mockDB.EXPECT().InsertRelaySubmission(s.Ctx, mock.Anything).Return(nil)
+	mockDB.EXPECT().InsertRelayRequest(s.Ctx, mock.Anything).Return(nil)
 	mockClientManager.EXPECT().GetClient(s.Ctx, "evmChainID").Return(mockBridgeClient, nil)
 	mockBridgeClient.EXPECT().ChainType().Return(config.ChainTypeEVM)
 	mockBridgeClient.EXPECT().GetTransactionSender(s.Ctx, "0xabc123").Return("0x0000000000000000000000000000000000000000", nil)
@@ -175,7 +175,7 @@ func (s *RelayerAPIServiceSuite) TestRelay_FailsOnDatabaseFailure() {
 	mockClientManager := ibcv2mocks.NewMockBridgeClientManager(s.T())
 	mockBridgeClient := bridgemocks.NewMockBridgeClient(s.T())
 
-	mockDB.EXPECT().InsertRelaySubmission(s.Ctx, mock.Anything).Return(nil)
+	mockDB.EXPECT().InsertRelayRequest(s.Ctx, mock.Anything).Return(nil)
 	mockClientManager.EXPECT().GetClient(s.Ctx, "evmChainID").Return(mockBridgeClient, nil)
 	mockBridgeClient.EXPECT().ChainType().Return(config.ChainTypeEVM)
 	mockBridgeClient.EXPECT().GetTransactionSender(s.Ctx, "0xabc123").Return("0x0000000000000000000000000000000000000000", nil)
@@ -222,10 +222,10 @@ func (s *RelayerAPIServiceSuite) TestStatus_ReturnsNotFoundForUnsubmittedTx() {
 	}
 
 	mockDB := relayerapimocks.NewMockRelayerAPIQueries(s.T())
-	mockDB.On("GetRelaySubmission", mock.Anything, db.GetRelaySubmissionParams{
+	mockDB.On("GetRelayRequest", mock.Anything, db.GetRelayRequestParams{
 		SourceChainID: "11155111",
 		SourceTxHash:  "0xabc123",
-	}).Return(db.Ibcv2RelaySubmission{}, pgx.ErrNoRows)
+	}).Return(db.Ibcv2RelayRequest{}, pgx.ErrNoRows)
 
 	service := relayerapi.NewRelayerAPIService(s.Ctx, mockDB, nil)
 
@@ -241,10 +241,10 @@ func (s *RelayerAPIServiceSuite) TestStatus_ReturnsEmptyForNoTransfers() {
 	}
 
 	mockDB := relayerapimocks.NewMockRelayerAPIQueries(s.T())
-	mockDB.On("GetRelaySubmission", mock.Anything, db.GetRelaySubmissionParams{
+	mockDB.On("GetRelayRequest", mock.Anything, db.GetRelayRequestParams{
 		SourceChainID: "11155111",
 		SourceTxHash:  "0xabc123",
-	}).Return(db.Ibcv2RelaySubmission{}, nil)
+	}).Return(db.Ibcv2RelayRequest{}, nil)
 	mockDB.On("GetTransfersBySourceTx", mock.Anything, db.GetTransfersBySourceTxParams{
 		SourceChainID: "11155111",
 		SourceTxHash:  "0xabc123",
@@ -264,10 +264,10 @@ func (s *RelayerAPIServiceSuite) TestStatus_ReturnsPacketStatuses() {
 	}
 
 	mockDB := relayerapimocks.NewMockRelayerAPIQueries(s.T())
-	mockDB.On("GetRelaySubmission", mock.Anything, db.GetRelaySubmissionParams{
+	mockDB.On("GetRelayRequest", mock.Anything, db.GetRelayRequestParams{
 		SourceChainID: "11155111",
 		SourceTxHash:  "0xabc123",
-	}).Return(db.Ibcv2RelaySubmission{}, nil)
+	}).Return(db.Ibcv2RelayRequest{}, nil)
 	mockDB.On("GetTransfersBySourceTx", mock.Anything, db.GetTransfersBySourceTxParams{
 		SourceChainID: "11155111",
 		SourceTxHash:  "0xabc123",
