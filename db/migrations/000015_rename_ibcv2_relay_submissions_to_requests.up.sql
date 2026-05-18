@@ -1,0 +1,2 @@
+ALTER TABLE ibcv2_relay_submissions RENAME TO ibcv2_relay_requests;
+ALTER INDEX idx_ibcv2_relay_submissions_lookup RENAME TO idx_ibcv2_relay_requests_lookup;

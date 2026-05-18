@@ -244,7 +244,7 @@ func (ns NullIbcv2WriteAckStatus) Value() (driver.Value, error) {
 	return string(ns.Ibcv2WriteAckStatus), nil
 }
 
-type Ibcv2RelaySubmission struct {
+type Ibcv2RelayRequest struct {
 	ID            int32
 	SourceChainID string
 	SourceTxHash  string

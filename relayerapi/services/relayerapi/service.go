@@ -38,8 +38,8 @@ type RelayerAPIService struct {
 type RelayerAPIQueries interface {
 	InsertIBCV2Transfer(ctx context.Context, arg db.InsertIBCV2TransferParams) error
 	GetTransfersBySourceTx(ctx context.Context, arg db.GetTransfersBySourceTxParams) ([]db.Ibcv2Transfer, error)
-	InsertRelaySubmission(ctx context.Context, arg db.InsertRelaySubmissionParams) error
-	GetRelaySubmission(ctx context.Context, arg db.GetRelaySubmissionParams) (db.Ibcv2RelaySubmission, error)
+	InsertRelayRequest(ctx context.Context, arg db.InsertRelayRequestParams) error
+	GetRelayRequest(ctx context.Context, arg db.GetRelayRequestParams) (db.Ibcv2RelayRequest, error)
 }
 
 func NewRelayerAPIService(
@@ -63,16 +63,16 @@ func (s *RelayerAPIService) Status(
 	}
 
 	// First check if this tx was ever submitted to the relay endpoint
-	_, err := s.db.GetRelaySubmission(ctx, db.GetRelaySubmissionParams{
+	_, err := s.db.GetRelayRequest(ctx, db.GetRelayRequestParams{
 		SourceChainID: request.GetChainId(),
 		SourceTxHash:  request.GetTxHash(),
 	})
 	if err != nil {
-		// If no relay submission found, return NOT_FOUND
+		// If no relay request found, return NOT_FOUND
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, status.Errorf(codes.NotFound, "transaction not submitted to relayer")
 		}
-		return nil, status.Errorf(codes.Internal, "failed to query relay submission")
+		return nil, status.Errorf(codes.Internal, "failed to query relay request")
 	}
 
 	transfers, err := s.db.GetTransfersBySourceTx(ctx, db.GetTransfersBySourceTxParams{
@@ -113,7 +113,7 @@ func (s *RelayerAPIService) Relay(
 		zap.String("chain_id", sourceChainID),
 	)
 
-	if err := s.db.InsertRelaySubmission(ctx, db.InsertRelaySubmissionParams{
+	if err := s.db.InsertRelayRequest(ctx, db.InsertRelayRequestParams{
 		SourceChainID: sourceChainID,
 		SourceTxHash:  request.GetTxHash(),
 	}); err != nil {
@@ -123,7 +123,7 @@ func (s *RelayerAPIService) Relay(
 			return &protorelayerapi.RelayResponse{}, nil
 		}
 		metrics.FromContext(ctx).AddRelayRequest(metrics.IBCV2BridgeType, uint32(codes.Internal))
-		return nil, status.Errorf(codes.Internal, "failed to insert relay submission")
+		return nil, status.Errorf(codes.Internal, "failed to insert relay request")
 	}
 
 	client, err := s.bridgeClientManager.GetClient(ctx, sourceChainID)

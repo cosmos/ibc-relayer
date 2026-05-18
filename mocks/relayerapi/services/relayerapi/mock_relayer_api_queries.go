@@ -22,26 +22,26 @@ func (_m *MockRelayerAPIQueries) EXPECT() *MockRelayerAPIQueries_Expecter {
 	return &MockRelayerAPIQueries_Expecter{mock: &_m.Mock}
 }
 
-// GetRelaySubmission provides a mock function with given fields: ctx, arg
-func (_m *MockRelayerAPIQueries) GetRelaySubmission(ctx context.Context, arg db.GetRelaySubmissionParams) (db.Ibcv2RelaySubmission, error) {
+// GetRelayRequest provides a mock function with given fields: ctx, arg
+func (_m *MockRelayerAPIQueries) GetRelayRequest(ctx context.Context, arg db.GetRelayRequestParams) (db.Ibcv2RelayRequest, error) {
 	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetRelaySubmission")
+		panic("no return value specified for GetRelayRequest")
 	}
 
-	var r0 db.Ibcv2RelaySubmission
+	var r0 db.Ibcv2RelayRequest
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, db.GetRelaySubmissionParams) (db.Ibcv2RelaySubmission, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, db.GetRelayRequestParams) (db.Ibcv2RelayRequest, error)); ok {
 		return rf(ctx, arg)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, db.GetRelaySubmissionParams) db.Ibcv2RelaySubmission); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, db.GetRelayRequestParams) db.Ibcv2RelayRequest); ok {
 		r0 = rf(ctx, arg)
 	} else {
-		r0 = ret.Get(0).(db.Ibcv2RelaySubmission)
+		r0 = ret.Get(0).(db.Ibcv2RelayRequest)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, db.GetRelaySubmissionParams) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, db.GetRelayRequestParams) error); ok {
 		r1 = rf(ctx, arg)
 	} else {
 		r1 = ret.Error(1)
@@ -50,31 +50,31 @@ func (_m *MockRelayerAPIQueries) GetRelaySubmission(ctx context.Context, arg db.
 	return r0, r1
 }
 
-// MockRelayerAPIQueries_GetRelaySubmission_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRelaySubmission'
-type MockRelayerAPIQueries_GetRelaySubmission_Call struct {
+// MockRelayerAPIQueries_GetRelayRequest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRelayRequest'
+type MockRelayerAPIQueries_GetRelayRequest_Call struct {
 	*mock.Call
 }
 
-// GetRelaySubmission is a helper method to define mock.On call
+// GetRelayRequest is a helper method to define mock.On call
 //   - ctx context.Context
-//   - arg db.GetRelaySubmissionParams
-func (_e *MockRelayerAPIQueries_Expecter) GetRelaySubmission(ctx interface{}, arg interface{}) *MockRelayerAPIQueries_GetRelaySubmission_Call {
-	return &MockRelayerAPIQueries_GetRelaySubmission_Call{Call: _e.mock.On("GetRelaySubmission", ctx, arg)}
+//   - arg db.GetRelayRequestParams
+func (_e *MockRelayerAPIQueries_Expecter) GetRelayRequest(ctx interface{}, arg interface{}) *MockRelayerAPIQueries_GetRelayRequest_Call {
+	return &MockRelayerAPIQueries_GetRelayRequest_Call{Call: _e.mock.On("GetRelayRequest", ctx, arg)}
 }
 
-func (_c *MockRelayerAPIQueries_GetRelaySubmission_Call) Run(run func(ctx context.Context, arg db.GetRelaySubmissionParams)) *MockRelayerAPIQueries_GetRelaySubmission_Call {
+func (_c *MockRelayerAPIQueries_GetRelayRequest_Call) Run(run func(ctx context.Context, arg db.GetRelayRequestParams)) *MockRelayerAPIQueries_GetRelayRequest_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(db.GetRelaySubmissionParams))
+		run(args[0].(context.Context), args[1].(db.GetRelayRequestParams))
 	})
 	return _c
 }
 
-func (_c *MockRelayerAPIQueries_GetRelaySubmission_Call) Return(_a0 db.Ibcv2RelaySubmission, _a1 error) *MockRelayerAPIQueries_GetRelaySubmission_Call {
+func (_c *MockRelayerAPIQueries_GetRelayRequest_Call) Return(_a0 db.Ibcv2RelayRequest, _a1 error) *MockRelayerAPIQueries_GetRelayRequest_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockRelayerAPIQueries_GetRelaySubmission_Call) RunAndReturn(run func(context.Context, db.GetRelaySubmissionParams) (db.Ibcv2RelaySubmission, error)) *MockRelayerAPIQueries_GetRelaySubmission_Call {
+func (_c *MockRelayerAPIQueries_GetRelayRequest_Call) RunAndReturn(run func(context.Context, db.GetRelayRequestParams) (db.Ibcv2RelayRequest, error)) *MockRelayerAPIQueries_GetRelayRequest_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -185,16 +185,16 @@ func (_c *MockRelayerAPIQueries_InsertIBCV2Transfer_Call) RunAndReturn(run func(
 	return _c
 }
 
-// InsertRelaySubmission provides a mock function with given fields: ctx, arg
-func (_m *MockRelayerAPIQueries) InsertRelaySubmission(ctx context.Context, arg db.InsertRelaySubmissionParams) error {
+// InsertRelayRequest provides a mock function with given fields: ctx, arg
+func (_m *MockRelayerAPIQueries) InsertRelayRequest(ctx context.Context, arg db.InsertRelayRequestParams) error {
 	ret := _m.Called(ctx, arg)
 
 	if len(ret) == 0 {
-		panic("no return value specified for InsertRelaySubmission")
+		panic("no return value specified for InsertRelayRequest")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, db.InsertRelaySubmissionParams) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, db.InsertRelayRequestParams) error); ok {
 		r0 = rf(ctx, arg)
 	} else {
 		r0 = ret.Error(0)
@@ -203,31 +203,31 @@ func (_m *MockRelayerAPIQueries) InsertRelaySubmission(ctx context.Context, arg 
 	return r0
 }
 
-// MockRelayerAPIQueries_InsertRelaySubmission_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertRelaySubmission'
-type MockRelayerAPIQueries_InsertRelaySubmission_Call struct {
+// MockRelayerAPIQueries_InsertRelayRequest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertRelayRequest'
+type MockRelayerAPIQueries_InsertRelayRequest_Call struct {
 	*mock.Call
 }
 
-// InsertRelaySubmission is a helper method to define mock.On call
+// InsertRelayRequest is a helper method to define mock.On call
 //   - ctx context.Context
-//   - arg db.InsertRelaySubmissionParams
-func (_e *MockRelayerAPIQueries_Expecter) InsertRelaySubmission(ctx interface{}, arg interface{}) *MockRelayerAPIQueries_InsertRelaySubmission_Call {
-	return &MockRelayerAPIQueries_InsertRelaySubmission_Call{Call: _e.mock.On("InsertRelaySubmission", ctx, arg)}
+//   - arg db.InsertRelayRequestParams
+func (_e *MockRelayerAPIQueries_Expecter) InsertRelayRequest(ctx interface{}, arg interface{}) *MockRelayerAPIQueries_InsertRelayRequest_Call {
+	return &MockRelayerAPIQueries_InsertRelayRequest_Call{Call: _e.mock.On("InsertRelayRequest", ctx, arg)}
 }
 
-func (_c *MockRelayerAPIQueries_InsertRelaySubmission_Call) Run(run func(ctx context.Context, arg db.InsertRelaySubmissionParams)) *MockRelayerAPIQueries_InsertRelaySubmission_Call {
+func (_c *MockRelayerAPIQueries_InsertRelayRequest_Call) Run(run func(ctx context.Context, arg db.InsertRelayRequestParams)) *MockRelayerAPIQueries_InsertRelayRequest_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(db.InsertRelaySubmissionParams))
+		run(args[0].(context.Context), args[1].(db.InsertRelayRequestParams))
 	})
 	return _c
 }
 
-func (_c *MockRelayerAPIQueries_InsertRelaySubmission_Call) Return(_a0 error) *MockRelayerAPIQueries_InsertRelaySubmission_Call {
+func (_c *MockRelayerAPIQueries_InsertRelayRequest_Call) Return(_a0 error) *MockRelayerAPIQueries_InsertRelayRequest_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockRelayerAPIQueries_InsertRelaySubmission_Call) RunAndReturn(run func(context.Context, db.InsertRelaySubmissionParams) error) *MockRelayerAPIQueries_InsertRelaySubmission_Call {
+func (_c *MockRelayerAPIQueries_InsertRelayRequest_Call) RunAndReturn(run func(context.Context, db.InsertRelayRequestParams) error) *MockRelayerAPIQueries_InsertRelayRequest_Call {
 	_c.Call.Return(run)
 	return _c
 }

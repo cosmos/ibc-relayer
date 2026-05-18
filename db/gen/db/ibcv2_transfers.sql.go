@@ -100,19 +100,19 @@ func (q *Queries) CountTransfersByChainPairAndStatus(ctx context.Context) ([]Cou
 	return items, nil
 }
 
-const getRelaySubmission = `-- name: GetRelaySubmission :one
-SELECT id, source_chain_id, source_tx_hash, created_at FROM ibcv2_relay_submissions
+const getRelayRequest = `-- name: GetRelayRequest :one
+SELECT id, source_chain_id, source_tx_hash, created_at FROM ibcv2_relay_requests
 WHERE source_chain_id = $1 AND source_tx_hash = $2
 `
 
-type GetRelaySubmissionParams struct {
+type GetRelayRequestParams struct {
 	SourceChainID string
 	SourceTxHash  string
 }
 
-func (q *Queries) GetRelaySubmission(ctx context.Context, arg GetRelaySubmissionParams) (Ibcv2RelaySubmission, error) {
-	row := q.db.QueryRow(ctx, getRelaySubmission, arg.SourceChainID, arg.SourceTxHash)
-	var i Ibcv2RelaySubmission
+func (q *Queries) GetRelayRequest(ctx context.Context, arg GetRelayRequestParams) (Ibcv2RelayRequest, error) {
+	row := q.db.QueryRow(ctx, getRelayRequest, arg.SourceChainID, arg.SourceTxHash)
+	var i Ibcv2RelayRequest
 	err := row.Scan(
 		&i.ID,
 		&i.SourceChainID,
@@ -277,19 +277,19 @@ func (q *Queries) InsertIBCV2Transfer(ctx context.Context, arg InsertIBCV2Transf
 	return err
 }
 
-const insertRelaySubmission = `-- name: InsertRelaySubmission :exec
-INSERT INTO ibcv2_relay_submissions (source_chain_id, source_tx_hash)
+const insertRelayRequest = `-- name: InsertRelayRequest :exec
+INSERT INTO ibcv2_relay_requests (source_chain_id, source_tx_hash)
 VALUES ($1, $2)
 ON CONFLICT (source_chain_id, source_tx_hash) DO NOTHING
 `
 
-type InsertRelaySubmissionParams struct {
+type InsertRelayRequestParams struct {
 	SourceChainID string
 	SourceTxHash  string
 }
 
-func (q *Queries) InsertRelaySubmission(ctx context.Context, arg InsertRelaySubmissionParams) error {
-	_, err := q.db.Exec(ctx, insertRelaySubmission, arg.SourceChainID, arg.SourceTxHash)
+func (q *Queries) InsertRelayRequest(ctx context.Context, arg InsertRelayRequestParams) error {
+	_, err := q.db.Exec(ctx, insertRelayRequest, arg.SourceChainID, arg.SourceTxHash)
 	return err
 }
 

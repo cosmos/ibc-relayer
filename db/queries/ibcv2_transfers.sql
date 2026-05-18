@@ -83,13 +83,13 @@ WHERE source_chain_id=$1 AND packet_source_client_id=$2 AND packet_sequence_numb
 SELECT * FROM ibcv2_transfers
 WHERE source_chain_id = $1 AND source_tx_hash = $2;
 
--- name: InsertRelaySubmission :exec
-INSERT INTO ibcv2_relay_submissions (source_chain_id, source_tx_hash)
+-- name: InsertRelayRequest :exec
+INSERT INTO ibcv2_relay_requests (source_chain_id, source_tx_hash)
 VALUES ($1, $2)
 ON CONFLICT (source_chain_id, source_tx_hash) DO NOTHING;
 
--- name: GetRelaySubmission :one
-SELECT * FROM ibcv2_relay_submissions
+-- name: GetRelayRequest :one
+SELECT * FROM ibcv2_relay_requests
 WHERE source_chain_id = $1 AND source_tx_hash = $2;
 
 -- name: ListRelayStatuses :many
