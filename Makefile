@@ -40,7 +40,7 @@ proto-gen: tools
 #
 # Helpful Developer Commands
 #
-.PHONY: migrate-up migrate-down postgres-login redis-login tidy test
+.PHONY: migrate-up migrate-down postgres-login tidy test
 
 migrate-up:
 	./scripts/migrate.sh up 1
@@ -64,44 +64,3 @@ test:
 	docker compose up -d
 	go test $(RELAYER_LDFLAGS) -p 1 --tags=test -v -race $(shell go list ./... | grep -v /scripts/)
 	docker compose down -v
-
-#
-# Build / Deploy
-#
-REGION=us-east-2
-REGISTRY=494494944992.dkr.ecr.us-east-2.amazonaws.com
-REPO=skip-mev/solve-relayer
-PLATFORM=linux/amd64
-COMMIT:=$(shell git rev-parse --short HEAD 2>/dev/null || jj log -r @ --no-graph -T 'commit_id.short()' 2>/dev/null || echo "local")
-
-ENVIRONMENT=dev
-LEVANT_VAR_FILE:=$(shell mktemp -d)/levant.yaml
-
-RELAYER_IMAGE=${REGISTRY}/${REPO}:${COMMIT}
-MIGRATE_IMAGE=${REGISTRY}/${REPO}-migrate:${COMMIT}
-
-build-relayer:
-	aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${REGISTRY}
-	aws ecr describe-repositories --region ${REGION} --repository-names ${REPO} \
-		|| aws ecr create-repository --repository-name ${REPO} --region ${REGION}
-	docker buildx build \
-		--platform ${PLATFORM} \
-		-t ${MIGRATE_IMAGE} \
-		-t ${REGISTRY}/${REPO}-migrate:latest \
-		-f ./docker/migrate.dockerfile \
-		--push \
-		.
-	docker buildx build \
-		--platform ${PLATFORM} \
-		-t ${RELAYER_IMAGE} \
-		-t ${REGISTRY}/${REPO}:latest \
-		-f ./docker/relayer.dockerfile \
-		--push \
-		.
-
-deploy-relayer:
-	touch ${LEVANT_VAR_FILE}
-	yq e -i '.env |= "${ENVIRONMENT}"' ${LEVANT_VAR_FILE}
-	yq e -i '.image |= "${RELAYER_IMAGE}"' ${LEVANT_VAR_FILE}
-	yq e -i '.migrate_image |= "${MIGRATE_IMAGE}"' ${LEVANT_VAR_FILE}
-	levant deploy ${LEVANT_FLAGS} -force -force-count -var-file=${LEVANT_VAR_FILE} ./nomad/relayer.nomad

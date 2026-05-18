@@ -23,12 +23,12 @@ Required flags:
 - `--receiver`
 - `--denom`
 - `--private-key`
+- `--relayer-grpc-url`
 
 Optional flags:
 - `--amount` defaults to `1`
 - `--memo` defaults to empty string
 - `--config` defaults to `./config/local/config.yml`
-- `--relayer-grpc-url` defaults to `relayer-grpc.dev.skip-internal.money:443`
 
 Example:
 
@@ -41,5 +41,6 @@ Example:
   --denom 0xbf6Bc6782f7EB580312CC09B976e9329f3e027B3 \
   --amount 1 \
   --private-key <hex-private-key> \
+  --relayer-grpc-url relayer.example.com:443 \
   ibcv2
 ```

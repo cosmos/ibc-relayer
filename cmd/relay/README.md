@@ -15,10 +15,10 @@ This builds `bin/relay`.
 Supported flags:
 - `--source-chain-id` required
 - `--tx-hash` required
-- `--relayer-grpc-url` optional, defaults to `relayer-grpc.dev.skip-internal.money:443`
+- `--relayer-grpc-url` required, the gRPC endpoint of a running relayer
 
 Example:
 
 ```bash
-./bin/relay --source-chain-id 1 --tx-hash 0xdeadbeef
+./bin/relay --source-chain-id 1 --tx-hash 0xdeadbeef --relayer-grpc-url relayer.example.com:443
 ```
