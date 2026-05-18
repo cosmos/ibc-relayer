@@ -473,7 +473,7 @@ For production deployments, the relayer can delegate signing to an external gRPC
 
 ```yaml
 signing:
-  grpc_address: "signer.internal:50052"
+  grpc_address: "localhost:50052"
   cosmos_wallet_key: "my-cosmos-wallet"
   evm_wallet_key: "my-evm-wallet"
   svm_wallet_key: "my-svm-wallet"

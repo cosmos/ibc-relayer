@@ -65,8 +65,8 @@ var cfgPath = flag.String(
 
 var relayerGRPCURL = flag.String(
 	"relayer-grpc-url",
-	"relayer-grpc.dev.skip-internal.money:443",
-	"url of the grpc endpoint for the relayer to relay this transfer (must be on tailscale for access)",
+	"",
+	"url of the grpc endpoint for the relayer to relay this transfer",
 )
 
 var privateKey = flag.String(
@@ -159,8 +159,12 @@ func ibcv2Transfer(ctx context.Context) error {
 		return fmt.Errorf("source client (%s) counterparty chain id (%s) does not match the dest chain id (%s)", *sourceClientID, clientCounterpartyChainID, *destChainID)
 	}
 
+	if *relayerGRPCURL == "" {
+		return errors.New("relayer-grpc-url is required")
+	}
+
 	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13})), //nolint:gosec // CLI tool connects to internal services
+		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13})), //nolint:gosec // CLI tool; user-supplied endpoint
 	}
 	conn, err := grpc.NewClient(*relayerGRPCURL, opts...)
 	if err != nil {

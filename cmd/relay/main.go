@@ -29,8 +29,8 @@ var txHash = flag.String(
 
 var relayerGRPCURL = flag.String(
 	"relayer-grpc-url",
-	"relayer-grpc.dev.skip-internal.money:443",
-	"url of the grpc endpoint for the relayer to relay this transfer (must be on tailscale for access)",
+	"",
+	"url of the grpc endpoint for the relayer to relay this transfer",
 )
 
 func main() {
@@ -42,13 +42,13 @@ func main() {
 	lmt.ConfigureLogger()
 	ctx = lmt.LoggerContext(ctx)
 
-	if *sourceChainID == "" || *txHash == "" {
-		lmt.Logger(ctx).Fatal("source-chain-id and tx-hash are required")
+	if *sourceChainID == "" || *txHash == "" || *relayerGRPCURL == "" {
+		lmt.Logger(ctx).Fatal("source-chain-id, tx-hash, and relayer-grpc-url are required")
 	}
 
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
-			InsecureSkipVerify: true, //nolint:gosec // CLI tool connects to internal services
+			InsecureSkipVerify: true, //nolint:gosec // CLI tool; user-supplied endpoint
 			MinVersion:         tls.VersionTLS13,
 		})),
 	}
