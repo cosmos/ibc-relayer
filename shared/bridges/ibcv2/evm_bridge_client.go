@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -807,6 +808,9 @@ func (c *EVMBridgeClient) TxExecutionStatus(ctx context.Context, txHash string) 
 		return c.client.TransactionReceipt(ctx, common.HexToHash(txHash))
 	})
 	if err != nil {
+		if errors.Is(err, ethereum.NotFound) {
+			return TxExecutionStatus{}, fmt.Errorf("%w: %w", ErrTxNotFound, err)
+		}
 		return TxExecutionStatus{}, fmt.Errorf("getting transaction receipt for tx hash %s: %w", txHash, err)
 	}
 
