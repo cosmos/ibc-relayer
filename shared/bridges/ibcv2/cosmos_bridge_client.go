@@ -898,6 +898,9 @@ func (c *CosmosBridgeClient) TxExecutionStatus(ctx context.Context, txHash strin
 		return c.tmrpc.Tx(ctx, hashBytes, false)
 	})
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return TxExecutionStatus{}, fmt.Errorf("%w: %w", ErrTxNotFound, err)
+		}
 		return TxExecutionStatus{}, fmt.Errorf("getting results for tx hash %s: %w", txHash, err)
 	}
 

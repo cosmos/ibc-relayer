@@ -3,6 +3,7 @@ package relayerapi_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -23,6 +24,8 @@ import (
 	"github.com/cosmos/ibc-relayer/shared/bridges/ibcv2"
 	"github.com/cosmos/ibc-relayer/shared/config"
 )
+
+var txExecutionSuccess = ibcv2.TxExecutionStatus{Status: ibcv2.TxExecutionStatusSuccess}
 
 type RelayerAPIServiceSuite struct {
 	suite.Suite
@@ -73,8 +76,8 @@ func (s *RelayerAPIServiceSuite) TestRelay_RejectsBlacklistedOFACAddress() {
 	mockBridgeClientManager := ibcv2mocks.NewMockBridgeClientManager(s.T())
 	mockBridgeClient := bridgemocks.NewMockBridgeClient(s.T())
 
-	mockDB.EXPECT().InsertRelayRequest(s.Ctx, mock.Anything).Return(nil)
 	mockBridgeClientManager.EXPECT().GetClient(s.Ctx, "evmChainID").Return(mockBridgeClient, nil)
+	mockBridgeClient.EXPECT().TxExecutionStatus(s.Ctx, txHash).Return(txExecutionSuccess, nil)
 	mockBridgeClient.EXPECT().ChainType().Return(config.ChainTypeEVM)
 	mockBridgeClient.EXPECT().GetTransactionSender(s.Ctx, txHash).Return(blacklistedAddress, nil)
 
@@ -101,8 +104,8 @@ func (s *RelayerAPIServiceSuite) TestRelay_SucceedsOnValidTxHash() {
 	mockClientManager := ibcv2mocks.NewMockBridgeClientManager(s.T())
 	mockBridgeClient := bridgemocks.NewMockBridgeClient(s.T())
 
-	mockDB.EXPECT().InsertRelayRequest(s.Ctx, mock.Anything).Return(nil)
 	mockClientManager.EXPECT().GetClient(s.Ctx, "evmChainID").Return(mockBridgeClient, nil)
+	mockBridgeClient.EXPECT().TxExecutionStatus(s.Ctx, "0xabc123").Return(txExecutionSuccess, nil)
 	mockBridgeClient.EXPECT().ChainType().Return(config.ChainTypeEVM)
 	mockBridgeClient.EXPECT().GetTransactionSender(s.Ctx, "0xabc123").Return("0x0000000000000000000000000000000000000000", nil)
 
@@ -118,19 +121,78 @@ func (s *RelayerAPIServiceSuite) TestRelay_SucceedsOnValidTxHash() {
 		},
 	}, nil)
 
-	mockDB.EXPECT().InsertIBCV2Transfer(s.Ctx, mock.MatchedBy(func(arg db.InsertIBCV2TransferParams) bool {
-		return arg.SourceChainID == "evmChainID" &&
-			arg.DestinationChainID == "cosmosChainID" &&
-			arg.SourceTxHash == "0xabc123" &&
-			arg.PacketSequenceNumber == 1 &&
-			arg.PacketSourceClientID == "08-wasm-1"
-	})).Return(nil)
+	mockDB.EXPECT().ExecTx(s.Ctx, mock.Anything).Return(nil)
 
 	service := relayerapi.NewRelayerAPIService(s.Ctx, mockDB, mockClientManager)
 
 	resp, err := service.Relay(s.Ctx, request)
 	s.Require().NoError(err)
 	s.Require().True(proto.Equal(&protorelayerapi.RelayResponse{}, resp), "expected empty response")
+}
+
+func (s *RelayerAPIServiceSuite) TestRelay_RejectsFailedTx() {
+	request := &protorelayerapi.RelayRequest{
+		TxHash:  "0xabc123",
+		ChainId: "evmChainID",
+	}
+
+	mockDB := relayerapimocks.NewMockRelayerAPIQueries(s.T())
+	mockClientManager := ibcv2mocks.NewMockBridgeClientManager(s.T())
+	mockBridgeClient := bridgemocks.NewMockBridgeClient(s.T())
+
+	mockClientManager.EXPECT().GetClient(s.Ctx, "evmChainID").Return(mockBridgeClient, nil)
+	mockBridgeClient.EXPECT().TxExecutionStatus(s.Ctx, "0xabc123").Return(ibcv2.TxExecutionStatus{
+		Status:       ibcv2.TxExecutionStatusFailed,
+		ErrorMessage: "evm transaction execution failed",
+	}, nil)
+
+	service := relayerapi.NewRelayerAPIService(s.Ctx, mockDB, mockClientManager)
+
+	_, err := service.Relay(s.Ctx, request)
+	s.Require().Error(err)
+	s.Require().Equal(codes.FailedPrecondition, status.Code(err))
+	s.Require().Contains(err.Error(), "did not succeed on chain")
+}
+
+func (s *RelayerAPIServiceSuite) TestRelay_RejectsTxNotFound() {
+	request := &protorelayerapi.RelayRequest{
+		TxHash:  "0xabc123",
+		ChainId: "evmChainID",
+	}
+
+	mockDB := relayerapimocks.NewMockRelayerAPIQueries(s.T())
+	mockClientManager := ibcv2mocks.NewMockBridgeClientManager(s.T())
+	mockBridgeClient := bridgemocks.NewMockBridgeClient(s.T())
+
+	mockClientManager.EXPECT().GetClient(s.Ctx, "evmChainID").Return(mockBridgeClient, nil)
+	mockBridgeClient.EXPECT().TxExecutionStatus(s.Ctx, "0xabc123").Return(ibcv2.TxExecutionStatus{}, fmt.Errorf("%w: not found", ibcv2.ErrTxNotFound))
+
+	service := relayerapi.NewRelayerAPIService(s.Ctx, mockDB, mockClientManager)
+
+	_, err := service.Relay(s.Ctx, request)
+	s.Require().Error(err)
+	s.Require().Equal(codes.NotFound, status.Code(err))
+}
+
+func (s *RelayerAPIServiceSuite) TestRelay_ReturnsUnavailableOnTxStatusError() {
+	request := &protorelayerapi.RelayRequest{
+		TxHash:  "0xabc123",
+		ChainId: "evmChainID",
+	}
+
+	mockDB := relayerapimocks.NewMockRelayerAPIQueries(s.T())
+	mockClientManager := ibcv2mocks.NewMockBridgeClientManager(s.T())
+	mockBridgeClient := bridgemocks.NewMockBridgeClient(s.T())
+
+	mockClientManager.EXPECT().GetClient(s.Ctx, "evmChainID").Return(mockBridgeClient, nil)
+	mockBridgeClient.EXPECT().TxExecutionStatus(s.Ctx, "0xabc123").Return(ibcv2.TxExecutionStatus{}, errors.New("connection refused"))
+
+	service := relayerapi.NewRelayerAPIService(s.Ctx, mockDB, mockClientManager)
+
+	_, err := service.Relay(s.Ctx, request)
+	s.Require().Error(err)
+	s.Require().Equal(codes.Unavailable, status.Code(err))
+	s.Require().Contains(err.Error(), "connection refused")
 }
 
 func (s *RelayerAPIServiceSuite) TestRelay_FailsOnInvalidTxHash() {
@@ -175,8 +237,8 @@ func (s *RelayerAPIServiceSuite) TestRelay_FailsOnDatabaseFailure() {
 	mockClientManager := ibcv2mocks.NewMockBridgeClientManager(s.T())
 	mockBridgeClient := bridgemocks.NewMockBridgeClient(s.T())
 
-	mockDB.EXPECT().InsertRelayRequest(s.Ctx, mock.Anything).Return(nil)
 	mockClientManager.EXPECT().GetClient(s.Ctx, "evmChainID").Return(mockBridgeClient, nil)
+	mockBridgeClient.EXPECT().TxExecutionStatus(s.Ctx, "0xabc123").Return(txExecutionSuccess, nil)
 	mockBridgeClient.EXPECT().ChainType().Return(config.ChainTypeEVM)
 	mockBridgeClient.EXPECT().GetTransactionSender(s.Ctx, "0xabc123").Return("0x0000000000000000000000000000000000000000", nil)
 
@@ -192,7 +254,7 @@ func (s *RelayerAPIServiceSuite) TestRelay_FailsOnDatabaseFailure() {
 		},
 	}, nil)
 
-	mockDB.EXPECT().InsertIBCV2Transfer(s.Ctx, mock.Anything).Return(errors.New("database error"))
+	mockDB.EXPECT().ExecTx(s.Ctx, mock.Anything).Return(errors.New("database error"))
 
 	service := relayerapi.NewRelayerAPIService(s.Ctx, mockDB, mockClientManager)
 

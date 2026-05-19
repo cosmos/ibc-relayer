@@ -22,6 +22,53 @@ func (_m *MockRelayerAPIQueries) EXPECT() *MockRelayerAPIQueries_Expecter {
 	return &MockRelayerAPIQueries_Expecter{mock: &_m.Mock}
 }
 
+// ExecTx provides a mock function with given fields: ctx, fn
+func (_m *MockRelayerAPIQueries) ExecTx(ctx context.Context, fn func(*db.Queries) error) error {
+	ret := _m.Called(ctx, fn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ExecTx")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, func(*db.Queries) error) error); ok {
+		r0 = rf(ctx, fn)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockRelayerAPIQueries_ExecTx_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExecTx'
+type MockRelayerAPIQueries_ExecTx_Call struct {
+	*mock.Call
+}
+
+// ExecTx is a helper method to define mock.On call
+//   - ctx context.Context
+//   - fn func(*db.Queries) error
+func (_e *MockRelayerAPIQueries_Expecter) ExecTx(ctx interface{}, fn interface{}) *MockRelayerAPIQueries_ExecTx_Call {
+	return &MockRelayerAPIQueries_ExecTx_Call{Call: _e.mock.On("ExecTx", ctx, fn)}
+}
+
+func (_c *MockRelayerAPIQueries_ExecTx_Call) Run(run func(ctx context.Context, fn func(*db.Queries) error)) *MockRelayerAPIQueries_ExecTx_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(func(*db.Queries) error))
+	})
+	return _c
+}
+
+func (_c *MockRelayerAPIQueries_ExecTx_Call) Return(_a0 error) *MockRelayerAPIQueries_ExecTx_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockRelayerAPIQueries_ExecTx_Call) RunAndReturn(run func(context.Context, func(*db.Queries) error) error) *MockRelayerAPIQueries_ExecTx_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRelayRequest provides a mock function with given fields: ctx, arg
 func (_m *MockRelayerAPIQueries) GetRelayRequest(ctx context.Context, arg db.GetRelayRequestParams) (db.Ibcv2RelayRequest, error) {
 	ret := _m.Called(ctx, arg)
@@ -134,100 +181,6 @@ func (_c *MockRelayerAPIQueries_GetTransfersBySourceTx_Call) Return(_a0 []db.Ibc
 }
 
 func (_c *MockRelayerAPIQueries_GetTransfersBySourceTx_Call) RunAndReturn(run func(context.Context, db.GetTransfersBySourceTxParams) ([]db.Ibcv2Transfer, error)) *MockRelayerAPIQueries_GetTransfersBySourceTx_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// InsertIBCV2Transfer provides a mock function with given fields: ctx, arg
-func (_m *MockRelayerAPIQueries) InsertIBCV2Transfer(ctx context.Context, arg db.InsertIBCV2TransferParams) error {
-	ret := _m.Called(ctx, arg)
-
-	if len(ret) == 0 {
-		panic("no return value specified for InsertIBCV2Transfer")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, db.InsertIBCV2TransferParams) error); ok {
-		r0 = rf(ctx, arg)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockRelayerAPIQueries_InsertIBCV2Transfer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertIBCV2Transfer'
-type MockRelayerAPIQueries_InsertIBCV2Transfer_Call struct {
-	*mock.Call
-}
-
-// InsertIBCV2Transfer is a helper method to define mock.On call
-//   - ctx context.Context
-//   - arg db.InsertIBCV2TransferParams
-func (_e *MockRelayerAPIQueries_Expecter) InsertIBCV2Transfer(ctx interface{}, arg interface{}) *MockRelayerAPIQueries_InsertIBCV2Transfer_Call {
-	return &MockRelayerAPIQueries_InsertIBCV2Transfer_Call{Call: _e.mock.On("InsertIBCV2Transfer", ctx, arg)}
-}
-
-func (_c *MockRelayerAPIQueries_InsertIBCV2Transfer_Call) Run(run func(ctx context.Context, arg db.InsertIBCV2TransferParams)) *MockRelayerAPIQueries_InsertIBCV2Transfer_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(db.InsertIBCV2TransferParams))
-	})
-	return _c
-}
-
-func (_c *MockRelayerAPIQueries_InsertIBCV2Transfer_Call) Return(_a0 error) *MockRelayerAPIQueries_InsertIBCV2Transfer_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockRelayerAPIQueries_InsertIBCV2Transfer_Call) RunAndReturn(run func(context.Context, db.InsertIBCV2TransferParams) error) *MockRelayerAPIQueries_InsertIBCV2Transfer_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// InsertRelayRequest provides a mock function with given fields: ctx, arg
-func (_m *MockRelayerAPIQueries) InsertRelayRequest(ctx context.Context, arg db.InsertRelayRequestParams) error {
-	ret := _m.Called(ctx, arg)
-
-	if len(ret) == 0 {
-		panic("no return value specified for InsertRelayRequest")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, db.InsertRelayRequestParams) error); ok {
-		r0 = rf(ctx, arg)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockRelayerAPIQueries_InsertRelayRequest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertRelayRequest'
-type MockRelayerAPIQueries_InsertRelayRequest_Call struct {
-	*mock.Call
-}
-
-// InsertRelayRequest is a helper method to define mock.On call
-//   - ctx context.Context
-//   - arg db.InsertRelayRequestParams
-func (_e *MockRelayerAPIQueries_Expecter) InsertRelayRequest(ctx interface{}, arg interface{}) *MockRelayerAPIQueries_InsertRelayRequest_Call {
-	return &MockRelayerAPIQueries_InsertRelayRequest_Call{Call: _e.mock.On("InsertRelayRequest", ctx, arg)}
-}
-
-func (_c *MockRelayerAPIQueries_InsertRelayRequest_Call) Run(run func(ctx context.Context, arg db.InsertRelayRequestParams)) *MockRelayerAPIQueries_InsertRelayRequest_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(db.InsertRelayRequestParams))
-	})
-	return _c
-}
-
-func (_c *MockRelayerAPIQueries_InsertRelayRequest_Call) Return(_a0 error) *MockRelayerAPIQueries_InsertRelayRequest_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockRelayerAPIQueries_InsertRelayRequest_Call) RunAndReturn(run func(context.Context, db.InsertRelayRequestParams) error) *MockRelayerAPIQueries_InsertRelayRequest_Call {
 	_c.Call.Return(run)
 	return _c
 }

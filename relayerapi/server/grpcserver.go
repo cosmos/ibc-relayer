@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/cosmos/ibc-relayer/db/gen/db"
+	"github.com/cosmos/ibc-relayer/db/tx"
 	genrelayservice "github.com/cosmos/ibc-relayer/proto/gen/relayerapi"
 	"github.com/cosmos/ibc-relayer/relayer/ibcv2"
 	"github.com/cosmos/ibc-relayer/relayerapi/services/health"
@@ -41,7 +42,7 @@ func NewRelayerGRPCServer(ctx context.Context, pool *pgxpool.Pool, bridgeClientM
 		server,
 		relayerapi.NewRelayerAPIService(
 			ctx,
-			db.New(pool),
+			tx.New(db.New(pool), pool),
 			bridgeClientManager,
 		),
 	)
