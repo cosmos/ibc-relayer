@@ -1107,7 +1107,11 @@ func (*MockAcceptingBridgeClient) TxExecutionStatus(ctx context.Context, txHash 
 	return ibcv2bridge.TxExecutionStatus{Status: "SUCCESS"}, nil
 }
 
-func (*MockAcceptingBridgeClient) SendTransfer(ctx context.Context, clientID string, denom string, receiver string, amount *big.Int, memo string) (string, error) {
+func (*MockAcceptingBridgeClient) SendTransfer(ctx context.Context, ics20Address string, clientID string, denom string, receiver string, amount *big.Int, memo string, timeout time.Duration) (string, error) {
+	return "", nil
+}
+
+func (*MockAcceptingBridgeClient) IFTTransfer(ctx context.Context, iftAddress string, clientID string, receiver string, amount *big.Int, timeout time.Duration) (string, error) {
 	return "", nil
 }
 

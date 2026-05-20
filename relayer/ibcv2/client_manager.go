@@ -113,7 +113,6 @@ func NewClientManagerFromConfig(ctx context.Context, keys map[string]string, sig
 				ctx,
 				chainID,
 				chain.EVM.Contracts.ICS26RouterAddress,
-				chain.EVM.Contracts.ICS20TransferAddress,
 				client,
 				signer,
 				chain.EVM.GasFeeCapMultiplier,

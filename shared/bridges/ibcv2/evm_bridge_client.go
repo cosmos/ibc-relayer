@@ -26,6 +26,7 @@ import (
 	"github.com/cosmos/ibc-relayer/shared/contracts/erc20"
 	"github.com/cosmos/ibc-relayer/shared/contracts/ics20_transfer"
 	"github.com/cosmos/ibc-relayer/shared/contracts/ics26_router"
+	"github.com/cosmos/ibc-relayer/shared/contracts/ift"
 	"github.com/cosmos/ibc-relayer/shared/contracts/sp1_ics07_tendermint"
 	"github.com/cosmos/ibc-relayer/shared/lmt"
 	"github.com/cosmos/ibc-relayer/shared/metrics"
@@ -49,10 +50,8 @@ type EVMBridgeClient struct {
 	chainID string
 	client  EVMClient
 
-	ics26Router     *ics26_router.Contract
-	routerAddress   common.Address
-	ics20Transfer   *ics20_transfer.Contract
-	transferAddress common.Address
+	ics26Router   *ics26_router.Contract
+	routerAddress common.Address
 
 	signer             signing.Signer
 	signerAddress      common.Address
@@ -71,7 +70,6 @@ func NewEVMBridgeClient(
 	ctx context.Context,
 	chainID string,
 	ics26RouterContractAddress string,
-	ics20TransferContractAddress string,
 	client EVMClient,
 	signer signing.Signer,
 	gasFeeCapMultiplier *float64,
@@ -89,12 +87,6 @@ func NewEVMBridgeClient(
 		return nil, fmt.Errorf("creating contract binding for ics26 router at %s: %w", routerAddress, err)
 	}
 
-	transferAddress := common.HexToAddress(ics20TransferContractAddress)
-	ics20Transfer, err := ics20_transfer.NewContract(transferAddress, client)
-	if err != nil {
-		return nil, fmt.Errorf("creating contract binding for ics20 transfer at %s: %w", transferAddress, err)
-	}
-
 	signerAddressBytes := signer.Address(ctx)
 	if len(signerAddressBytes) != common.AddressLength {
 		return nil, fmt.Errorf("invalid signer address length: expected %d bytes, got %d bytes (failed to get address from remote signer)", common.AddressLength, len(signerAddressBytes))
@@ -105,8 +97,6 @@ func NewEVMBridgeClient(
 		client:              client,
 		ics26Router:         ics26Router,
 		routerAddress:       routerAddress,
-		ics20Transfer:       ics20Transfer,
-		transferAddress:     transferAddress,
 		signer:              signer,
 		signerAddress:       common.Address(signerAddressBytes),
 		txSubmissionLock:    new(sync.Mutex),
@@ -845,11 +835,13 @@ func (c *EVMBridgeClient) txSigner(ctx context.Context, hash common.Hash) (strin
 
 func (c *EVMBridgeClient) SendTransfer(
 	ctx context.Context,
+	ics20Address string,
 	clientID string,
 	denom string,
 	receiver string,
 	amount *big.Int,
 	memo string,
+	timeout time.Duration,
 ) (string, error) {
 	signerFn := signingevm.EthereumSignerToBindSignerFn(ctx, c.signer, c.chainID)
 	opts := &bind.TransactOpts{
@@ -858,20 +850,26 @@ func (c *EVMBridgeClient) SendTransfer(
 		Context: ctx,
 	}
 
+	transferAddress := common.HexToAddress(ics20Address)
+	ics20Contract, err := ics20_transfer.NewContract(transferAddress, c.client)
+	if err != nil {
+		return "", fmt.Errorf("creating ics20 transfer contract binding at %s: %w", transferAddress, err)
+	}
+
 	erc20Contract, err := erc20.NewContract(common.HexToAddress(denom), c.client)
 	if err != nil {
 		return "", fmt.Errorf("creating erc20 contract for denom %s: %w", denom, err)
 	}
 
-	currentApproval, err := erc20Contract.Allowance(nil, c.signerAddress, c.transferAddress)
+	currentApproval, err := erc20Contract.Allowance(nil, c.signerAddress, transferAddress)
 	if err != nil {
-		return "", fmt.Errorf("getting current allowance for ics20 transfer %s to spend %s from wallet %s: %w", c.transferAddress.String(), denom, c.signerAddress.String(), err)
+		return "", fmt.Errorf("getting current allowance for ics20 transfer %s to spend %s from wallet %s: %w", transferAddress.String(), denom, c.signerAddress.String(), err)
 	}
 
 	if currentApproval.Cmp(amount) < 0 {
-		tx, err := erc20Contract.Approve(opts, c.transferAddress, amount)
+		tx, err := erc20Contract.Approve(opts, transferAddress, amount)
 		if err != nil {
-			return "", fmt.Errorf("approving %s to be spent from wallet %s by ics20 transfer %s: %w", amount.String(), c.signerAddress.String(), c.transferAddress.String(), err)
+			return "", fmt.Errorf("approving %s to be spent from wallet %s by ics20 transfer %s: %w", amount.String(), c.signerAddress.String(), transferAddress.String(), err)
 		}
 		if err = c.WaitForTx(ctx, tx.Hash().String()); err != nil {
 			return "", fmt.Errorf("waiting for receipt of erc20 approval tx %s: %w", tx.Hash().String(), err)
@@ -879,7 +877,6 @@ func (c *EVMBridgeClient) SendTransfer(
 	}
 
 	transferPort := "transfer"
-	timeout := time.Hour * 12
 	msg := ics20_transfer.IICS20TransferMsgsSendTransferMsg{
 		Denom:            common.HexToAddress(denom),
 		Amount:           amount,
@@ -889,13 +886,45 @@ func (c *EVMBridgeClient) SendTransfer(
 		TimeoutTimestamp: uint64(time.Now().Add(timeout).UTC().Unix()), //nolint:gosec // G115 bounded conversion
 		Memo:             memo,
 	}
-	tx, err := c.ics20Transfer.SendTransfer(opts, msg)
+	tx, err := ics20Contract.SendTransfer(opts, msg)
 	if err != nil {
 		return "", fmt.Errorf("sending transfer from %s of %s %s to %s from client %s: %w", c.signerAddress, amount, denom, receiver, clientID, err)
 	}
 
 	if err = c.WaitForTx(ctx, tx.Hash().String()); err != nil {
 		return "", fmt.Errorf("waiting for receipt of send transfer tx %s: %w", tx.Hash().String(), err)
+	}
+	return tx.Hash().String(), nil
+}
+
+func (c *EVMBridgeClient) IFTTransfer(
+	ctx context.Context,
+	iftAddress string,
+	clientID string,
+	receiver string,
+	amount *big.Int,
+	timeout time.Duration,
+) (string, error) {
+	signerFn := signingevm.EthereumSignerToBindSignerFn(ctx, c.signer, c.chainID)
+	opts := &bind.TransactOpts{
+		From:    c.signerAddress,
+		Signer:  signerFn,
+		Context: ctx,
+	}
+
+	iftContract, err := ift.NewContract(common.HexToAddress(iftAddress), c.client)
+	if err != nil {
+		return "", fmt.Errorf("creating ift contract binding at %s: %w", iftAddress, err)
+	}
+
+	timeoutTimestamp := uint64(time.Now().Add(timeout).UTC().Unix()) //nolint:gosec // G115 bounded conversion
+	tx, err := iftContract.IftTransfer(opts, clientID, receiver, amount, timeoutTimestamp)
+	if err != nil {
+		return "", fmt.Errorf("sending ift transfer from %s of %s to %s from client %s: %w", c.signerAddress, amount, receiver, clientID, err)
+	}
+
+	if err = c.WaitForTx(ctx, tx.Hash().String()); err != nil {
+		return "", fmt.Errorf("waiting for receipt of ift transfer tx %s: %w", tx.Hash().String(), err)
 	}
 	return tx.Hash().String(), nil
 }

@@ -8,7 +8,6 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/cosmos/ibc-relayer/shared/config"
 	"github.com/cosmos/ibc-relayer/shared/lmt"
 )
 
@@ -22,15 +21,19 @@ func main() {
 	ctx = lmt.LoggerContext(ctx)
 
 	if len(flag.Args()) < 1 {
-		lmt.Logger(ctx).Fatal("too few arguments, expected 'transfer bridge_type'")
+		lmt.Logger(ctx).Fatal("too few arguments, expected 'transfer transfer_type' (ics20 or ift)")
 	}
-	bridge := flag.Arg(0)
-	switch bridge {
-	case string(config.BridgeTypeIBCV2):
-		if err := ibcv2Transfer(ctx); err != nil {
-			lmt.Logger(ctx).Error("error sending ibcv2 transfer", zap.Error(err))
+	transferType := flag.Arg(0)
+	switch transferType {
+	case "ics20":
+		if err := ics20Transfer(ctx); err != nil {
+			lmt.Logger(ctx).Fatal("error sending ics20 transfer", zap.Error(err))
+		}
+	case "ift":
+		if err := iftTransfer(ctx); err != nil {
+			lmt.Logger(ctx).Fatal("error sending ift transfer", zap.Error(err))
 		}
 	default:
-		lmt.Logger(ctx).Error("unexpected bridge type", zap.String("got", bridge), zap.Any("expected", []string{string(config.BridgeTypeIBCV2)}))
+		lmt.Logger(ctx).Fatal("unexpected transfer type", zap.String("got", transferType), zap.Any("expected", []string{"ics20", "ift"}))
 	}
 }
