@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/cosmos/ibc-relayer/proto/gen/relayerapi"
 	"github.com/cosmos/ibc-relayer/shared/lmt"
@@ -33,6 +34,12 @@ var relayerGRPCURL = flag.String(
 	"url of the grpc endpoint for the relayer to relay this transfer",
 )
 
+var insecureDial = flag.Bool(
+	"insecure",
+	false,
+	"dial the relayer gRPC endpoint over plaintext",
+)
+
 func main() {
 	flag.Parse()
 
@@ -46,12 +53,16 @@ func main() {
 		lmt.Logger(ctx).Fatal("source-chain-id, tx-hash, and relayer-grpc-url are required")
 	}
 
-	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+	var creds credentials.TransportCredentials
+	if *insecureDial {
+		creds = insecure.NewCredentials()
+	} else {
+		creds = credentials.NewTLS(&tls.Config{
 			InsecureSkipVerify: true, //nolint:gosec // CLI tool; user-supplied endpoint
 			MinVersion:         tls.VersionTLS13,
-		})),
+		})
 	}
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 	conn, err := grpc.NewClient(*relayerGRPCURL, opts...)
 	if err != nil {
 		lmt.Logger(ctx).Fatal("creating grpc connection to relayer", zap.String("relayer_grpc_url", *relayerGRPCURL), zap.Error(err))

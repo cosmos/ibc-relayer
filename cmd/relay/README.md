@@ -16,6 +16,7 @@ Supported flags:
 - `--source-chain-id` required
 - `--tx-hash` required
 - `--relayer-grpc-url` required, the gRPC endpoint of a running relayer
+- `--insecure` optional, dial over plaintext
 
 Example:
 

@@ -12,35 +12,70 @@ This builds `bin/transfer`.
 
 ## Usage
 
-The `ibcv2` subcommand sends a transfer and then submits the resulting tx hash to the relayer API.
+Two transfer types are supported, both over IBC v2:
 
-The bridge type is a positional argument parsed after `flag.Parse()`, so it must come after all flags. Use `transfer [flags] ibcv2`, not `transfer ibcv2 [flags]`.
+- `ics20` — ERC20-denominated ICS20 transfers (EVM source, EVM or Cosmos dest)
+- `ift` — IFT (interchain fungible token) transfers (EVM source, EVM or Cosmos dest)
 
-Required flags:
+The transfer type is a positional argument parsed after `flag.Parse()`, so it must come after all flags. Use `transfer [flags] <ics20|ift>`, not `transfer <ics20|ift> [flags]`.
+
+### Common flags
+
+Required:
 - `--source-chain-id`
 - `--dest-chain-id`
 - `--source-client-id`
-- `--receiver`
-- `--denom`
+- `--receiver` — bech32 for Cosmos dest, hex address for EVM dest
 - `--private-key`
 - `--relayer-grpc-url`
 
-Optional flags:
+Optional:
 - `--amount` defaults to `1`
-- `--memo` defaults to empty string
+- `--timeout` packet timeout duration on the destination chain, defaults to `12h`
 - `--config` defaults to `./config/local/config.yml`
+- `--insecure` dial the relayer over plaintext
 
-Example:
+### ics20-only flags
+
+- `--ics20-address` — ICS20Transfer contract address on the source chain (required)
+- `--denom` — ERC20 contract address on the source chain (required)
+- `--memo` — optional memo string
+
+### ift-only flags
+
+- `--ift-address` — IFT token contract address on the source chain (required)
+
+### Examples
+
+ICS20 from eth-sepolia to wfchain:
 
 ```bash
 ./bin/transfer \
-  --source-chain-id 1 \
-  --dest-chain-id cosmoshub-4 \
-  --source-client-id cosmoshub-0 \
-  --receiver cosmos1vu55xd53m64932dzqffz29wekmrsr7tt77j2vv \
-  --denom 0xbf6Bc6782f7EB580312CC09B976e9329f3e027B3 \
+  --source-chain-id 11155111 \
+  --dest-chain-id wfchain-1 \
+  --source-client-id wfchain-2 \
+  --ics20-address 0xb143eC94eA375D78773F26F1C3fA8A4354Fa6E13 \
+  --denom 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238 \
+  --receiver wf13q4m2jw293d7t8uvn6hhgsnnta427ychrqh6hx \
   --amount 1 \
   --private-key <hex-private-key> \
-  --relayer-grpc-url relayer.example.com:443 \
-  ibcv2
+  --relayer-grpc-url localhost:9000 \
+  --insecure \
+  ics20
+```
+
+IFT from eth-sepolia to base-sepolia:
+
+```bash
+./bin/transfer \
+  --source-chain-id 11155111 \
+  --dest-chain-id 84532 \
+  --source-client-id base-attestations-1 \
+  --ift-address 0xA5D1b01b31474C653Ef1A03F258F0607CD938a5d \
+  --receiver 0x810587fad19A9EF79AA661C0F7C49c92A3A2eFE4 \
+  --amount 1 \
+  --private-key <hex-private-key> \
+  --relayer-grpc-url localhost:9000 \
+  --insecure \
+  ift
 ```

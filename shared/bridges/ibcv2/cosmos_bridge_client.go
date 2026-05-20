@@ -937,11 +937,24 @@ func (c *CosmosBridgeClient) txSigner(result *coretypes.ResultTx) (string, error
 
 func (*CosmosBridgeClient) SendTransfer(
 	ctx context.Context,
+	ics20Address string,
 	clientID string,
 	denom string,
 	receiver string,
 	amount *big.Int,
 	memo string,
+	timeout time.Duration,
+) (string, error) {
+	panic("unimplemented")
+}
+
+func (*CosmosBridgeClient) IFTTransfer(
+	ctx context.Context,
+	iftAddress string,
+	clientID string,
+	receiver string,
+	amount *big.Int,
+	timeout time.Duration,
 ) (string, error) {
 	panic("unimplemented")
 }

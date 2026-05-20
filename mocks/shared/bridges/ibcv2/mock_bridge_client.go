@@ -433,6 +433,67 @@ func (_c *MockBridgeClient_GetTransactionSender_Call) RunAndReturn(run func(cont
 	return _c
 }
 
+// IFTTransfer provides a mock function with given fields: ctx, iftAddress, clientID, receiver, amount, timeout
+func (_m *MockBridgeClient) IFTTransfer(ctx context.Context, iftAddress string, clientID string, receiver string, amount *big.Int, timeout time.Duration) (string, error) {
+	ret := _m.Called(ctx, iftAddress, clientID, receiver, amount, timeout)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IFTTransfer")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, *big.Int, time.Duration) (string, error)); ok {
+		return rf(ctx, iftAddress, clientID, receiver, amount, timeout)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, *big.Int, time.Duration) string); ok {
+		r0 = rf(ctx, iftAddress, clientID, receiver, amount, timeout)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, *big.Int, time.Duration) error); ok {
+		r1 = rf(ctx, iftAddress, clientID, receiver, amount, timeout)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockBridgeClient_IFTTransfer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IFTTransfer'
+type MockBridgeClient_IFTTransfer_Call struct {
+	*mock.Call
+}
+
+// IFTTransfer is a helper method to define mock.On call
+//   - ctx context.Context
+//   - iftAddress string
+//   - clientID string
+//   - receiver string
+//   - amount *big.Int
+//   - timeout time.Duration
+func (_e *MockBridgeClient_Expecter) IFTTransfer(ctx interface{}, iftAddress interface{}, clientID interface{}, receiver interface{}, amount interface{}, timeout interface{}) *MockBridgeClient_IFTTransfer_Call {
+	return &MockBridgeClient_IFTTransfer_Call{Call: _e.mock.On("IFTTransfer", ctx, iftAddress, clientID, receiver, amount, timeout)}
+}
+
+func (_c *MockBridgeClient_IFTTransfer_Call) Run(run func(ctx context.Context, iftAddress string, clientID string, receiver string, amount *big.Int, timeout time.Duration)) *MockBridgeClient_IFTTransfer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(*big.Int), args[5].(time.Duration))
+	})
+	return _c
+}
+
+func (_c *MockBridgeClient_IFTTransfer_Call) Return(_a0 string, _a1 error) *MockBridgeClient_IFTTransfer_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockBridgeClient_IFTTransfer_Call) RunAndReturn(run func(context.Context, string, string, string, *big.Int, time.Duration) (string, error)) *MockBridgeClient_IFTTransfer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsPacketCommitted provides a mock function with given fields: ctx, clientID, sequence
 func (_m *MockBridgeClient) IsPacketCommitted(ctx context.Context, clientID string, sequence uint64) (bool, error) {
 	ret := _m.Called(ctx, clientID, sequence)
@@ -841,9 +902,9 @@ func (_c *MockBridgeClient_SendPacketsFromTx_Call) RunAndReturn(run func(context
 	return _c
 }
 
-// SendTransfer provides a mock function with given fields: ctx, clientID, denom, receiver, amount, memo
-func (_m *MockBridgeClient) SendTransfer(ctx context.Context, clientID string, denom string, receiver string, amount *big.Int, memo string) (string, error) {
-	ret := _m.Called(ctx, clientID, denom, receiver, amount, memo)
+// SendTransfer provides a mock function with given fields: ctx, ics20Address, clientID, denom, receiver, amount, memo, timeout
+func (_m *MockBridgeClient) SendTransfer(ctx context.Context, ics20Address string, clientID string, denom string, receiver string, amount *big.Int, memo string, timeout time.Duration) (string, error) {
+	ret := _m.Called(ctx, ics20Address, clientID, denom, receiver, amount, memo, timeout)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SendTransfer")
@@ -851,17 +912,17 @@ func (_m *MockBridgeClient) SendTransfer(ctx context.Context, clientID string, d
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, *big.Int, string) (string, error)); ok {
-		return rf(ctx, clientID, denom, receiver, amount, memo)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, *big.Int, string, time.Duration) (string, error)); ok {
+		return rf(ctx, ics20Address, clientID, denom, receiver, amount, memo, timeout)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, *big.Int, string) string); ok {
-		r0 = rf(ctx, clientID, denom, receiver, amount, memo)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string, *big.Int, string, time.Duration) string); ok {
+		r0 = rf(ctx, ics20Address, clientID, denom, receiver, amount, memo, timeout)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, *big.Int, string) error); ok {
-		r1 = rf(ctx, clientID, denom, receiver, amount, memo)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, string, *big.Int, string, time.Duration) error); ok {
+		r1 = rf(ctx, ics20Address, clientID, denom, receiver, amount, memo, timeout)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -876,18 +937,20 @@ type MockBridgeClient_SendTransfer_Call struct {
 
 // SendTransfer is a helper method to define mock.On call
 //   - ctx context.Context
+//   - ics20Address string
 //   - clientID string
 //   - denom string
 //   - receiver string
 //   - amount *big.Int
 //   - memo string
-func (_e *MockBridgeClient_Expecter) SendTransfer(ctx interface{}, clientID interface{}, denom interface{}, receiver interface{}, amount interface{}, memo interface{}) *MockBridgeClient_SendTransfer_Call {
-	return &MockBridgeClient_SendTransfer_Call{Call: _e.mock.On("SendTransfer", ctx, clientID, denom, receiver, amount, memo)}
+//   - timeout time.Duration
+func (_e *MockBridgeClient_Expecter) SendTransfer(ctx interface{}, ics20Address interface{}, clientID interface{}, denom interface{}, receiver interface{}, amount interface{}, memo interface{}, timeout interface{}) *MockBridgeClient_SendTransfer_Call {
+	return &MockBridgeClient_SendTransfer_Call{Call: _e.mock.On("SendTransfer", ctx, ics20Address, clientID, denom, receiver, amount, memo, timeout)}
 }
 
-func (_c *MockBridgeClient_SendTransfer_Call) Run(run func(ctx context.Context, clientID string, denom string, receiver string, amount *big.Int, memo string)) *MockBridgeClient_SendTransfer_Call {
+func (_c *MockBridgeClient_SendTransfer_Call) Run(run func(ctx context.Context, ics20Address string, clientID string, denom string, receiver string, amount *big.Int, memo string, timeout time.Duration)) *MockBridgeClient_SendTransfer_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(*big.Int), args[5].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(string), args[5].(*big.Int), args[6].(string), args[7].(time.Duration))
 	})
 	return _c
 }
@@ -897,7 +960,7 @@ func (_c *MockBridgeClient_SendTransfer_Call) Return(_a0 string, _a1 error) *Moc
 	return _c
 }
 
-func (_c *MockBridgeClient_SendTransfer_Call) RunAndReturn(run func(context.Context, string, string, string, *big.Int, string) (string, error)) *MockBridgeClient_SendTransfer_Call {
+func (_c *MockBridgeClient_SendTransfer_Call) RunAndReturn(run func(context.Context, string, string, string, string, *big.Int, string, time.Duration) (string, error)) *MockBridgeClient_SendTransfer_Call {
 	_c.Call.Return(run)
 	return _c
 }

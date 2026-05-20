@@ -105,7 +105,8 @@ type BridgeClient interface {
 	TxFee(ctx context.Context, txHash string) (*big.Int, error)
 	TxExecutionStatus(ctx context.Context, txHash string) (TxExecutionStatus, error)
 
-	SendTransfer(ctx context.Context, clientID string, denom string, receiver string, amount *big.Int, memo string) (string, error)
+	SendTransfer(ctx context.Context, ics20Address string, clientID string, denom string, receiver string, amount *big.Int, memo string, timeout time.Duration) (string, error)
+	IFTTransfer(ctx context.Context, iftAddress string, clientID string, receiver string, amount *big.Int, timeout time.Duration) (string, error)
 
 	ClientState(ctx context.Context, clientID string) (ClientState, error)
 
