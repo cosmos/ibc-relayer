@@ -19,10 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SignerService_GetChains_FullMethodName  = "/signerservice.SignerService/GetChains"
-	SignerService_GetWallet_FullMethodName  = "/signerservice.SignerService/GetWallet"
-	SignerService_GetWallets_FullMethodName = "/signerservice.SignerService/GetWallets"
-	SignerService_Sign_FullMethodName       = "/signerservice.SignerService/Sign"
+	SignerService_GetWallet_FullMethodName = "/signerservice.SignerService/GetWallet"
+	SignerService_Sign_FullMethodName      = "/signerservice.SignerService/Sign"
 )
 
 // SignerServiceClient is the client API for SignerService service.
@@ -31,13 +29,9 @@ const (
 //
 // SignerService provides transaction signing capabilities for multiple blockchain ecosystems.
 type SignerServiceClient interface {
-	// GetChains returns the list of chains the signer supports.
-	GetChains(ctx context.Context, in *GetChainsRequest, opts ...grpc.CallOption) (*GetChainsResponse, error)
 	// GetWallet retrieves a wallet by its ID and returns the public key in the
 	// format specified by pubkey_type.
 	GetWallet(ctx context.Context, in *GetWalletRequest, opts ...grpc.CallOption) (*GetWalletResponse, error)
-	// GetWallets returns all available wallets.
-	GetWallets(ctx context.Context, in *GetWalletsRequest, opts ...grpc.CallOption) (*GetWalletsResponse, error)
 	// Sign signs a transaction and returns the signature in the appropriate format.
 	Sign(ctx context.Context, in *SignRequest, opts ...grpc.CallOption) (*SignResponse, error)
 }
@@ -50,30 +44,10 @@ func NewSignerServiceClient(cc grpc.ClientConnInterface) SignerServiceClient {
 	return &signerServiceClient{cc}
 }
 
-func (c *signerServiceClient) GetChains(ctx context.Context, in *GetChainsRequest, opts ...grpc.CallOption) (*GetChainsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetChainsResponse)
-	err := c.cc.Invoke(ctx, SignerService_GetChains_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *signerServiceClient) GetWallet(ctx context.Context, in *GetWalletRequest, opts ...grpc.CallOption) (*GetWalletResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetWalletResponse)
 	err := c.cc.Invoke(ctx, SignerService_GetWallet_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *signerServiceClient) GetWallets(ctx context.Context, in *GetWalletsRequest, opts ...grpc.CallOption) (*GetWalletsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetWalletsResponse)
-	err := c.cc.Invoke(ctx, SignerService_GetWallets_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -96,13 +70,9 @@ func (c *signerServiceClient) Sign(ctx context.Context, in *SignRequest, opts ..
 //
 // SignerService provides transaction signing capabilities for multiple blockchain ecosystems.
 type SignerServiceServer interface {
-	// GetChains returns the list of chains the signer supports.
-	GetChains(context.Context, *GetChainsRequest) (*GetChainsResponse, error)
 	// GetWallet retrieves a wallet by its ID and returns the public key in the
 	// format specified by pubkey_type.
 	GetWallet(context.Context, *GetWalletRequest) (*GetWalletResponse, error)
-	// GetWallets returns all available wallets.
-	GetWallets(context.Context, *GetWalletsRequest) (*GetWalletsResponse, error)
 	// Sign signs a transaction and returns the signature in the appropriate format.
 	Sign(context.Context, *SignRequest) (*SignResponse, error)
 	mustEmbedUnimplementedSignerServiceServer()
@@ -115,14 +85,8 @@ type SignerServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedSignerServiceServer struct{}
 
-func (UnimplementedSignerServiceServer) GetChains(context.Context, *GetChainsRequest) (*GetChainsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetChains not implemented")
-}
 func (UnimplementedSignerServiceServer) GetWallet(context.Context, *GetWalletRequest) (*GetWalletResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetWallet not implemented")
-}
-func (UnimplementedSignerServiceServer) GetWallets(context.Context, *GetWalletsRequest) (*GetWalletsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetWallets not implemented")
 }
 func (UnimplementedSignerServiceServer) Sign(context.Context, *SignRequest) (*SignResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Sign not implemented")
@@ -148,24 +112,6 @@ func RegisterSignerServiceServer(s grpc.ServiceRegistrar, srv SignerServiceServe
 	s.RegisterService(&SignerService_ServiceDesc, srv)
 }
 
-func _SignerService_GetChains_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetChainsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SignerServiceServer).GetChains(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SignerService_GetChains_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SignerServiceServer).GetChains(ctx, req.(*GetChainsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _SignerService_GetWallet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetWalletRequest)
 	if err := dec(in); err != nil {
@@ -180,24 +126,6 @@ func _SignerService_GetWallet_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(SignerServiceServer).GetWallet(ctx, req.(*GetWalletRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SignerService_GetWallets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetWalletsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SignerServiceServer).GetWallets(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SignerService_GetWallets_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SignerServiceServer).GetWallets(ctx, req.(*GetWalletsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -228,16 +156,8 @@ var SignerService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*SignerServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetChains",
-			Handler:    _SignerService_GetChains_Handler,
-		},
-		{
 			MethodName: "GetWallet",
 			Handler:    _SignerService_GetWallet_Handler,
-		},
-		{
-			MethodName: "GetWallets",
-			Handler:    _SignerService_GetWallets_Handler,
 		},
 		{
 			MethodName: "Sign",

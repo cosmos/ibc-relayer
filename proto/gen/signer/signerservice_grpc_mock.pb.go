@@ -58,25 +58,11 @@ func (m *SignerServiceServiceMock) Stop() {
 	m.server.Stop()
 }
 
-const GetChains = "GetChains"
-
-func (m *SignerServiceServiceMock) GetChains(ctx context.Context, in *GetChainsRequest) (*GetChainsResponse, error) {
-	args := m.Called(ctx, in)
-	return args.Get(0).(*GetChainsResponse), args.Error(1)
-}
-
 const GetWallet = "GetWallet"
 
 func (m *SignerServiceServiceMock) GetWallet(ctx context.Context, in *GetWalletRequest) (*GetWalletResponse, error) {
 	args := m.Called(ctx, in)
 	return args.Get(0).(*GetWalletResponse), args.Error(1)
-}
-
-const GetWallets = "GetWallets"
-
-func (m *SignerServiceServiceMock) GetWallets(ctx context.Context, in *GetWalletsRequest) (*GetWalletsResponse, error) {
-	args := m.Called(ctx, in)
-	return args.Get(0).(*GetWalletsResponse), args.Error(1)
 }
 
 const Sign = "Sign"

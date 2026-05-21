@@ -78,138 +78,6 @@ func (PubKeyType) EnumDescriptor() ([]byte, []int) {
 	return file_signer_signerservice_proto_rawDescGZIP(), []int{0}
 }
 
-type Chain struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	ChainId       string                 `protobuf:"bytes,2,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Chain) Reset() {
-	*x = Chain{}
-	mi := &file_signer_signerservice_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Chain) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Chain) ProtoMessage() {}
-
-func (x *Chain) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Chain.ProtoReflect.Descriptor instead.
-func (*Chain) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *Chain) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *Chain) GetChainId() string {
-	if x != nil {
-		return x.ChainId
-	}
-	return ""
-}
-
-type GetChainsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetChainsRequest) Reset() {
-	*x = GetChainsRequest{}
-	mi := &file_signer_signerservice_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetChainsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetChainsRequest) ProtoMessage() {}
-
-func (x *GetChainsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetChainsRequest.ProtoReflect.Descriptor instead.
-func (*GetChainsRequest) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{1}
-}
-
-type GetChainsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Chains        []*Chain               `protobuf:"bytes,1,rep,name=chains,proto3" json:"chains,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetChainsResponse) Reset() {
-	*x = GetChainsResponse{}
-	mi := &file_signer_signerservice_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetChainsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetChainsResponse) ProtoMessage() {}
-
-func (x *GetChainsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetChainsResponse.ProtoReflect.Descriptor instead.
-func (*GetChainsResponse) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *GetChainsResponse) GetChains() []*Chain {
-	if x != nil {
-		return x.Chains
-	}
-	return nil
-}
-
 type Wallet struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -226,7 +94,7 @@ type Wallet struct {
 
 func (x *Wallet) Reset() {
 	*x = Wallet{}
-	mi := &file_signer_signerservice_proto_msgTypes[3]
+	mi := &file_signer_signerservice_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -238,7 +106,7 @@ func (x *Wallet) String() string {
 func (*Wallet) ProtoMessage() {}
 
 func (x *Wallet) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[3]
+	mi := &file_signer_signerservice_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -251,7 +119,7 @@ func (x *Wallet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Wallet.ProtoReflect.Descriptor instead.
 func (*Wallet) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{3}
+	return file_signer_signerservice_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Wallet) GetId() string {
@@ -306,7 +174,7 @@ type GetWalletRequest struct {
 
 func (x *GetWalletRequest) Reset() {
 	*x = GetWalletRequest{}
-	mi := &file_signer_signerservice_proto_msgTypes[4]
+	mi := &file_signer_signerservice_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -318,7 +186,7 @@ func (x *GetWalletRequest) String() string {
 func (*GetWalletRequest) ProtoMessage() {}
 
 func (x *GetWalletRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[4]
+	mi := &file_signer_signerservice_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -331,7 +199,7 @@ func (x *GetWalletRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWalletRequest.ProtoReflect.Descriptor instead.
 func (*GetWalletRequest) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{4}
+	return file_signer_signerservice_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GetWalletRequest) GetId() string {
@@ -357,7 +225,7 @@ type GetWalletResponse struct {
 
 func (x *GetWalletResponse) Reset() {
 	*x = GetWalletResponse{}
-	mi := &file_signer_signerservice_proto_msgTypes[5]
+	mi := &file_signer_signerservice_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -369,7 +237,7 @@ func (x *GetWalletResponse) String() string {
 func (*GetWalletResponse) ProtoMessage() {}
 
 func (x *GetWalletResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[5]
+	mi := &file_signer_signerservice_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -382,92 +250,12 @@ func (x *GetWalletResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWalletResponse.ProtoReflect.Descriptor instead.
 func (*GetWalletResponse) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{5}
+	return file_signer_signerservice_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GetWalletResponse) GetWallet() *Wallet {
 	if x != nil {
 		return x.Wallet
-	}
-	return nil
-}
-
-type GetWalletsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetWalletsRequest) Reset() {
-	*x = GetWalletsRequest{}
-	mi := &file_signer_signerservice_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetWalletsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetWalletsRequest) ProtoMessage() {}
-
-func (x *GetWalletsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetWalletsRequest.ProtoReflect.Descriptor instead.
-func (*GetWalletsRequest) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{6}
-}
-
-type GetWalletsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Wallets       []*Wallet              `protobuf:"bytes,1,rep,name=wallets,proto3" json:"wallets,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetWalletsResponse) Reset() {
-	*x = GetWalletsResponse{}
-	mi := &file_signer_signerservice_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetWalletsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetWalletsResponse) ProtoMessage() {}
-
-func (x *GetWalletsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetWalletsResponse.ProtoReflect.Descriptor instead.
-func (*GetWalletsResponse) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *GetWalletsResponse) GetWallets() []*Wallet {
-	if x != nil {
-		return x.Wallets
 	}
 	return nil
 }
@@ -490,7 +278,7 @@ type SignRequest struct {
 
 func (x *SignRequest) Reset() {
 	*x = SignRequest{}
-	mi := &file_signer_signerservice_proto_msgTypes[8]
+	mi := &file_signer_signerservice_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -502,7 +290,7 @@ func (x *SignRequest) String() string {
 func (*SignRequest) ProtoMessage() {}
 
 func (x *SignRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[8]
+	mi := &file_signer_signerservice_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -515,7 +303,7 @@ func (x *SignRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SignRequest.ProtoReflect.Descriptor instead.
 func (*SignRequest) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{8}
+	return file_signer_signerservice_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SignRequest) GetWalletId() string {
@@ -612,7 +400,7 @@ type SignResponse struct {
 
 func (x *SignResponse) Reset() {
 	*x = SignResponse{}
-	mi := &file_signer_signerservice_proto_msgTypes[9]
+	mi := &file_signer_signerservice_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -624,7 +412,7 @@ func (x *SignResponse) String() string {
 func (*SignResponse) ProtoMessage() {}
 
 func (x *SignResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[9]
+	mi := &file_signer_signerservice_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -637,7 +425,7 @@ func (x *SignResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SignResponse.ProtoReflect.Descriptor instead.
 func (*SignResponse) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{9}
+	return file_signer_signerservice_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SignResponse) GetSignature() isSignResponse_Signature {
@@ -726,7 +514,7 @@ type EvmTransaction struct {
 
 func (x *EvmTransaction) Reset() {
 	*x = EvmTransaction{}
-	mi := &file_signer_signerservice_proto_msgTypes[10]
+	mi := &file_signer_signerservice_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -738,7 +526,7 @@ func (x *EvmTransaction) String() string {
 func (*EvmTransaction) ProtoMessage() {}
 
 func (x *EvmTransaction) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[10]
+	mi := &file_signer_signerservice_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -751,7 +539,7 @@ func (x *EvmTransaction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvmTransaction.ProtoReflect.Descriptor instead.
 func (*EvmTransaction) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{10}
+	return file_signer_signerservice_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *EvmTransaction) GetChainId() string {
@@ -783,7 +571,7 @@ type EvmTransactionSignature struct {
 
 func (x *EvmTransactionSignature) Reset() {
 	*x = EvmTransactionSignature{}
-	mi := &file_signer_signerservice_proto_msgTypes[11]
+	mi := &file_signer_signerservice_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -795,7 +583,7 @@ func (x *EvmTransactionSignature) String() string {
 func (*EvmTransactionSignature) ProtoMessage() {}
 
 func (x *EvmTransactionSignature) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[11]
+	mi := &file_signer_signerservice_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -808,7 +596,7 @@ func (x *EvmTransactionSignature) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvmTransactionSignature.ProtoReflect.Descriptor instead.
 func (*EvmTransactionSignature) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{11}
+	return file_signer_signerservice_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *EvmTransactionSignature) GetR() []byte {
@@ -845,7 +633,7 @@ type CosmosTransaction struct {
 
 func (x *CosmosTransaction) Reset() {
 	*x = CosmosTransaction{}
-	mi := &file_signer_signerservice_proto_msgTypes[12]
+	mi := &file_signer_signerservice_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -857,7 +645,7 @@ func (x *CosmosTransaction) String() string {
 func (*CosmosTransaction) ProtoMessage() {}
 
 func (x *CosmosTransaction) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[12]
+	mi := &file_signer_signerservice_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -870,7 +658,7 @@ func (x *CosmosTransaction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CosmosTransaction.ProtoReflect.Descriptor instead.
 func (*CosmosTransaction) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{12}
+	return file_signer_signerservice_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CosmosTransaction) GetSignDocBytes() []byte {
@@ -891,7 +679,7 @@ type CosmosTransactionSignature struct {
 
 func (x *CosmosTransactionSignature) Reset() {
 	*x = CosmosTransactionSignature{}
-	mi := &file_signer_signerservice_proto_msgTypes[13]
+	mi := &file_signer_signerservice_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -903,7 +691,7 @@ func (x *CosmosTransactionSignature) String() string {
 func (*CosmosTransactionSignature) ProtoMessage() {}
 
 func (x *CosmosTransactionSignature) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[13]
+	mi := &file_signer_signerservice_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -916,7 +704,7 @@ func (x *CosmosTransactionSignature) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CosmosTransactionSignature.ProtoReflect.Descriptor instead.
 func (*CosmosTransactionSignature) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{13}
+	return file_signer_signerservice_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CosmosTransactionSignature) GetSignature() []byte {
@@ -936,7 +724,7 @@ type RawMessage struct {
 
 func (x *RawMessage) Reset() {
 	*x = RawMessage{}
-	mi := &file_signer_signerservice_proto_msgTypes[14]
+	mi := &file_signer_signerservice_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -948,7 +736,7 @@ func (x *RawMessage) String() string {
 func (*RawMessage) ProtoMessage() {}
 
 func (x *RawMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[14]
+	mi := &file_signer_signerservice_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -961,7 +749,7 @@ func (x *RawMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RawMessage.ProtoReflect.Descriptor instead.
 func (*RawMessage) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{14}
+	return file_signer_signerservice_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *RawMessage) GetMessage() []byte {
@@ -981,7 +769,7 @@ type RawMessageSignature struct {
 
 func (x *RawMessageSignature) Reset() {
 	*x = RawMessageSignature{}
-	mi := &file_signer_signerservice_proto_msgTypes[15]
+	mi := &file_signer_signerservice_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -993,7 +781,7 @@ func (x *RawMessageSignature) String() string {
 func (*RawMessageSignature) ProtoMessage() {}
 
 func (x *RawMessageSignature) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[15]
+	mi := &file_signer_signerservice_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1006,7 +794,7 @@ func (x *RawMessageSignature) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RawMessageSignature.ProtoReflect.Descriptor instead.
 func (*RawMessageSignature) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{15}
+	return file_signer_signerservice_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *RawMessageSignature) GetSignature() []byte {
@@ -1029,7 +817,7 @@ type SolanaTransaction struct {
 
 func (x *SolanaTransaction) Reset() {
 	*x = SolanaTransaction{}
-	mi := &file_signer_signerservice_proto_msgTypes[16]
+	mi := &file_signer_signerservice_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1041,7 +829,7 @@ func (x *SolanaTransaction) String() string {
 func (*SolanaTransaction) ProtoMessage() {}
 
 func (x *SolanaTransaction) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[16]
+	mi := &file_signer_signerservice_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1054,7 +842,7 @@ func (x *SolanaTransaction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SolanaTransaction.ProtoReflect.Descriptor instead.
 func (*SolanaTransaction) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{16}
+	return file_signer_signerservice_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SolanaTransaction) GetTransaction() string {
@@ -1075,7 +863,7 @@ type SolanaTransactionSignature struct {
 
 func (x *SolanaTransactionSignature) Reset() {
 	*x = SolanaTransactionSignature{}
-	mi := &file_signer_signerservice_proto_msgTypes[17]
+	mi := &file_signer_signerservice_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1087,7 +875,7 @@ func (x *SolanaTransactionSignature) String() string {
 func (*SolanaTransactionSignature) ProtoMessage() {}
 
 func (x *SolanaTransactionSignature) ProtoReflect() protoreflect.Message {
-	mi := &file_signer_signerservice_proto_msgTypes[17]
+	mi := &file_signer_signerservice_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1100,7 +888,7 @@ func (x *SolanaTransactionSignature) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SolanaTransactionSignature.ProtoReflect.Descriptor instead.
 func (*SolanaTransactionSignature) Descriptor() ([]byte, []int) {
-	return file_signer_signerservice_proto_rawDescGZIP(), []int{17}
+	return file_signer_signerservice_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SolanaTransactionSignature) GetSignature() []byte {
@@ -1114,13 +902,7 @@ var File_signer_signerservice_proto protoreflect.FileDescriptor
 
 const file_signer_signerservice_proto_rawDesc = "" +
 	"\n" +
-	"\x1asigner/signerservice.proto\x12\rsignerservice\"6\n" +
-	"\x05Chain\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x19\n" +
-	"\bchain_id\x18\x02 \x01(\tR\achainId\"\x12\n" +
-	"\x10GetChainsRequest\"A\n" +
-	"\x11GetChainsResponse\x12,\n" +
-	"\x06chains\x18\x01 \x03(\v2\x14.signerservice.ChainR\x06chains\"\xaa\x01\n" +
+	"\x1asigner/signerservice.proto\x12\rsignerservice\"\xaa\x01\n" +
 	"\x06Wallet\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -1133,10 +915,7 @@ const file_signer_signerservice_proto_rawDesc = "" +
 	"\vpubkey_type\x18\x02 \x01(\x0e2\x19.signerservice.PubKeyTypeR\n" +
 	"pubkeyType\"B\n" +
 	"\x11GetWalletResponse\x12-\n" +
-	"\x06wallet\x18\x01 \x01(\v2\x15.signerservice.WalletR\x06wallet\"\x13\n" +
-	"\x11GetWalletsRequest\"E\n" +
-	"\x12GetWalletsResponse\x12/\n" +
-	"\awallets\x18\x01 \x03(\v2\x15.signerservice.WalletR\awallets\"\xe3\x02\n" +
+	"\x06wallet\x18\x01 \x01(\v2\x15.signerservice.WalletR\x06wallet\"\xe3\x02\n" +
 	"\vSignRequest\x12\x1b\n" +
 	"\twallet_id\x18\x01 \x01(\tR\bwalletId\x12H\n" +
 	"\x0fevm_transaction\x18\x02 \x01(\v2\x1d.signerservice.EvmTransactionH\x00R\x0eevmTransaction\x12Q\n" +
@@ -1178,12 +957,9 @@ const file_signer_signerservice_proto_rawDesc = "" +
 	"\x06Cosmos\x10\x01\x12\f\n" +
 	"\bEthereum\x10\x02\x12\n" +
 	"\n" +
-	"\x06Solana\x10\x032\xcb\x02\n" +
+	"\x06Solana\x10\x032\xa4\x01\n" +
 	"\rSignerService\x12P\n" +
-	"\tGetChains\x12\x1f.signerservice.GetChainsRequest\x1a .signerservice.GetChainsResponse\"\x00\x12P\n" +
-	"\tGetWallet\x12\x1f.signerservice.GetWalletRequest\x1a .signerservice.GetWalletResponse\"\x00\x12S\n" +
-	"\n" +
-	"GetWallets\x12 .signerservice.GetWalletsRequest\x1a!.signerservice.GetWalletsResponse\"\x00\x12A\n" +
+	"\tGetWallet\x12\x1f.signerservice.GetWalletRequest\x1a .signerservice.GetWalletResponse\"\x00\x12A\n" +
 	"\x04Sign\x12\x1a.signerservice.SignRequest\x1a\x1b.signerservice.SignResponse\"\x00B\xab\x01\n" +
 	"\x11com.signerserviceB\x12SignerserviceProtoP\x01Z.github.com/cosmos/ibc-relayer/proto/gen/signer\xa2\x02\x03SXX\xaa\x02\rSignerservice\xca\x02\rSignerservice\xe2\x02\x19Signerservice\\GPBMetadata\xea\x02\rSignerserviceb\x06proto3"
 
@@ -1200,54 +976,43 @@ func file_signer_signerservice_proto_rawDescGZIP() []byte {
 }
 
 var file_signer_signerservice_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_signer_signerservice_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_signer_signerservice_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_signer_signerservice_proto_goTypes = []any{
 	(PubKeyType)(0),                    // 0: signerservice.PubKeyType
-	(*Chain)(nil),                      // 1: signerservice.Chain
-	(*GetChainsRequest)(nil),           // 2: signerservice.GetChainsRequest
-	(*GetChainsResponse)(nil),          // 3: signerservice.GetChainsResponse
-	(*Wallet)(nil),                     // 4: signerservice.Wallet
-	(*GetWalletRequest)(nil),           // 5: signerservice.GetWalletRequest
-	(*GetWalletResponse)(nil),          // 6: signerservice.GetWalletResponse
-	(*GetWalletsRequest)(nil),          // 7: signerservice.GetWalletsRequest
-	(*GetWalletsResponse)(nil),         // 8: signerservice.GetWalletsResponse
-	(*SignRequest)(nil),                // 9: signerservice.SignRequest
-	(*SignResponse)(nil),               // 10: signerservice.SignResponse
-	(*EvmTransaction)(nil),             // 11: signerservice.EvmTransaction
-	(*EvmTransactionSignature)(nil),    // 12: signerservice.EvmTransactionSignature
-	(*CosmosTransaction)(nil),          // 13: signerservice.CosmosTransaction
-	(*CosmosTransactionSignature)(nil), // 14: signerservice.CosmosTransactionSignature
-	(*RawMessage)(nil),                 // 15: signerservice.RawMessage
-	(*RawMessageSignature)(nil),        // 16: signerservice.RawMessageSignature
-	(*SolanaTransaction)(nil),          // 17: signerservice.SolanaTransaction
-	(*SolanaTransactionSignature)(nil), // 18: signerservice.SolanaTransactionSignature
+	(*Wallet)(nil),                     // 1: signerservice.Wallet
+	(*GetWalletRequest)(nil),           // 2: signerservice.GetWalletRequest
+	(*GetWalletResponse)(nil),          // 3: signerservice.GetWalletResponse
+	(*SignRequest)(nil),                // 4: signerservice.SignRequest
+	(*SignResponse)(nil),               // 5: signerservice.SignResponse
+	(*EvmTransaction)(nil),             // 6: signerservice.EvmTransaction
+	(*EvmTransactionSignature)(nil),    // 7: signerservice.EvmTransactionSignature
+	(*CosmosTransaction)(nil),          // 8: signerservice.CosmosTransaction
+	(*CosmosTransactionSignature)(nil), // 9: signerservice.CosmosTransactionSignature
+	(*RawMessage)(nil),                 // 10: signerservice.RawMessage
+	(*RawMessageSignature)(nil),        // 11: signerservice.RawMessageSignature
+	(*SolanaTransaction)(nil),          // 12: signerservice.SolanaTransaction
+	(*SolanaTransactionSignature)(nil), // 13: signerservice.SolanaTransactionSignature
 }
 var file_signer_signerservice_proto_depIdxs = []int32{
-	1,  // 0: signerservice.GetChainsResponse.chains:type_name -> signerservice.Chain
-	0,  // 1: signerservice.GetWalletRequest.pubkey_type:type_name -> signerservice.PubKeyType
-	4,  // 2: signerservice.GetWalletResponse.wallet:type_name -> signerservice.Wallet
-	4,  // 3: signerservice.GetWalletsResponse.wallets:type_name -> signerservice.Wallet
-	11, // 4: signerservice.SignRequest.evm_transaction:type_name -> signerservice.EvmTransaction
-	13, // 5: signerservice.SignRequest.cosmos_transaction:type_name -> signerservice.CosmosTransaction
-	15, // 6: signerservice.SignRequest.raw_message:type_name -> signerservice.RawMessage
-	17, // 7: signerservice.SignRequest.solana_transaction:type_name -> signerservice.SolanaTransaction
-	12, // 8: signerservice.SignResponse.evm_signature:type_name -> signerservice.EvmTransactionSignature
-	14, // 9: signerservice.SignResponse.cosmos_signature:type_name -> signerservice.CosmosTransactionSignature
-	16, // 10: signerservice.SignResponse.raw_signature:type_name -> signerservice.RawMessageSignature
-	18, // 11: signerservice.SignResponse.solana_signature:type_name -> signerservice.SolanaTransactionSignature
-	2,  // 12: signerservice.SignerService.GetChains:input_type -> signerservice.GetChainsRequest
-	5,  // 13: signerservice.SignerService.GetWallet:input_type -> signerservice.GetWalletRequest
-	7,  // 14: signerservice.SignerService.GetWallets:input_type -> signerservice.GetWalletsRequest
-	9,  // 15: signerservice.SignerService.Sign:input_type -> signerservice.SignRequest
-	3,  // 16: signerservice.SignerService.GetChains:output_type -> signerservice.GetChainsResponse
-	6,  // 17: signerservice.SignerService.GetWallet:output_type -> signerservice.GetWalletResponse
-	8,  // 18: signerservice.SignerService.GetWallets:output_type -> signerservice.GetWalletsResponse
-	10, // 19: signerservice.SignerService.Sign:output_type -> signerservice.SignResponse
-	16, // [16:20] is the sub-list for method output_type
-	12, // [12:16] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	0,  // 0: signerservice.GetWalletRequest.pubkey_type:type_name -> signerservice.PubKeyType
+	1,  // 1: signerservice.GetWalletResponse.wallet:type_name -> signerservice.Wallet
+	6,  // 2: signerservice.SignRequest.evm_transaction:type_name -> signerservice.EvmTransaction
+	8,  // 3: signerservice.SignRequest.cosmos_transaction:type_name -> signerservice.CosmosTransaction
+	10, // 4: signerservice.SignRequest.raw_message:type_name -> signerservice.RawMessage
+	12, // 5: signerservice.SignRequest.solana_transaction:type_name -> signerservice.SolanaTransaction
+	7,  // 6: signerservice.SignResponse.evm_signature:type_name -> signerservice.EvmTransactionSignature
+	9,  // 7: signerservice.SignResponse.cosmos_signature:type_name -> signerservice.CosmosTransactionSignature
+	11, // 8: signerservice.SignResponse.raw_signature:type_name -> signerservice.RawMessageSignature
+	13, // 9: signerservice.SignResponse.solana_signature:type_name -> signerservice.SolanaTransactionSignature
+	2,  // 10: signerservice.SignerService.GetWallet:input_type -> signerservice.GetWalletRequest
+	4,  // 11: signerservice.SignerService.Sign:input_type -> signerservice.SignRequest
+	3,  // 12: signerservice.SignerService.GetWallet:output_type -> signerservice.GetWalletResponse
+	5,  // 13: signerservice.SignerService.Sign:output_type -> signerservice.SignResponse
+	12, // [12:14] is the sub-list for method output_type
+	10, // [10:12] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_signer_signerservice_proto_init() }
@@ -1255,13 +1020,13 @@ func file_signer_signerservice_proto_init() {
 	if File_signer_signerservice_proto != nil {
 		return
 	}
-	file_signer_signerservice_proto_msgTypes[8].OneofWrappers = []any{
+	file_signer_signerservice_proto_msgTypes[3].OneofWrappers = []any{
 		(*SignRequest_EvmTransaction)(nil),
 		(*SignRequest_CosmosTransaction)(nil),
 		(*SignRequest_RawMessage)(nil),
 		(*SignRequest_SolanaTransaction)(nil),
 	}
-	file_signer_signerservice_proto_msgTypes[9].OneofWrappers = []any{
+	file_signer_signerservice_proto_msgTypes[4].OneofWrappers = []any{
 		(*SignResponse_EvmSignature)(nil),
 		(*SignResponse_CosmosSignature)(nil),
 		(*SignResponse_RawSignature)(nil),
@@ -1273,7 +1038,7 @@ func file_signer_signerservice_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_signer_signerservice_proto_rawDesc), len(file_signer_signerservice_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   18,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
