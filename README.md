@@ -2,6 +2,8 @@
 
 IBC v2 Relayer is a relaying service for the IBC v2 Protocol. The relayer supports interoperating between a Cosmos-based chain and major EVM networks.
 
+> **Note:** This repository is a public mirror of an internal codebase. Commits here are synced from upstream; pull requests may be applied internally rather than merged directly.
+
 ## Relaying Sequence
 ![Relaying Sequence](./relaying-sequence.png)
 
@@ -23,13 +25,11 @@ IBC v2 Relayer is a relaying service for the IBC v2 Protocol. The relayer suppor
 
 ## Getting Started
 
-Run the commands in this document from the relayer repo root (`apps/relayer` in this monorepo) unless noted otherwise.
-
 ### Prerequisites
 
 - Go 1.24+
 - Docker and Docker Compose
-- A running [proof API](https://github.com/cosmos/solidity-ibc-eureka/tree/main/programs/relayer) (attestor) service
+- A running [proof API](https://github.com/cosmos/solidity-ibc-eureka/tree/main/programs/relayer) service
 - RPC endpoints for the chains you want to relay between
 
 ### Local Development
@@ -350,6 +350,7 @@ Signing configuration. The mode is inferred from which fields are set:
 |-------|------|-------------|
 | `keys_path` | string | Path to local signing keys JSON file |
 | `grpc_address` | string | gRPC address of the remote signer service. If set, takes precedence over `keys_path` |
+| `grpc_tls_enabled` | bool | Enable TLS for the remote signer connection. |
 | `cosmos_wallet_key` | string | Wallet ID for Cosmos chain signing (remote signer only) |
 | `evm_wallet_key` | string | Wallet ID for EVM chain signing (remote signer only) |
 | `svm_wallet_key` | string | Wallet ID for Solana chain signing (remote signer only) |
@@ -405,8 +406,8 @@ Required when `type: evm`.
 | `rpc_basic_auth_var` | string | Environment variable name containing basic auth credentials for RPC |
 | `contracts.ics_26_router_address` | string | ICS26 Router contract address |
 | `contracts.ics_20_transfer_address` | string | ICS20 Transfer contract address |
-| `gas_fee_cap_multiplier` | float64 | Multiplier applied to the estimated gas fee cap (optional) |
-| `gas_tip_cap_multiplier` | float64 | Multiplier applied to the estimated gas tip cap (optional) |
+| `gas_fee_cap_multiplier` | float64 | Multiplier applied to the estimated gas fee cap. Optional; defaults to `1.0` when unset. |
+| `gas_tip_cap_multiplier` | float64 | Multiplier applied to the estimated gas tip cap. Optional; defaults to `1.0` when unset. |
 
 #### `chains.<chain_key>.ibcv2`
 
@@ -469,6 +470,8 @@ For EVM chains, the private key is a hex-encoded ECDSA private key. For Cosmos c
 
 For production deployments, the relayer can delegate signing to an external gRPC service. This keeps private keys isolated from the relayer process.
 
+For the full integration spec — per-chain signing contracts, `GetWallet` semantics, authentication behavior, common pitfalls, and trust assumptions — see [`docs/remote-signing.md`](./docs/remote-signing.md).
+
 #### Configuration
 
 ```yaml
@@ -476,7 +479,6 @@ signing:
   grpc_address: "localhost:50052"
   cosmos_wallet_key: "my-cosmos-wallet"
   evm_wallet_key: "my-evm-wallet"
-  svm_wallet_key: "my-svm-wallet"
 ```
 
 #### Authentication
@@ -489,9 +491,7 @@ The remote signer must implement the following gRPC service:
 
 ```proto
 service SignerService {
-    rpc GetChains(GetChainsRequest) returns (GetChainsResponse) {}
     rpc GetWallet(GetWalletRequest) returns (GetWalletResponse) {}
-    rpc GetWallets(GetWalletsRequest) returns (GetWalletsResponse) {}
     rpc Sign(SignRequest) returns (SignResponse) {}
 }
 ```
@@ -500,7 +500,6 @@ The `Sign` RPC accepts transaction payloads for EVM, Cosmos, and Solana chains a
 
 - **EVM**: Accepts serialized tx bytes + chain ID, returns `(r, s, v)` signature components
 - **Cosmos**: Accepts sign doc bytes, returns a raw signature
-- **Solana**: Accepts a base64-encoded transaction, returns a raw signature
 
 The full proto definition is at [`proto/signer/signerservice.proto`](proto/signer/signerservice.proto).
 
@@ -512,10 +511,6 @@ To implement your own signer service, refer to the proto file for message format
 - `GetWallet` - called at startup to retrieve public keys (uses `Cosmos`, `Ethereum`, and `Solana` pubkey types)
 - `Sign` - called for every transaction
 
-**Methods not used by the relayer:**
-- `GetChains` - can return an empty response
-- `GetWallets` - can return an empty response
-
 **Sign payload types used by the relayer:**
 - `EvmTransaction` / `EvmTransactionSignature`
 - `CosmosTransaction` / `CosmosTransactionSignature`
@@ -526,3 +521,7 @@ To implement your own signer service, refer to the proto file for message format
 
 
 **Authentication:** The relayer sends the `SERVICE_ACCOUNT_TOKEN` environment variable as a bearer token in the `authorization` gRPC metadata header. Validation is optional.
+
+## Security
+
+To report a vulnerability, see [SECURITY.md](./SECURITY.md). Do not file public GitHub issues for security reports.
