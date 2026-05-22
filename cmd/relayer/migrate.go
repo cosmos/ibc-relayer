@@ -44,11 +44,13 @@ func migrationDSN(ctx context.Context, cfg config.Config) (string, error) {
 	}
 
 	u := url.URL{
-		Scheme:   "postgres",
-		User:     url.UserPassword(user, password),
-		Host:     fmt.Sprintf("%s:%s", cfg.Postgres.Hostname, cfg.Postgres.Port),
-		Path:     cfg.Postgres.Database,
-		RawQuery: "sslmode=" + sslmode,
+		Scheme: "postgres",
+		User:   url.UserPassword(user, password),
+		Host:   fmt.Sprintf("%s:%s", cfg.Postgres.Hostname, cfg.Postgres.Port),
+		Path:   cfg.Postgres.Database,
+	}
+	if sslmode != "" {
+		u.RawQuery = "sslmode=" + sslmode
 	}
 	return u.String(), nil
 }
@@ -59,15 +61,25 @@ func migrationCredentials(ctx context.Context, cfg config.Config, user string) (
 		if !ok {
 			pwd = "relayer"
 		}
-		return pwd, "disable", nil
+		// Leave sslmode unset so the migration connection follows the pgx default,
+		// matching the runtime pool (avoids silently disabling SSL where the DB
+		// enforces it).
+		return pwd, "", nil
 	}
 
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
 	if err != nil {
 		return "", "", fmt.Errorf("loading aws config: %w", err)
 	}
+	region := cfg.Postgres.IAMAuthRegion
+	if region == "" {
+		region = awsCfg.Region
+	}
+	if region == "" {
+		return "", "", fmt.Errorf("no AWS region configured: set postgres.iam_auth_region or AWS_REGION")
+	}
 	endpoint := fmt.Sprintf("%s:%s", cfg.Postgres.Hostname, cfg.Postgres.Port)
-	token, err := rdsauth.BuildAuthToken(ctx, endpoint, cfg.Postgres.ResolveIAMAuthRegion(), user, awsCfg.Credentials)
+	token, err := rdsauth.BuildAuthToken(ctx, endpoint, region, user, awsCfg.Credentials)
 	if err != nil {
 		return "", "", fmt.Errorf("building rds auth token: %w", err)
 	}

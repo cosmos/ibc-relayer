@@ -77,21 +77,15 @@ type RelayerAPIConfig struct {
 	Address string `yaml:"address"`
 }
 
-const defaultPostgresIAMAuthRegion = "us-east-2"
-
 type PostgresConfig struct {
 	Hostname       string `yaml:"hostname"`
 	Port           string `yaml:"port"`
 	Database       string `yaml:"database"`
 	IAMAuthEnabled bool   `yaml:"iam_auth_enabled"`
-	IAMAuthRegion  string `yaml:"iam_auth_region"`
-}
-
-func (p PostgresConfig) ResolveIAMAuthRegion() string {
-	if p.IAMAuthRegion == "" {
-		return defaultPostgresIAMAuthRegion
-	}
-	return p.IAMAuthRegion
+	// IAMAuthRegion overrides the AWS region used to sign RDS IAM auth tokens.
+	// When empty the region from the standard AWS SDK resolution chain
+	// (AWS_REGION env, shared config, IMDS) is used.
+	IAMAuthRegion string `yaml:"iam_auth_region"`
 }
 
 type IBCV2ProofAPIConfig struct {
@@ -387,7 +381,7 @@ func (r *configReader) PostgresIAMAuthEnabled() bool {
 }
 
 func (r *configReader) PostgresIAMAuthRegion() string {
-	return r.config.Postgres.ResolveIAMAuthRegion()
+	return r.config.Postgres.IAMAuthRegion
 }
 
 func (r *configReader) GetPostgresConnString() string {

@@ -23,7 +23,15 @@ func NewDatabase(ctx context.Context, connString string, useIAMAuth bool, iamAut
 				return fmt.Errorf("failed to load AWS config: %w", err)
 			}
 
-			authToken, err := rdsauth.BuildAuthToken(context.Background(), fmt.Sprintf("%s:%d", connConfig.Host, connConfig.Port), iamAuthRegion, connConfig.User, cfg.Credentials)
+			region := iamAuthRegion
+			if region == "" {
+				region = cfg.Region
+			}
+			if region == "" {
+				return fmt.Errorf("no AWS region configured: set postgres.iam_auth_region or AWS_REGION")
+			}
+
+			authToken, err := rdsauth.BuildAuthToken(context.Background(), fmt.Sprintf("%s:%d", connConfig.Host, connConfig.Port), region, connConfig.User, cfg.Credentials)
 			if err != nil {
 				return fmt.Errorf("failed to build auth token: %w", err)
 			}

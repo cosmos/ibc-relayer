@@ -10,6 +10,11 @@ RELAYER_LDFLAGS := -ldflags="-checklinkname=0"
 .PHONY: relayer-local
 relayer-local:
 	POSTGRES_USER=relayer POSTGRES_PASSWORD=relayer go run $(RELAYER_LDFLAGS) ./cmd/relayer/main.go --config ./config/local/config.yml
+
+.PHONY: build
+build:
+	CGO_ENABLED=0 go build $(RELAYER_LDFLAGS) -o ./bin/relayer ./cmd/relayer
+
 .PHONY: transfer
 transfer:
 	go build $(RELAYER_LDFLAGS) -o ./bin/transfer ./cmd/transfer
