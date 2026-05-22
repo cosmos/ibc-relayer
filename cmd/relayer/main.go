@@ -34,9 +34,11 @@ import (
 var (
 	configPath          = flag.String("config", "./config/local/config.yml", "path to relayer config file")
 	enableIBCV2Relaying = flag.Bool("ibcv2-relaying", true, "if ibcv2 relaying should be enabled")
+	dbMigrate           = flag.Bool("db-migrate", false, "run database migrations before starting the relayer")
 )
 
 func main() {
+	migrateMode := consumeMigrateSubcommand()
 	flag.Parse()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -53,8 +55,18 @@ func main() {
 	}
 	ctx = config.ConfigReaderContext(ctx, config.NewConfigReader(cfg))
 
+	if migrateMode || *dbMigrate {
+		if err := runMigrations(ctx, cfg); err != nil {
+			lmt.Logger(ctx).Fatal("Failed to run database migrations", zap.Error(err))
+		}
+		lmt.Logger(ctx).Info("Database migrations applied")
+		if migrateMode {
+			return
+		}
+	}
+
 	dsn := config.GetConfigReader(ctx).GetPostgresConnString()
-	pool, err := database.NewDatabase(ctx, dsn, config.GetConfigReader(ctx).PostgresIAMAuthEnabled())
+	pool, err := database.NewDatabase(ctx, dsn, config.GetConfigReader(ctx).PostgresIAMAuthEnabled(), config.GetConfigReader(ctx).PostgresIAMAuthRegion())
 	if err != nil {
 		lmt.Logger(ctx).Fatal("Unable to connect to database: %v", zap.Error(err))
 	}

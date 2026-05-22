@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewDatabase(ctx context.Context, connString string, useIAMAuth bool) (*pgxpool.Pool, error) {
+func NewDatabase(ctx context.Context, connString string, useIAMAuth bool, iamAuthRegion string) (*pgxpool.Pool, error) {
 	pgxConfig, err := pgxpool.ParseConfig(connString)
 	if err != nil {
 		return nil, err
@@ -23,7 +23,7 @@ func NewDatabase(ctx context.Context, connString string, useIAMAuth bool) (*pgxp
 				return fmt.Errorf("failed to load AWS config: %w", err)
 			}
 
-			authToken, err := rdsauth.BuildAuthToken(context.Background(), fmt.Sprintf("%s:%d", connConfig.Host, connConfig.Port), "us-east-2", connConfig.User, cfg.Credentials)
+			authToken, err := rdsauth.BuildAuthToken(context.Background(), fmt.Sprintf("%s:%d", connConfig.Host, connConfig.Port), iamAuthRegion, connConfig.User, cfg.Credentials)
 			if err != nil {
 				return fmt.Errorf("failed to build auth token: %w", err)
 			}

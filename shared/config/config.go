@@ -77,11 +77,21 @@ type RelayerAPIConfig struct {
 	Address string `yaml:"address"`
 }
 
+const defaultPostgresIAMAuthRegion = "us-east-2"
+
 type PostgresConfig struct {
 	Hostname       string `yaml:"hostname"`
 	Port           string `yaml:"port"`
 	Database       string `yaml:"database"`
 	IAMAuthEnabled bool   `yaml:"iam_auth_enabled"`
+	IAMAuthRegion  string `yaml:"iam_auth_region"`
+}
+
+func (p PostgresConfig) ResolveIAMAuthRegion() string {
+	if p.IAMAuthRegion == "" {
+		return defaultPostgresIAMAuthRegion
+	}
+	return p.IAMAuthRegion
 }
 
 type IBCV2ProofAPIConfig struct {
@@ -284,6 +294,7 @@ type ConfigReader interface {
 
 	GetPostgresConnString() string
 	PostgresIAMAuthEnabled() bool
+	PostgresIAMAuthRegion() string
 
 	GetChainEnvironment(chainID string) (ChainEnvironment, error)
 	GetRPCEndpoint(chainID string) (string, error)
@@ -373,6 +384,10 @@ func (r *configReader) GetClientCounterpartyChainID(chainID string, clientID str
 
 func (r *configReader) PostgresIAMAuthEnabled() bool {
 	return r.config.Postgres.IAMAuthEnabled
+}
+
+func (r *configReader) PostgresIAMAuthRegion() string {
+	return r.config.Postgres.ResolveIAMAuthRegion()
 }
 
 func (r *configReader) GetPostgresConnString() string {
