@@ -2,12 +2,14 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	rdsauth "github.com/aws/aws-sdk-go-v2/feature/rds/auth"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 func NewDatabase(ctx context.Context, connString string, useIAMAuth bool, iamAuthRegion string) (*pgxpool.Pool, error) {
@@ -43,4 +45,8 @@ func NewDatabase(ctx context.Context, connString string, useIAMAuth bool, iamAut
 	}
 
 	return pgxpool.NewWithConfig(ctx, pgxConfig)
+}
+
+func NewMigrationDB(pool *pgxpool.Pool) *sql.DB {
+	return stdlib.OpenDBFromPool(pool)
 }

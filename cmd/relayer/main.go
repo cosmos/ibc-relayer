@@ -38,8 +38,12 @@ var (
 )
 
 func main() {
-	migrateMode := consumeMigrateSubcommand()
-	flag.Parse()
+	migrateMode := isMigrateSubcommand()
+	if migrateMode {
+		_ = flag.CommandLine.Parse(os.Args[2:])
+	} else {
+		flag.Parse()
+	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
@@ -55,20 +59,21 @@ func main() {
 	}
 	ctx = config.ConfigReaderContext(ctx, config.NewConfigReader(cfg))
 
-	if migrateMode || *dbMigrate {
-		if err := runMigrations(ctx, cfg); err != nil {
-			lmt.Logger(ctx).Fatal("Failed to run database migrations", zap.Error(err))
-		}
-		lmt.Logger(ctx).Info("Database migrations applied")
-		if migrateMode {
-			return
-		}
-	}
-
 	dsn := config.GetConfigReader(ctx).GetPostgresConnString()
 	pool, err := database.NewDatabase(ctx, dsn, config.GetConfigReader(ctx).PostgresIAMAuthEnabled(), config.GetConfigReader(ctx).PostgresIAMAuthRegion())
 	if err != nil {
 		lmt.Logger(ctx).Fatal("Unable to connect to database: %v", zap.Error(err))
+	}
+
+	if migrateMode || *dbMigrate {
+		if err := runMigrations(ctx, pool); err != nil {
+			lmt.Logger(ctx).Fatal("Failed to run database migrations", zap.Error(err))
+		}
+		lmt.Logger(ctx).Info("Database migrations applied")
+		if migrateMode {
+			pool.Close()
+			return
+		}
 	}
 
 	var ibcv2ClientManager ibcv2.BridgeClientManager

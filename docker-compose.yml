@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   postgres:
     image: postgres:18
@@ -20,16 +18,6 @@ services:
       timeout: 3s
       retries: 30
 
-  go-migrate:
-    image: migrate/migrate
-    volumes:
-      - ./db/migrations:/migrations
-    command: "-path /migrations -database postgres://relayer:relayer@postgres:5432/relayer?sslmode=disable up"
-    networks:
-      - relayer
-    depends_on:
-      postgres:
-        condition: service_healthy
 networks:
   relayer:
 

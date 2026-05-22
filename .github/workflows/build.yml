@@ -21,8 +21,6 @@ jobs:
         include:
           - image: ibc-relayer
             file: Dockerfile.relayer
-          - image: ibc-relayer-migrate
-            file: docker/migrate.dockerfile
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5

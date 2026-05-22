@@ -7,7 +7,6 @@ import (
 
 	db "github.com/cosmos/ibc-relayer/db/gen/db"
 	ibcv2 "github.com/cosmos/ibc-relayer/relayer/ibcv2"
-
 	mock "github.com/stretchr/testify/mock"
 )
 

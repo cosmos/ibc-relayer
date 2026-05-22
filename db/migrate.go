@@ -10,9 +10,6 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	migratepg "github.com/golang-migrate/migrate/v4/database/postgres"
 	migrateiofs "github.com/golang-migrate/migrate/v4/source/iofs"
-
-	// Register the pgx driver with database/sql; required by sql.Open
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Migration struct {
@@ -20,13 +17,7 @@ type Migration struct {
 	FS fs.FS
 }
 
-func Migrate(ctx context.Context, dsn string, migrations []Migration) error {
-	sqldb, err := sql.Open("pgx", dsn)
-	if err != nil {
-		return fmt.Errorf("failed to create sql db: %w", err)
-	}
-	defer func() { _ = sqldb.Close() }()
-
+func Migrate(ctx context.Context, sqldb *sql.DB, migrations []Migration) error {
 	for _, migration := range migrations {
 		if err := runMigration(ctx, sqldb, migration); err != nil {
 			return err

@@ -34,16 +34,22 @@ IBC v2 Relayer is a relaying service for the IBC v2 Protocol. The relayer suppor
 
 ### Local Development
 
-1. Start Postgres and run migrations:
+1. Start Postgres:
 ```bash
-docker-compose up -d
+docker compose up -d --wait
 ```
 
-2. Create a local config file (see [Configuration Reference](#configuration-reference) below).
+2. Apply database migrations (see [Database Migrations](#database-migrations) for details):
+```bash
+make build
+./bin/relayer migrate --config ./config/local/config.yml
+```
 
-3. Create a local keys file (see [Local Signing](#local-signing) below).
+3. Create a local config file (see [Configuration Reference](#configuration-reference) below).
 
-4. Run the relayer:
+4. Create a local keys file (see [Local Signing](#local-signing) below).
+
+5. Run the relayer:
 ```bash
 make relayer-local
 ```
@@ -59,6 +65,13 @@ The relayer will start:
 |------|---------|-------------|
 | `--config` | `./config/local/config.yml` | Path to relayer config file |
 | `--ibcv2-relaying` | `true` | Enable/disable the relay dispatcher |
+| `--db-migrate` | `false` | Apply pending database migrations before starting the relayer |
+
+### Subcommands
+
+| Subcommand | Description |
+|------------|-------------|
+| `migrate` | Apply pending database migrations and exit (does not start the relayer) |
 
 ### Running Tests
 
@@ -68,45 +81,39 @@ make test
 
 ## Database Migrations
 
-Database migrations must be run before starting the relayer. The relayer expects the database schema to already exist.
+Migrations are compiled into the relayer binary via Go's `embed` directive — the same image that runs the relayer also applies the schema. There are two invocation modes:
 
-### Running Migrations
-
-**Local Development:**
+**One-shot (recommended for production deployments):** apply pending migrations and exit. Run this from a Kubernetes initContainer, CI step, or pre-deploy hook.
 
 ```bash
-docker-compose up -d
+./bin/relayer migrate --config /path/to/config.yml
 ```
 
-This starts PostgreSQL and runs migrations automatically.
-
-**Using the migrate CLI:**
+**Combined startup (convenient for local development):** apply pending migrations, then continue into normal relayer startup.
 
 ```bash
-# Install: https://github.com/golang-migrate/migrate
-migrate -path ./db/migrations -database "postgres://relayer:relayer@localhost:42500/relayer?sslmode=disable" up
+./bin/relayer --db-migrate --config /path/to/config.yml
 ```
 
-**Using the relayer migrations container:**
+Both modes are safe to invoke from multiple replicas concurrently. golang-migrate's Postgres driver holds a session-level advisory lock for the duration of the run, so late arrivals block until the leader finishes and then observe the migrations as already applied. Each migration runs in its own transaction; on failure the relayer aborts startup rather than serve against an unverified schema.
 
-```bash
-docker run --rm --network host <registry>/relayer-migrate:<version> \
-  -database "postgres://relayer:relayer@localhost:42500/relayer?sslmode=disable" \
-  up
-```
-
-**Using the generic migrate Docker image with local files:**
-
-```bash
-docker run --rm -v $(pwd)/db/migrations:/migrations --network host migrate/migrate \
-  -path /migrations \
-  -database "postgres://relayer:relayer@localhost:42500/relayer?sslmode=disable" \
-  up
-```
+`make test` exercises this path automatically — it builds the relayer, brings up Postgres, and runs `./bin/relayer migrate` before invoking `go test`.
 
 ### Migration Files
 
-Migration files are located in [`./db/migrations/`](./db/migrations/).
+Migration files live in [`./db/migrations/`](./db/migrations/). They are embedded at build time via [`db/migrate.go`](./db/migrate.go), so no separate volume mount or sidecar image is needed.
+
+### Breaking change in this release
+
+The standalone `ibc-relayer-migrate` Docker image is no longer published. Deployments that previously pulled `ghcr.io/cosmos/ibc-relayer-migrate:<version>` must switch to invoking `migrate` on the main `ibc-relayer` image:
+
+```bash
+# before
+docker run --rm ghcr.io/cosmos/ibc-relayer-migrate:<version> up
+
+# after
+docker run --rm ghcr.io/cosmos/ibc-relayer:<version> migrate --config /path/to/config.yml
+```
 
 ## Design
 ![Design](./relayer-design.png)
