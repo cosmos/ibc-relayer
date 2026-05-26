@@ -2,15 +2,18 @@ package database
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	rdsauth "github.com/aws/aws-sdk-go-v2/feature/rds/auth"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
-func NewDatabase(ctx context.Context, connString string, useIAMAuth bool) (*pgxpool.Pool, error) {
+func NewDatabase(ctx context.Context, connString string, useIAMAuth bool, iamAuthRegion string) (*pgxpool.Pool, error) {
 	pgxConfig, err := pgxpool.ParseConfig(connString)
 	if err != nil {
 		return nil, err
@@ -23,7 +26,15 @@ func NewDatabase(ctx context.Context, connString string, useIAMAuth bool) (*pgxp
 				return fmt.Errorf("failed to load AWS config: %w", err)
 			}
 
-			authToken, err := rdsauth.BuildAuthToken(context.Background(), fmt.Sprintf("%s:%d", connConfig.Host, connConfig.Port), "us-east-2", connConfig.User, cfg.Credentials)
+			region := iamAuthRegion
+			if region == "" {
+				region = cfg.Region
+			}
+			if region == "" {
+				return errors.New("no AWS region configured: set postgres.iam_auth_region or AWS_REGION")
+			}
+
+			authToken, err := rdsauth.BuildAuthToken(context.Background(), fmt.Sprintf("%s:%d", connConfig.Host, connConfig.Port), region, connConfig.User, cfg.Credentials)
 			if err != nil {
 				return fmt.Errorf("failed to build auth token: %w", err)
 			}
@@ -35,4 +46,8 @@ func NewDatabase(ctx context.Context, connString string, useIAMAuth bool) (*pgxp
 	}
 
 	return pgxpool.NewWithConfig(ctx, pgxConfig)
+}
+
+func NewMigrationDB(pool *pgxpool.Pool) *sql.DB {
+	return stdlib.OpenDBFromPool(pool)
 }

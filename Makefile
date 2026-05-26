@@ -9,7 +9,12 @@ RELAYER_LDFLAGS := -ldflags="-checklinkname=0"
 
 .PHONY: relayer-local
 relayer-local:
-	POSTGRES_USER=relayer POSTGRES_PASSWORD=relayer go run $(RELAYER_LDFLAGS) ./cmd/relayer/main.go --config ./config/local/config.yml
+	POSTGRES_USER=relayer POSTGRES_PASSWORD=relayer go run $(RELAYER_LDFLAGS) ./cmd/relayer --config ./config/local/config.yml
+
+.PHONY: build
+build:
+	CGO_ENABLED=0 go build $(RELAYER_LDFLAGS) -o ./bin/relayer ./cmd/relayer
+
 .PHONY: transfer
 transfer:
 	go build $(RELAYER_LDFLAGS) -o ./bin/transfer ./cmd/transfer
@@ -29,10 +34,16 @@ tools:
 #
 # Code Generation
 #
-.PHONY: mock-gen proto-gen
+.PHONY: mock-gen check-mocks proto-gen
 
 mock-gen: tools
 	mockery
+
+check-mocks: mock-gen
+	@if ! git diff --exit-code mocks/; then \
+		echo "mocks/ has drift from mockery output; run 'make mock-gen' locally and commit the result"; \
+		exit 1; \
+	fi
 
 proto-gen: tools
 	./scripts/proto-gen.sh
@@ -40,13 +51,7 @@ proto-gen: tools
 #
 # Helpful Developer Commands
 #
-.PHONY: migrate-up migrate-down postgres-login tidy test
-
-migrate-up:
-	./scripts/migrate.sh up 1
-
-migrate-down:
-	./scripts/migrate.sh down 1
+.PHONY: postgres-login tidy test
 
 postgres-login:
 	docker compose exec -it postgres psql -U relayer -d relayer
@@ -59,8 +64,15 @@ deps:
 	go env
 	go mod download
 
-test:
+.PHONY: lint lint-fix
+lint:
+	go tool -modfile=../../go.mod golangci-lint run
+
+lint-fix:
+	go tool -modfile=../../go.mod golangci-lint run --fix
+
+test: build check-mocks
 	go clean -testcache
-	docker compose up -d
+	docker compose up -d --wait
 	go test $(RELAYER_LDFLAGS) -p 1 --tags=test -v -race $(shell go list ./... | grep -v /scripts/)
-	docker compose down -v
+	docker compose down -v --remove-orphans

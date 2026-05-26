@@ -3,3 +3,4 @@ build/
 conf/debug.yml
 keys.json.plaintext
 .idea
+bin
