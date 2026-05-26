@@ -54,10 +54,15 @@ func main() {
 	ctx = config.ConfigReaderContext(ctx, config.NewConfigReader(cfg))
 
 	dsn := config.GetConfigReader(ctx).GetPostgresConnString()
-	pool, err := database.NewDatabase(ctx, dsn, config.GetConfigReader(ctx).PostgresIAMAuthEnabled())
+	pool, err := database.NewDatabase(ctx, dsn, config.GetConfigReader(ctx).PostgresIAMAuthEnabled(), config.GetConfigReader(ctx).PostgresIAMAuthRegion())
 	if err != nil {
 		lmt.Logger(ctx).Fatal("Unable to connect to database: %v", zap.Error(err))
 	}
+
+	if err := runMigrations(ctx, pool); err != nil {
+		lmt.Logger(ctx).Fatal("Failed to run database migrations", zap.Error(err))
+	}
+	lmt.Logger(ctx).Info("Database migrations applied")
 
 	var ibcv2ClientManager ibcv2.BridgeClientManager
 	var ibcv2ChainIDToPrivateKey map[string]string

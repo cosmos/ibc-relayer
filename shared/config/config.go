@@ -82,6 +82,10 @@ type PostgresConfig struct {
 	Port           string `yaml:"port"`
 	Database       string `yaml:"database"`
 	IAMAuthEnabled bool   `yaml:"iam_auth_enabled"`
+	// IAMAuthRegion overrides the AWS region used to sign RDS IAM auth tokens.
+	// When empty the region from the standard AWS SDK resolution chain
+	// (AWS_REGION env, shared config, IMDS) is used.
+	IAMAuthRegion string `yaml:"iam_auth_region"`
 }
 
 type IBCV2ProofAPIConfig struct {
@@ -284,6 +288,7 @@ type ConfigReader interface {
 
 	GetPostgresConnString() string
 	PostgresIAMAuthEnabled() bool
+	PostgresIAMAuthRegion() string
 
 	GetChainEnvironment(chainID string) (ChainEnvironment, error)
 	GetRPCEndpoint(chainID string) (string, error)
@@ -373,6 +378,10 @@ func (r *configReader) GetClientCounterpartyChainID(chainID string, clientID str
 
 func (r *configReader) PostgresIAMAuthEnabled() bool {
 	return r.config.Postgres.IAMAuthEnabled
+}
+
+func (r *configReader) PostgresIAMAuthRegion() string {
+	return r.config.Postgres.IAMAuthRegion
 }
 
 func (r *configReader) GetPostgresConnString() string {

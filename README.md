@@ -34,16 +34,16 @@ IBC v2 Relayer is a relaying service for the IBC v2 Protocol. The relayer suppor
 
 ### Local Development
 
-1. Start Postgres and run migrations:
+1. Start Postgres:
 ```bash
-docker-compose up -d
+docker compose up -d --wait
 ```
 
 2. Create a local config file (see [Configuration Reference](#configuration-reference) below).
 
 3. Create a local keys file (see [Local Signing](#local-signing) below).
 
-4. Run the relayer:
+4. Run the relayer (database migrations are applied automatically at startup — see [Database Migrations](#database-migrations) for details):
 ```bash
 make relayer-local
 ```
@@ -68,45 +68,13 @@ make test
 
 ## Database Migrations
 
-Database migrations must be run before starting the relayer. The relayer expects the database schema to already exist.
+Migrations are compiled into the relayer binary via Go's `embed` directive and run automatically at startup, before the relayer accepts traffic.
 
-### Running Migrations
-
-**Local Development:**
-
-```bash
-docker-compose up -d
-```
-
-This starts PostgreSQL and runs migrations automatically.
-
-**Using the migrate CLI:**
-
-```bash
-# Install: https://github.com/golang-migrate/migrate
-migrate -path ./db/migrations -database "postgres://relayer:relayer@localhost:42500/relayer?sslmode=disable" up
-```
-
-**Using the relayer migrations container:**
-
-```bash
-docker run --rm --network host <registry>/relayer-migrate:<version> \
-  -database "postgres://relayer:relayer@localhost:42500/relayer?sslmode=disable" \
-  up
-```
-
-**Using the generic migrate Docker image with local files:**
-
-```bash
-docker run --rm -v $(pwd)/db/migrations:/migrations --network host migrate/migrate \
-  -path /migrations \
-  -database "postgres://relayer:relayer@localhost:42500/relayer?sslmode=disable" \
-  up
-```
+Startup is safe to invoke from multiple replicas concurrently. golang-migrate's Postgres driver holds a session-level advisory lock for the duration of the run, so late arrivals block until the leader finishes and then observe the migrations as already applied. Each migration runs in its own transaction; on failure the relayer aborts startup rather than serve against an unverified schema.
 
 ### Migration Files
 
-Migration files are located in [`./db/migrations/`](./db/migrations/).
+Migration files live in [`./db/migrations/`](./db/migrations/). They are embedded at build time via [`db/migrate.go`](./db/migrate.go), so no separate volume mount or sidecar image is needed.
 
 ## Design
 ![Design](./relayer-design.png)
