@@ -74,5 +74,6 @@ lint-fix:
 test: build check-mocks
 	go clean -testcache
 	docker compose up -d --wait
+	POSTGRES_USER=relayer POSTGRES_PASSWORD=relayer ./bin/relayer migrate --config ./config/local/config.yml
 	go test $(RELAYER_LDFLAGS) -p 1 --tags=test -v -race $(shell go list ./... | grep -v /scripts/)
 	docker compose down -v --remove-orphans

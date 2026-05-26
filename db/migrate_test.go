@@ -44,7 +44,7 @@ func TestMigrate(t *testing.T) {
 
 	// Idempotency: a second invocation against an up-to-date schema must succeed
 	// (golang-migrate's ErrNoChange is handled inside db.Migrate). This is the
-	// load-bearing property for relayer startup in multi-replica deployments.
+	// load-bearing property for --db-migrate in multi-replica deployments.
 	if err := db.Migrate(ctx, sqldb, []db.Migration{db.Migrations}); err != nil {
 		t.Fatalf("second Migrate call (idempotency) failed: %v", err)
 	}
