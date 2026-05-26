@@ -34,9 +34,17 @@ import (
 var (
 	configPath          = flag.String("config", "./config/local/config.yml", "path to relayer config file")
 	enableIBCV2Relaying = flag.Bool("ibcv2-relaying", true, "if ibcv2 relaying should be enabled")
+	dbMigrate           = flag.Bool("db-migrate", false, "run database migrations before starting the relayer")
 )
 
 func main() {
+	// `relayer migrate [flags]` is sugar for `relayer --db-migrate [flags]`
+	// that exits after migrations. Strip the subcommand token so flag.Parse
+	// sees the remaining flags uniformly.
+	migrateMode := isMigrateSubcommand()
+	if migrateMode {
+		os.Args = append(os.Args[:1], os.Args[2:]...)
+	}
 	flag.Parse()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -59,10 +67,16 @@ func main() {
 		lmt.Logger(ctx).Fatal("Unable to connect to database: %v", zap.Error(err))
 	}
 
-	if err := runMigrations(ctx, pool); err != nil {
-		lmt.Logger(ctx).Fatal("Failed to run database migrations", zap.Error(err))
+	if migrateMode || *dbMigrate {
+		if err := runMigrations(ctx, pool); err != nil {
+			lmt.Logger(ctx).Fatal("Failed to run database migrations", zap.Error(err))
+		}
+		lmt.Logger(ctx).Info("Database migrations applied")
+		if migrateMode {
+			pool.Close()
+			return
+		}
 	}
-	lmt.Logger(ctx).Info("Database migrations applied")
 
 	var ibcv2ClientManager ibcv2.BridgeClientManager
 	var ibcv2ChainIDToPrivateKey map[string]string
