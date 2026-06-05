@@ -368,10 +368,17 @@ Used for tracking transaction gas costs in USD. If omitted, gas cost tracking is
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `base_url` | string | Coingecko API base URL |
-| `api_key` | string | API key |
+| `base_url` | string | Coingecko API base URL. May be overridden by `COINGECKO_FULL_URL` |
+| `api_key` | string | API key. May be overridden by `COINGECKO_API_KEY`. Optional if the env var is set |
 | `requests_per_minute` | int | Rate limit |
 | `cache_refresh_interval` | duration | How often to refresh cached prices |
+
+The following environment variables override the corresponding config fields when set and non-empty:
+
+| Env var | Overrides |
+|---------|-----------|
+| `COINGECKO_FULL_URL` | `base_url` |
+| `COINGECKO_API_KEY` | `api_key` |
 
 #### `chains.<chain_key>`
 
@@ -415,6 +422,15 @@ Required when `type: evm`.
 | `contracts.ics_20_transfer_address` | string | ICS20 Transfer contract address |
 | `gas_fee_cap_multiplier` | float64 | Multiplier applied to the estimated gas fee cap. Optional; defaults to `1.0` when unset. |
 | `gas_tip_cap_multiplier` | float64 | Multiplier applied to the estimated gas tip cap. Optional; defaults to `1.0` when unset. |
+
+`rpc` may be overridden per-chain via an environment variable named `<CHAIN_KEY>_EVM_RPC_FULL_URL`, where `<CHAIN_KEY>` is the upper-cased chain map key with hyphens replaced by underscores. If set and non-empty, it takes precedence over the `rpc` field. Examples:
+
+| Chain key | Env var |
+|-----------|---------|
+| `ethereum` | `ETHEREUM_EVM_RPC_FULL_URL` |
+| `ethereum-testnet` | `ETHEREUM_TESTNET_EVM_RPC_FULL_URL` |
+| `base-mainnet` | `BASE_MAINNET_EVM_RPC_FULL_URL` |
+| `base-testnet` | `BASE_TESTNET_EVM_RPC_FULL_URL` |
 
 #### `chains.<chain_key>.ibcv2`
 
