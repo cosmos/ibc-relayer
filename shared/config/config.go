@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc"
@@ -47,6 +48,9 @@ const (
 
 const (
 	EnvServiceAccountToken = "SERVICE_ACCOUNT_TOKEN"
+	EnvCoingeckoFullURL    = "COINGECKO_FULL_URL"
+	EnvCoingeckoAPIKey     = "COINGECKO_API_KEY" //nolint:gosec // G101: env var name, not a credential
+	EnvEVMRPCFullURLSuffix = "_EVM_RPC_FULL_URL"
 )
 
 // Config Schema
@@ -313,6 +317,7 @@ type ConfigReader interface {
 type configReader struct {
 	config       Config
 	chainIDIndex map[string]ChainConfig
+	chainIDToKey map[string]string
 }
 
 func NewConfigReader(config Config) ConfigReader {
@@ -325,9 +330,11 @@ func NewConfigReader(config Config) ConfigReader {
 
 func (r *configReader) createIndexes() {
 	r.chainIDIndex = make(map[string]ChainConfig)
+	r.chainIDToKey = make(map[string]string)
 
-	for _, chain := range r.config.Chains {
+	for key, chain := range r.config.Chains {
 		r.chainIDIndex[chain.ChainID] = chain
+		r.chainIDToKey[chain.ChainID] = key
 	}
 }
 
@@ -429,6 +436,11 @@ func (r *configReader) GetRPCEndpoint(chainID string) (string, error) {
 	case ChainTypeEVM:
 		if chain.EVM == nil {
 			return "", fmt.Errorf("evm config not set for chain %s", chainID)
+		}
+		key := r.chainIDToKey[chainID]
+		envName := strings.ToUpper(strings.ReplaceAll(key, "-", "_")) + EnvEVMRPCFullURLSuffix
+		if envURL := os.Getenv(envName); envURL != "" {
+			return envURL, nil
 		}
 		return chain.EVM.RPC, nil
 	case ChainTypeSVM:
@@ -546,7 +558,14 @@ func (r *configReader) GetSignerGasAlertThresholds(chainID string, bridgeType Br
 }
 
 func (r *configReader) GetCoingeckoConfig() CoingeckoConfig {
-	return r.config.Coingecko
+	cfg := r.config.Coingecko
+	if envURL := os.Getenv(EnvCoingeckoFullURL); envURL != "" {
+		cfg.BaseURL = envURL
+	}
+	if envKey := os.Getenv(EnvCoingeckoAPIKey); envKey != "" {
+		cfg.APIKey = envKey
+	}
+	return cfg
 }
 
 func (r *configReader) GetRelayerAPIConfig() RelayerAPIConfig {
