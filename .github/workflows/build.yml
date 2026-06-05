@@ -41,7 +41,7 @@ jobs:
         env:
           REF_NAME: ${{ github.ref_name }}
         run: |
-          if [[ "$REF_NAME" == "refs/heads/main" ]]; then
+          if [[ "$REF_NAME" == "main" ]]; then
             DOCKER_TAG="latest"
           else
             DOCKER_TAG=$(echo "$REF_NAME" | sed 's/[^a-zA-Z0-9\.-]/-/g')
