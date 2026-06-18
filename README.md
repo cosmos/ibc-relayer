@@ -1,6 +1,6 @@
 # IBC v2 Relayer
 
-![IBC v2 Relayer](.github/workflows/assets/cosmos-ibc-relayer-github.svg)
+![IBC v2 Relayer](.github/assets/cosmos-ibc-relayer-github.svg)
 
 IBC v2 Relayer is a relaying service for the IBC v2 Protocol. The relayer supports interoperating between a Cosmos-based chain and major EVM networks.
 
